@@ -32,7 +32,7 @@ export default function Results() {
     if (!hasAnswers) return;
     const ucIds = recommendedUseCases.map(uc => uc.id);
 
-    setLoading({ kostra: true, easa: true, platforms: true });
+    setLoading({ kostra: true, easa: true, platforms: true, sora: true });
 
     evaluationApi.fetchKostraData(municipalityName).then(d => {
       setKostra(d);
