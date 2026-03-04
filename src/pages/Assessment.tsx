@@ -217,11 +217,11 @@ export default function Assessment() {
         </motion.div>
       </AnimatePresence>
 
-      {/* Navigation */}
+      {/* Bottom Navigation */}
       <div className="flex justify-between pt-4">
         <Button
           variant="outline"
-          onClick={() => setCurrentDimension(Math.max(0, currentDimension - 1))}
+          onClick={() => { setCurrentDimension(Math.max(0, currentDimension - 1)); scrollToTop(); }}
           disabled={currentDimension === 0}
           className="gap-2"
         >
@@ -229,20 +229,16 @@ export default function Assessment() {
         </Button>
         {currentDimension < dimensions.length - 1 ? (
           <Button
-            onClick={() => setCurrentDimension(currentDimension + 1)}
+            onClick={() => { setCurrentDimension(currentDimension + 1); scrollToTop(); }}
+            disabled={!allCurrentAnswered}
             className="gap-2"
           >
             Neste <ChevronRight className="w-4 h-4" />
           </Button>
         ) : (
           <Button
-            onClick={() => {
-              // Store results in sessionStorage for the results page
-              sessionStorage.setItem("dmv-answers", JSON.stringify(answers));
-              sessionStorage.setItem("dmv-municipality", municipalityName);
-              sessionStorage.setItem("dmv-assessor", assessorName);
-              navigate("/resultater");
-            }}
+            onClick={handleFinish}
+            disabled={!allCurrentAnswered}
             className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
           >
             Se resultater <CheckCircle2 className="w-4 h-4" />
