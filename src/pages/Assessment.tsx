@@ -41,10 +41,13 @@ export default function Assessment() {
     sessionStorage.setItem("dmv-answers", JSON.stringify(answers));
     sessionStorage.setItem("dmv-municipality", municipalityName);
     sessionStorage.setItem("dmv-assessor", assessorName);
+    if (kostraOverrides) {
+      sessionStorage.setItem("dmv-kostra-overrides", JSON.stringify(kostraOverrides));
+    }
     navigate("/resultater");
   };
 
-  if (showIntro) {
+  if (step === "intro") {
     return (
       <div className="p-6 lg:p-10 max-w-2xl mx-auto">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
@@ -73,15 +76,28 @@ export default function Assessment() {
                 className="w-full gap-2 font-display font-semibold"
                 size="lg"
                 disabled={!municipalityName.trim()}
-                onClick={() => setShowIntro(false)}
+                onClick={() => setStep("kostra")}
               >
-                Start vurdering
+                Neste: Se kommunedata
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </CardContent>
           </Card>
         </motion.div>
       </div>
+    );
+  }
+
+  if (step === "kostra") {
+    return (
+      <KostraPreview
+        municipalityName={municipalityName}
+        onContinue={(overrides) => {
+          setKostraOverrides(overrides);
+          setStep("questions");
+        }}
+        onBack={() => setStep("intro")}
+      />
     );
   }
 
