@@ -25,7 +25,8 @@ export default function Assessment() {
     totalScore, maturityLevel, dimensionScores, progress, totalAnswered, totalQuestions,
   } = useAssessment();
 
-  const [showIntro, setShowIntro] = useState(true);
+  const [step, setStep] = useState<"intro" | "kostra" | "questions">("intro");
+  const [kostraOverrides, setKostraOverrides] = useState<KostraOverrides | null>(null);
   const topRef = useRef<HTMLDivElement>(null);
   const dim = dimensions[currentDimension];
   const Icon = dimensionIcons[currentDimension];
