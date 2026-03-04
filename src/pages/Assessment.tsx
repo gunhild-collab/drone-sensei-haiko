@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { dimensions } from "@/data/dmvData";
 import { useAssessment } from "@/hooks/useAssessment";
+import { useRef } from "react";
 import { ChevronLeft, ChevronRight, CheckCircle2, Target, Shield, Cpu, Building2, Network } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
