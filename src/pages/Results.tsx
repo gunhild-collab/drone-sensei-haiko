@@ -153,7 +153,7 @@ export default function Results() {
 
       {/* Tabbed cross-reference sections */}
       <Tabs defaultValue="dimensions" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="dimensions">Dimensjoner</TabsTrigger>
           <TabsTrigger value="kostra" className="gap-1">
             <MapPin className="w-3 h-3" /> KOSTRA
@@ -162,6 +162,10 @@ export default function Results() {
           <TabsTrigger value="easa" className="gap-1">
             <Shield className="w-3 h-3" /> EASA
             {loading.easa && <Loader2 className="w-3 h-3 animate-spin" />}
+          </TabsTrigger>
+          <TabsTrigger value="sora" className="gap-1">
+            <Target className="w-3 h-3" /> SORA
+            {loading.sora && <Loader2 className="w-3 h-3 animate-spin" />}
           </TabsTrigger>
           <TabsTrigger value="platforms" className="gap-1">
             <Cpu className="w-3 h-3" /> Plattformer
