@@ -155,8 +155,7 @@ export default function Assessment() {
             Se resultater <CheckCircle2 className="w-4 h-4" />
           </Button>
         )}
-
-      {/* Questions */}
+      </div>
       <AnimatePresence mode="wait">
         <motion.div
           key={dim.id}
