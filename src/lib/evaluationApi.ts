@@ -136,6 +136,21 @@ export const evaluationApi = {
     return data;
   },
 
+  async calculateSora(params: {
+    platform_ids?: string[];
+    municipality_name: string;
+    population_density?: number;
+    use_case_ids?: string[];
+    altitude_m?: number;
+    is_controlled_airspace?: boolean;
+    is_bvlos?: boolean;
+  }): Promise<SoraAssessment> {
+    const { data, error } = await supabase.functions.invoke('sora-calculate', {
+      body: params,
+    });
+    if (error) return { success: false, error: error.message };
+    return data;
+
   async saveAssessment(params: {
     municipality_name: string;
     assessor_name: string;
