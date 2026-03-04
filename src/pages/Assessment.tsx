@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { KommuneCombobox } from "@/components/KommuneCombobox";
 import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { dimensions } from "@/data/dmvData";
@@ -37,12 +38,10 @@ export default function Assessment() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="municipality">Kommune</Label>
-                <Input
-                  id="municipality"
-                  placeholder="F.eks. Trondheim kommune"
+                <Label>Kommune</Label>
+                <KommuneCombobox
                   value={municipalityName}
-                  onChange={e => setMunicipalityName(e.target.value)}
+                  onValueChange={setMunicipalityName}
                 />
               </div>
               <div className="space-y-2">
