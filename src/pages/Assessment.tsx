@@ -29,6 +29,18 @@ export default function Assessment() {
   const dim = dimensions[currentDimension];
   const Icon = dimensionIcons[currentDimension];
   const currentDimScore = dimensionScores[currentDimension];
+  const allCurrentAnswered = dim.questions.every(q => answers[q.id] !== undefined);
+
+  const scrollToTop = () => {
+    topRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const handleFinish = () => {
+    sessionStorage.setItem("dmv-answers", JSON.stringify(answers));
+    sessionStorage.setItem("dmv-municipality", municipalityName);
+    sessionStorage.setItem("dmv-assessor", assessorName);
+    navigate("/resultater");
+  };
 
   if (showIntro) {
     return (
