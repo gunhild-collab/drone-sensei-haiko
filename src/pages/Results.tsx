@@ -25,7 +25,8 @@ export default function Results() {
   const [kostra, setKostra] = useState<KostraData | null>(null);
   const [easa, setEasa] = useState<EasaEvaluation | null>(null);
   const [platforms, setPlatforms] = useState<PlatformRecommendation | null>(null);
-  const [loading, setLoading] = useState({ kostra: false, easa: false, platforms: false });
+  const [sora, setSora] = useState<SoraAssessment | null>(null);
+  const [loading, setLoading] = useState({ kostra: false, easa: false, platforms: false, sora: false });
 
   useEffect(() => {
     if (!hasAnswers) return;
