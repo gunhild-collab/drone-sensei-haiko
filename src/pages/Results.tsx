@@ -51,6 +51,22 @@ export default function Results() {
     }).then(d => {
       setPlatforms(d);
       setLoading(prev => ({ ...prev, platforms: false }));
+
+      // After platforms load, calculate SORA for top recommended platforms
+      if (d.success && d.platforms && d.platforms.length > 0) {
+        const popDensity = kostra?.drone_relevance?.population_density || undefined;
+        evaluationApi.calculateSora({
+          platform_ids: d.platforms.slice(0, 5).map(p => p.id),
+          municipality_name: municipalityName,
+          population_density: popDensity ?? undefined,
+          use_case_ids: ucIds,
+        }).then(s => {
+          setSora(s);
+          setLoading(prev => ({ ...prev, sora: false }));
+        });
+      } else {
+        setLoading(prev => ({ ...prev, sora: false }));
+      }
     });
   }, [hasAnswers]);
 
