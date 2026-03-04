@@ -148,12 +148,7 @@ export default function Assessment() {
                 </div>
                 <RadioGroup
                   value={answers[q.id]?.toString()}
-                  onValueChange={val => {
-                    setAnswer(q.id, parseInt(val));
-                    if (qi === dim.questions.length - 1) {
-                      topRef.current?.scrollIntoView({ behavior: "smooth" });
-                    }
-                  }}
+                  onValueChange={val => setAnswer(q.id, parseInt(val))}
                   className="grid gap-2"
                 >
                   {q.levels.map((level, li) => (
