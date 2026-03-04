@@ -28,6 +28,53 @@ export interface EasaEvaluation {
   error?: string;
 }
 
+export interface SoraAssessment {
+  success: boolean;
+  municipality?: string;
+  population_density?: number;
+  population_category?: string;
+  scenario?: { altitude_m: number; is_controlled_airspace: boolean; is_bvlos: boolean };
+  assessments?: Array<{
+    platform_id: string;
+    platform_name: string;
+    max_takeoff_weight_kg: number | null;
+    c_class: string | null;
+    easa_category: string | null;
+    sora: {
+      intrinsic_grc: number;
+      grc_mitigations: number;
+      final_grc: number;
+      grc_size_class: string;
+      population_category: string;
+      scenario: string;
+      initial_arc: string;
+      residual_arc: string;
+      arc_mitigations: string;
+      sail: number | string;
+      sail_description: string;
+      tmpr: { level: string; description_no: string };
+      needs_sora_application: boolean;
+      needs_sts: boolean;
+      recommendation_no: string;
+    };
+    caa_compliance: {
+      categories: string[];
+      sts_eligible: string[];
+      certifications_no: string[];
+      luftfartstilsynet_refs: string[];
+    };
+    operational_limits: {
+      max_altitude_m: number | string;
+      vlos_required: boolean;
+      min_distance_people_m: number;
+      requires_operator_registration: boolean;
+      requires_insurance: boolean;
+    };
+  }>;
+  references?: Record<string, string>;
+  error?: string;
+}
+
 export interface PlatformRecommendation {
   success: boolean;
   platforms?: Array<{
@@ -83,6 +130,22 @@ export const evaluationApi = {
     sensor_needs?: string[];
   }): Promise<PlatformRecommendation> {
     const { data, error } = await supabase.functions.invoke('platform-recommend', {
+      body: params,
+    });
+    if (error) return { success: false, error: error.message };
+    return data;
+  },
+
+  async calculateSora(params: {
+    platform_ids?: string[];
+    municipality_name: string;
+    population_density?: number;
+    use_case_ids?: string[];
+    altitude_m?: number;
+    is_controlled_airspace?: boolean;
+    is_bvlos?: boolean;
+  }): Promise<SoraAssessment> {
+    const { data, error } = await supabase.functions.invoke('sora-calculate', {
       body: params,
     });
     if (error) return { success: false, error: error.message };

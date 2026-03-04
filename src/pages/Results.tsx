@@ -4,12 +4,12 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { dimensions, calculateWeightedScore, calculateDimensionScore, getMaturityLevel, getRecommendedUseCases, maturityLevels } from "@/data/dmvData";
-import { evaluationApi, KostraData, EasaEvaluation, PlatformRecommendation } from "@/lib/evaluationApi";
+import { evaluationApi, KostraData, EasaEvaluation, PlatformRecommendation, SoraAssessment } from "@/lib/evaluationApi";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from "recharts";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, ClipboardCheck, Loader2, AlertTriangle, Shield, Cpu, MapPin, ExternalLink } from "lucide-react";
+import { ArrowRight, ClipboardCheck, Loader2, AlertTriangle, Shield, Cpu, MapPin, ExternalLink, Target } from "lucide-react";
 
 export default function Results() {
   const answers: Record<string, number> = useMemo(() => {
@@ -25,13 +25,14 @@ export default function Results() {
   const [kostra, setKostra] = useState<KostraData | null>(null);
   const [easa, setEasa] = useState<EasaEvaluation | null>(null);
   const [platforms, setPlatforms] = useState<PlatformRecommendation | null>(null);
-  const [loading, setLoading] = useState({ kostra: false, easa: false, platforms: false });
+  const [sora, setSora] = useState<SoraAssessment | null>(null);
+  const [loading, setLoading] = useState({ kostra: false, easa: false, platforms: false, sora: false });
 
   useEffect(() => {
     if (!hasAnswers) return;
     const ucIds = recommendedUseCases.map(uc => uc.id);
 
-    setLoading({ kostra: true, easa: true, platforms: true });
+    setLoading({ kostra: true, easa: true, platforms: true, sora: true });
 
     evaluationApi.fetchKostraData(municipalityName).then(d => {
       setKostra(d);
@@ -50,6 +51,22 @@ export default function Results() {
     }).then(d => {
       setPlatforms(d);
       setLoading(prev => ({ ...prev, platforms: false }));
+
+      // After platforms load, calculate SORA for top recommended platforms
+      if (d.success && d.platforms && d.platforms.length > 0) {
+        const popDensity = kostra?.drone_relevance?.population_density || undefined;
+        evaluationApi.calculateSora({
+          platform_ids: d.platforms.slice(0, 5).map(p => p.id),
+          municipality_name: municipalityName,
+          population_density: popDensity ?? undefined,
+          use_case_ids: ucIds,
+        }).then(s => {
+          setSora(s);
+          setLoading(prev => ({ ...prev, sora: false }));
+        });
+      } else {
+        setLoading(prev => ({ ...prev, sora: false }));
+      }
     });
   }, [hasAnswers]);
 
@@ -136,7 +153,7 @@ export default function Results() {
 
       {/* Tabbed cross-reference sections */}
       <Tabs defaultValue="dimensions" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="dimensions">Dimensjoner</TabsTrigger>
           <TabsTrigger value="kostra" className="gap-1">
             <MapPin className="w-3 h-3" /> KOSTRA
@@ -145,6 +162,10 @@ export default function Results() {
           <TabsTrigger value="easa" className="gap-1">
             <Shield className="w-3 h-3" /> EASA
             {loading.easa && <Loader2 className="w-3 h-3 animate-spin" />}
+          </TabsTrigger>
+          <TabsTrigger value="sora" className="gap-1">
+            <Target className="w-3 h-3" /> SORA
+            {loading.sora && <Loader2 className="w-3 h-3 animate-spin" />}
           </TabsTrigger>
           <TabsTrigger value="platforms" className="gap-1">
             <Cpu className="w-3 h-3" /> Plattformer
@@ -323,6 +344,146 @@ export default function Results() {
             </>
           ) : (
             <Card><CardContent className="py-8 text-center"><AlertTriangle className="w-8 h-8 mx-auto text-destructive/50" /><p className="mt-2 text-sm text-muted-foreground">Kunne ikke evaluere EASA-regler: {easa?.error}</p></CardContent></Card>
+          )}
+        </TabsContent>
+
+        {/* SORA tab */}
+        <TabsContent value="sora" className="space-y-4">
+          {loading.sora ? (
+            <Card><CardContent className="py-12 text-center"><Loader2 className="w-8 h-8 animate-spin mx-auto text-muted-foreground" /><p className="mt-2 text-sm text-muted-foreground">Beregner SORA risikovurdering...</p></CardContent></Card>
+          ) : sora?.success && sora.assessments ? (
+            <>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2"><Target className="w-5 h-5" /> SORA Risikovurdering</CardTitle>
+                  <CardDescription>
+                    Specific Operations Risk Assessment (SORA 2.5) – Krysssjekket mot Luftfartstilsynet og EASA befolkningstetthetsdata
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div className="p-3 rounded-lg bg-muted/50">
+                      <p className="text-xs text-muted-foreground">Befolkningskategori</p>
+                      <p className="font-display font-bold">
+                        {sora.population_category === 'sparsely_populated' ? 'Tynt befolket' : sora.population_category === 'populated' ? 'Befolket' : 'Tett befolket'}
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-muted/50">
+                      <p className="text-xs text-muted-foreground">Operasjonshøyde</p>
+                      <p className="font-display font-bold">{sora.scenario?.altitude_m || 120} m</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-muted/50">
+                      <p className="text-xs text-muted-foreground">Operasjonstype</p>
+                      <p className="font-display font-bold">{sora.scenario?.is_bvlos ? 'BVLOS' : 'VLOS'}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {sora.assessments.map((a) => (
+                <Card key={a.platform_id} className="hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base">{a.platform_name}</CardTitle>
+                      <div className="flex gap-2">
+                        {a.c_class && <Badge variant="outline" className="text-xs">{a.c_class}</Badge>}
+                        <Badge variant={a.sora.needs_sora_application ? 'destructive' : a.sora.needs_sts ? 'secondary' : 'default'} className="text-xs">
+                          {a.sora.needs_sora_application ? 'Krever SORA' : a.sora.needs_sts ? 'STS' : 'Åpen'}
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* GRC / ARC / SAIL grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="p-3 rounded-lg bg-muted/50 text-center">
+                        <p className="text-xs text-muted-foreground">GRC (Final)</p>
+                        <p className="text-2xl font-display font-bold">{a.sora.final_grc}</p>
+                        <p className="text-xs text-muted-foreground">Intrinsic: {a.sora.intrinsic_grc}</p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-muted/50 text-center">
+                        <p className="text-xs text-muted-foreground">ARC (Residual)</p>
+                        <p className="text-2xl font-display font-bold">{a.sora.residual_arc}</p>
+                        <p className="text-xs text-muted-foreground">Initial: {a.sora.initial_arc}</p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-muted/50 text-center">
+                        <p className="text-xs text-muted-foreground">SAIL</p>
+                        <p className="text-2xl font-display font-bold">{typeof a.sora.sail === 'number' ? `SAIL ${a.sora.sail}` : 'N/A'}</p>
+                        <p className="text-xs text-muted-foreground">{a.sora.sail_description?.split('–')[1]?.trim() || ''}</p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-muted/50 text-center">
+                        <p className="text-xs text-muted-foreground">TMPR</p>
+                        <p className="text-2xl font-display font-bold">{a.sora.tmpr.level}</p>
+                      </div>
+                    </div>
+
+                    {/* TMPR description */}
+                    <div className="p-3 rounded-lg border border-border/50 text-sm">
+                      <p className="font-medium text-xs text-muted-foreground mb-1">Taktisk mitigering (TMPR)</p>
+                      <p className="text-sm">{a.sora.tmpr.description_no}</p>
+                    </div>
+
+                    {/* CAA compliance */}
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground">Tillatte kategorier (Luftfartstilsynet)</p>
+                      <div className="flex flex-wrap gap-1">
+                        {a.caa_compliance.categories.map(c => (
+                          <Badge key={c} variant="secondary" className="text-xs">{c}</Badge>
+                        ))}
+                      </div>
+                      {a.caa_compliance.sts_eligible.length > 0 && (
+                        <div className="mt-2">
+                          <p className="text-xs font-medium text-muted-foreground">STS-kvalifisert</p>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {a.caa_compliance.sts_eligible.map(s => (
+                              <Badge key={s} variant="outline" className="text-xs">{s}</Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Operational limits */}
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="flex justify-between p-2 rounded bg-muted/30">
+                        <span className="text-muted-foreground">Maks høyde</span>
+                        <span className="font-medium">{a.operational_limits.max_altitude_m} m</span>
+                      </div>
+                      <div className="flex justify-between p-2 rounded bg-muted/30">
+                        <span className="text-muted-foreground">Min. avstand personer</span>
+                        <span className="font-medium">{a.operational_limits.min_distance_people_m} m</span>
+                      </div>
+                    </div>
+
+                    {/* Recommendation */}
+                    <div className={`p-3 rounded-lg text-sm ${a.sora.needs_sora_application ? 'bg-destructive/10 border border-destructive/30' : 'bg-accent/10 border border-accent/30'}`}>
+                      <p className="font-medium">{a.sora.recommendation_no}</p>
+                      {a.caa_compliance.certifications_no.length > 0 && (
+                        <p className="text-xs text-muted-foreground mt-1">Påkrevde sertifiseringer: {a.caa_compliance.certifications_no.join(', ')}</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+
+              {/* References */}
+              {sora.references && (
+                <Card>
+                  <CardHeader><CardTitle className="text-sm">Kilder og referanser</CardTitle></CardHeader>
+                  <CardContent className="space-y-1">
+                    <a href={sora.references.url_caa} target="_blank" rel="noopener noreferrer" className="text-xs text-primary flex items-center gap-1 hover:underline">
+                      Luftfartstilsynet – Droneregler <ExternalLink className="w-3 h-3" />
+                    </a>
+                    <a href={sora.references.url_easa_map} target="_blank" rel="noopener noreferrer" className="text-xs text-primary flex items-center gap-1 hover:underline">
+                      EASA befolkningstetthetsdata (SORA 2.5) <ExternalLink className="w-3 h-3" />
+                    </a>
+                    <p className="text-xs text-muted-foreground mt-1">{sora.references.sora} · {sora.references.caa}</p>
+                  </CardContent>
+                </Card>
+              )}
+            </>
+          ) : (
+            <Card><CardContent className="py-8 text-center"><AlertTriangle className="w-8 h-8 mx-auto text-destructive/50" /><p className="mt-2 text-sm text-muted-foreground">Kunne ikke beregne SORA: {sora?.error}</p></CardContent></Card>
           )}
         </TabsContent>
 
