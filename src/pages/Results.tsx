@@ -4,7 +4,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { dimensions, calculateWeightedScore, calculateDimensionScore, getMaturityLevel, getRecommendedUseCases, maturityLevels } from "@/data/dmvData";
-import { evaluationApi, KostraData, EasaEvaluation, PlatformRecommendation } from "@/lib/evaluationApi";
+import { evaluationApi, KostraData, EasaEvaluation, PlatformRecommendation, SoraAssessment } from "@/lib/evaluationApi";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from "recharts";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
