@@ -150,6 +150,7 @@ export const evaluationApi = {
     });
     if (error) return { success: false, error: error.message };
     return data;
+  },
 
   async saveAssessment(params: {
     municipality_name: string;
