@@ -3,18 +3,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-// SSB KOSTRA table IDs relevant for drone maturity assessment
-const KOSTRA_TABLES: Record<string, { tableId: string; indicatorName: string; variableCode: string }> = {
-  road_km: { tableId: '11845', indicatorName: 'Kommunale veier (km)', variableCode: 'KOSveg0001' },
-  water_pipe_km: { tableId: '12209', indicatorName: 'Vannledningsnett (km)', variableCode: 'KOSvavann0004' },
-  sewer_pipe_km: { tableId: '12209', indicatorName: 'Avløpsledningsnett (km)', variableCode: 'KOSvaavl0004' },
-  population: { tableId: '07459', indicatorName: 'Folkemengde', variableCode: 'Folkemengde' },
-  area_km2: { tableId: '09280', indicatorName: 'Areal (km²)', variableCode: 'Areal' },
-  buildings: { tableId: '06265', indicatorName: 'Kommunale bygg (antall)', variableCode: 'KOSeiendom0001' },
-};
-
-// Municipality name to SSB code mapping (subset - key municipalities)
-// SSB uses K-prefixed codes for municipalities
+// SSB municipality codes (K-prefixed for v0 API)
 const MUNICIPALITY_CODES: Record<string, string> = {
   'Oslo': 'K-0301', 'Bergen': 'K-4601', 'Trondheim': 'K-5001', 'Stavanger': 'K-1103',
   'Bærum': 'K-3024', 'Kristiansand': 'K-4204', 'Drammen': 'K-3005', 'Asker': 'K-3025',
@@ -30,6 +19,22 @@ const MUNICIPALITY_CODES: Record<string, string> = {
   'Sarpsborg': 'K-3003', 'Lørenskog': 'K-3029', 'Karmøy': 'K-1149',
 };
 
+// Known population data from the CSV (as fallback)
+const POPULATION_DATA: Record<string, number> = {
+  'Oslo': 710000, 'Bergen': 290000, 'Trondheim': 210000, 'Stavanger': 145000,
+  'Bærum': 130000, 'Kristiansand': 112000, 'Drammen': 101000, 'Asker': 100000,
+  'Lillestrøm': 88000, 'Fredrikstad': 84000, 'Sandnes': 80000, 'Tromsø': 78000,
+  'Ålesund': 67000, 'Bodø': 53000, 'Verdal': 15000, 'Steinkjer': 22000,
+  'Stjørdal': 24000, 'Levanger': 20000, 'Namsos': 13000, 'Rana': 27000,
+  'Narvik': 22000, 'Harstad': 25000, 'Alta': 22000, 'Hammerfest': 11000,
+  'Haugesund': 37000, 'Molde': 32000, 'Kristiansund': 24000, 'Gjøvik': 30000,
+  'Hamar': 32000, 'Lillehammer': 29000, 'Kongsvinger': 17000, 'Ullensaker': 40000,
+  'Sola': 27000, 'Ringebu': 4700, 'Arendal': 46000, 'Larvik': 48000,
+  'Sandefjord': 65000, 'Tønsberg': 55000, 'Skien': 57000, 'Porsgrunn': 35000,
+  'Moss': 33000, 'Halden': 32000, 'Sarpsborg': 61000, 'Lørenskog': 44000,
+  'Karmøy': 43000,
+};
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -37,7 +42,6 @@ Deno.serve(async (req) => {
 
   try {
     const { municipality_name } = await req.json();
-
     if (!municipality_name) {
       return new Response(
         JSON.stringify({ success: false, error: 'Municipality name is required' }),
@@ -46,102 +50,77 @@ Deno.serve(async (req) => {
     }
 
     const municipalityCode = MUNICIPALITY_CODES[municipality_name];
-    
-    // If we don't have the code, try SSB search
-    if (!municipalityCode) {
-      // Return estimated data based on municipality list data
-      return new Response(
-        JSON.stringify({
-          success: true,
-          source: 'estimated',
-          municipality: municipality_name,
-          data: {
-            message: `Kommunekode for ${municipality_name} ikke funnet i lokal database. SSB-data kan hentes manuelt.`,
-          },
-          indicators: [],
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    const knownPopulation = POPULATION_DATA[municipality_name];
+    const indicators: Array<{ id: string; name: string; value: number; unit: string; year?: string }> = [];
+    let ssbSuccess = false;
 
-    // Fetch population data from SSB (table 07459) as primary indicator
-    const ssbUrl = `https://data.ssb.no/api/v0/no/table/07459`;
-    const query = {
-      query: [
-        { code: 'Region', selection: { filter: 'item', values: [municipalityCode] } },
-        { code: 'ContentsCode', selection: { filter: 'item', values: ['Folkemengde'] } },
-        { code: 'Tid', selection: { filter: 'top', values: ['1'] } },
-      ],
-      response: { format: 'json-stat2' },
-    };
+    // Try SSB API for population data
+    if (municipalityCode) {
+      try {
+        const ssbUrl = 'https://data.ssb.no/api/v0/no/table/07459';
+        const regionCode = municipalityCode.replace('K-', '');
+        const query = {
+          query: [
+            { code: 'Region', selection: { filter: 'item', values: [regionCode] } },
+            { code: 'Alder', selection: { filter: 'vs', values: ['999'] } }, // Total all ages
+            { code: 'ContentsCode', selection: { filter: 'item', values: ['Folkemengde'] } },
+            { code: 'Tid', selection: { filter: 'top', values: ['1'] } },
+          ],
+          response: { format: 'json-stat2' },
+        };
 
-    console.log(`Fetching SSB data for ${municipality_name} (${municipalityCode})`);
+        console.log(`Fetching SSB data for ${municipality_name} (${regionCode})`);
 
-    const ssbResponse = await fetch(ssbUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(query),
-    });
+        const resp = await fetch(ssbUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(query),
+        });
 
-    let population = null;
-    let year = null;
-
-    if (ssbResponse.ok) {
-      const ssbData = await ssbResponse.json();
-      if (ssbData.value && ssbData.value.length > 0) {
-        population = ssbData.value[0];
-        // Extract year from dimension
-        const timeDim = ssbData.dimension?.Tid;
-        if (timeDim?.category?.label) {
-          const labels = Object.values(timeDim.category.label);
-          year = labels[labels.length - 1];
+        if (resp.ok) {
+          const data = await resp.json();
+          console.log('SSB response keys:', Object.keys(data));
+          if (data.value && data.value.length > 0 && data.value[0] !== null) {
+            const pop = data.value[0];
+            const timeDim = data.dimension?.Tid;
+            let year = '2024';
+            if (timeDim?.category?.label) {
+              const labels = Object.values(timeDim.category.label) as string[];
+              year = labels[labels.length - 1] || year;
+            }
+            indicators.push({ id: 'population', name: 'Folkemengde', value: pop, unit: 'personer', year });
+            ssbSuccess = true;
+          }
+        } else {
+          console.log('SSB API returned status:', resp.status);
         }
+      } catch (e) {
+        console.log('SSB API error:', e);
       }
     }
 
-    // Also fetch area data (table 09280)
-    let area = null;
-    try {
-      const areaUrl = `https://data.ssb.no/api/v0/no/table/09280`;
-      const areaQuery = {
-        query: [
-          { code: 'Region', selection: { filter: 'item', values: [municipalityCode] } },
-          { code: 'ContentsCode', selection: { filter: 'item', values: ['Areal'] } },
-          { code: 'Tid', selection: { filter: 'top', values: ['1'] } },
-        ],
-        response: { format: 'json-stat2' },
-      };
-      const areaResp = await fetch(areaUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(areaQuery),
-      });
-      if (areaResp.ok) {
-        const areaData = await areaResp.json();
-        if (areaData.value?.[0]) area = areaData.value[0];
-      }
-    } catch (e) {
-      console.log('Area fetch failed:', e);
+    // Fall back to known data if SSB failed
+    if (!ssbSuccess && knownPopulation) {
+      indicators.push({ id: 'population', name: 'Folkemengde', value: knownPopulation, unit: 'personer', year: '2024' });
     }
 
-    const indicators = [];
-    if (population) indicators.push({ id: 'population', name: 'Folkemengde', value: population, unit: 'personer', year });
-    if (area) indicators.push({ id: 'area_km2', name: 'Areal', value: area, unit: 'km²', year });
+    const population = indicators.find(i => i.id === 'population')?.value;
 
     // Derive drone-relevant metrics
     const droneRelevance = {
-      population_density: population && area ? Math.round(population / area) : null,
-      estimated_road_km: population ? Math.round(population * 0.015) : null, // rough estimate
+      population_density: null as number | null,
+      estimated_road_km: population ? Math.round(population * 0.015) : null,
       estimated_buildings: population ? Math.round(population * 0.4) : null,
       infrastructure_complexity: population && population > 50000 ? 'Høy' : population && population > 10000 ? 'Middels' : 'Lav',
+      estimated_va_km: population ? Math.round(population * 0.01) : null,
     };
 
     return new Response(
       JSON.stringify({
         success: true,
-        source: 'ssb',
+        source: ssbSuccess ? 'ssb' : knownPopulation ? 'fallback' : 'estimated',
         municipality: municipality_name,
-        municipality_code: municipalityCode,
+        municipality_code: municipalityCode || null,
         indicators,
         drone_relevance: droneRelevance,
       }),
