@@ -14,19 +14,20 @@ const KOSTRA_TABLES: Record<string, { tableId: string; indicatorName: string; va
 };
 
 // Municipality name to SSB code mapping (subset - key municipalities)
+// SSB uses K-prefixed codes for municipalities
 const MUNICIPALITY_CODES: Record<string, string> = {
-  'Oslo': '0301', 'Bergen': '4601', 'Trondheim': '5001', 'Stavanger': '1103',
-  'Bærum': '3024', 'Kristiansand': '4204', 'Drammen': '3005', 'Asker': '3025',
-  'Lillestrøm': '3030', 'Fredrikstad': '3004', 'Sandnes': '1108', 'Tromsø': '5401',
-  'Ålesund': '1507', 'Bodø': '1804', 'Verdal': '5038', 'Steinkjer': '5006',
-  'Stjørdal': '5035', 'Levanger': '5037', 'Namsos': '5007', 'Rana': '1833',
-  'Narvik': '1806', 'Harstad': '5402', 'Alta': '5403', 'Hammerfest': '5404',
-  'Haugesund': '1106', 'Molde': '1506', 'Kristiansund': '1505', 'Gjøvik': '3407',
-  'Hamar': '3403', 'Lillehammer': '3405', 'Kongsvinger': '3401',
-  'Ullensaker': '3033', 'Sola': '1124', 'Ringebu': '3431',
-  'Arendal': '4203', 'Larvik': '3805', 'Sandefjord': '3804', 'Tønsberg': '3803',
-  'Skien': '3807', 'Porsgrunn': '3806', 'Moss': '3002', 'Halden': '3001',
-  'Sarpsborg': '3003', 'Lørenskog': '3029', 'Karmøy': '1149',
+  'Oslo': 'K-0301', 'Bergen': 'K-4601', 'Trondheim': 'K-5001', 'Stavanger': 'K-1103',
+  'Bærum': 'K-3024', 'Kristiansand': 'K-4204', 'Drammen': 'K-3005', 'Asker': 'K-3025',
+  'Lillestrøm': 'K-3030', 'Fredrikstad': 'K-3004', 'Sandnes': 'K-1108', 'Tromsø': 'K-5401',
+  'Ålesund': 'K-1507', 'Bodø': 'K-1804', 'Verdal': 'K-5038', 'Steinkjer': 'K-5006',
+  'Stjørdal': 'K-5035', 'Levanger': 'K-5037', 'Namsos': 'K-5007', 'Rana': 'K-1833',
+  'Narvik': 'K-1806', 'Harstad': 'K-5402', 'Alta': 'K-5403', 'Hammerfest': 'K-5404',
+  'Haugesund': 'K-1106', 'Molde': 'K-1506', 'Kristiansund': 'K-1505', 'Gjøvik': 'K-3407',
+  'Hamar': 'K-3403', 'Lillehammer': 'K-3405', 'Kongsvinger': 'K-3401',
+  'Ullensaker': 'K-3033', 'Sola': 'K-1124', 'Ringebu': 'K-3431',
+  'Arendal': 'K-4203', 'Larvik': 'K-3805', 'Sandefjord': 'K-3804', 'Tønsberg': 'K-3803',
+  'Skien': 'K-3807', 'Porsgrunn': 'K-3806', 'Moss': 'K-3002', 'Halden': 'K-3001',
+  'Sarpsborg': 'K-3003', 'Lørenskog': 'K-3029', 'Karmøy': 'K-1149',
 };
 
 Deno.serve(async (req) => {
