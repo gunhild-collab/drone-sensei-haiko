@@ -5,12 +5,24 @@ export interface KostraData {
   source?: string;
   municipality?: string;
   municipality_code?: string;
+  area_km2?: number;
   indicators?: Array<{ id: string; name: string; value: number; unit: string; year?: string }>;
   drone_relevance?: {
     population_density: number | null;
+    population_bracket: string;
     estimated_road_km: number | null;
     estimated_buildings: number | null;
+    estimated_va_km: number | null;
+    estimated_agri_km2: number | null;
     infrastructure_complexity: string;
+    centrality_index: number | null;
+    urban_rural: string | null;
+    controlled_airspace: { type: string; airport: string; radius_km: number } | null;
+    protected_areas: string[];
+  };
+  services?: {
+    active_services: string[];
+    departments: Array<{ id: string; name: string; relevant_use_cases: string[] }>;
   };
   error?: string;
 }
@@ -25,6 +37,75 @@ export interface EasaEvaluation {
     gaps: Array<{ area: string; severity: string; action: string }>;
     applicable_rules: any[];
   };
+  error?: string;
+}
+
+export interface FlightHourEstimate {
+  use_case_id: string;
+  department: string;
+  hours: number;
+  basis: string;
+}
+
+export interface DepartmentNeed {
+  department_id: string;
+  department_name: string;
+  annual_flight_hours: number;
+  use_cases: string[];
+  drones_needed: number;
+}
+
+export interface ConsolidationGroup {
+  departments: string[];
+  shared_drone_type: string;
+  combined_hours: number;
+  can_share: boolean;
+  reason: string;
+}
+
+export interface ProgramCost {
+  hardware_total: number;
+  permit_setup_cost: number;
+  drones_needed: number;
+  consolidated_drones_needed: number;
+  consolidated_hardware_total: number;
+  consolidated_permit_cost: number;
+  savings_nok: number;
+  total_annual_flight_hours: number;
+}
+
+export interface PlatformRecommendation {
+  success: boolean;
+  platforms?: Array<{
+    id: string;
+    manufacturer: string;
+    model: string;
+    c_class: string | null;
+    category: string;
+    max_takeoff_weight_kg: number | null;
+    max_flight_time_min: number | null;
+    camera_specs: string | null;
+    sensor_types: string[];
+    has_rtk: boolean;
+    ip_rating: string | null;
+    price_nok_estimate: number | null;
+    suitable_use_cases: string[];
+    easa_category: string | null;
+    requires_cert: string | null;
+    url: string | null;
+    match_score: number;
+    match_reasons: string[];
+  }>;
+  total_available?: number;
+  flight_hours?: FlightHourEstimate[];
+  department_needs?: DepartmentNeed[];
+  consolidation?: {
+    shared_groups: ConsolidationGroup[];
+    consolidated_drone_count: number;
+    consolidated_permit_count: number;
+    recommendations: string[];
+  };
+  program_cost?: ProgramCost;
   error?: string;
 }
 
@@ -75,32 +156,6 @@ export interface SoraAssessment {
   error?: string;
 }
 
-export interface PlatformRecommendation {
-  success: boolean;
-  platforms?: Array<{
-    id: string;
-    manufacturer: string;
-    model: string;
-    c_class: string | null;
-    category: string;
-    max_takeoff_weight_kg: number | null;
-    max_flight_time_min: number | null;
-    camera_specs: string | null;
-    sensor_types: string[];
-    has_rtk: boolean;
-    ip_rating: string | null;
-    price_nok_estimate: number | null;
-    suitable_use_cases: string[];
-    easa_category: string | null;
-    requires_cert: string | null;
-    url: string | null;
-    match_score: number;
-    match_reasons: string[];
-  }>;
-  total_available?: number;
-  error?: string;
-}
-
 export const evaluationApi = {
   async fetchKostraData(municipalityName: string): Promise<KostraData> {
     const { data, error } = await supabase.functions.invoke('kostra-data', {
@@ -128,6 +183,13 @@ export const evaluationApi = {
     use_case_ids?: string[];
     budget_range?: { min: number; max: number };
     sensor_needs?: string[];
+    municipal_data?: {
+      road_km?: number | null;
+      buildings?: number | null;
+      va_km?: number | null;
+      area_km2?: number | null;
+    };
+    area_km2?: number;
   }): Promise<PlatformRecommendation> {
     const { data, error } = await supabase.functions.invoke('platform-recommend', {
       body: params,
