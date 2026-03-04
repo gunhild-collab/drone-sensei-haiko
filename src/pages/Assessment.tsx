@@ -25,6 +25,7 @@ export default function Assessment() {
   } = useAssessment();
 
   const [showIntro, setShowIntro] = useState(true);
+  const topRef = useRef<HTMLDivElement>(null);
   const dim = dimensions[currentDimension];
   const Icon = dimensionIcons[currentDimension];
   const currentDimScore = dimensionScores[currentDimension];
