@@ -14,7 +14,207 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      assessments: {
+        Row: {
+          answers: Json
+          assessor_name: string | null
+          created_at: string
+          easa_evaluation: Json | null
+          id: string
+          kostra_enrichment: Json | null
+          maturity_level: number | null
+          municipality_name: string
+          platform_recommendations: Json | null
+          total_score: number | null
+          updated_at: string
+        }
+        Insert: {
+          answers?: Json
+          assessor_name?: string | null
+          created_at?: string
+          easa_evaluation?: Json | null
+          id?: string
+          kostra_enrichment?: Json | null
+          maturity_level?: number | null
+          municipality_name: string
+          platform_recommendations?: Json | null
+          total_score?: number | null
+          updated_at?: string
+        }
+        Update: {
+          answers?: Json
+          assessor_name?: string | null
+          created_at?: string
+          easa_evaluation?: Json | null
+          id?: string
+          kostra_enrichment?: Json | null
+          maturity_level?: number | null
+          municipality_name?: string
+          platform_recommendations?: Json | null
+          total_score?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      drone_platforms: {
+        Row: {
+          c_class: string | null
+          camera_specs: string | null
+          category: string
+          created_at: string
+          easa_category: string | null
+          has_rtk: boolean | null
+          id: string
+          ip_rating: string | null
+          manufacturer: string
+          max_flight_time_min: number | null
+          max_range_km: number | null
+          max_takeoff_weight_kg: number | null
+          model: string
+          price_nok_estimate: number | null
+          requires_cert: string | null
+          sensor_types: string[] | null
+          suitable_use_cases: string[] | null
+          url: string | null
+          wind_resistance_ms: number | null
+        }
+        Insert: {
+          c_class?: string | null
+          camera_specs?: string | null
+          category: string
+          created_at?: string
+          easa_category?: string | null
+          has_rtk?: boolean | null
+          id?: string
+          ip_rating?: string | null
+          manufacturer: string
+          max_flight_time_min?: number | null
+          max_range_km?: number | null
+          max_takeoff_weight_kg?: number | null
+          model: string
+          price_nok_estimate?: number | null
+          requires_cert?: string | null
+          sensor_types?: string[] | null
+          suitable_use_cases?: string[] | null
+          url?: string | null
+          wind_resistance_ms?: number | null
+        }
+        Update: {
+          c_class?: string | null
+          camera_specs?: string | null
+          category?: string
+          created_at?: string
+          easa_category?: string | null
+          has_rtk?: boolean | null
+          id?: string
+          ip_rating?: string | null
+          manufacturer?: string
+          max_flight_time_min?: number | null
+          max_range_km?: number | null
+          max_takeoff_weight_kg?: number | null
+          model?: string
+          price_nok_estimate?: number | null
+          requires_cert?: string | null
+          sensor_types?: string[] | null
+          suitable_use_cases?: string[] | null
+          url?: string | null
+          wind_resistance_ms?: number | null
+        }
+        Relationships: []
+      }
+      easa_rules: {
+        Row: {
+          allows_bvlos: boolean | null
+          allows_over_people: boolean | null
+          c_class: string | null
+          category: string
+          created_at: string
+          description_no: string
+          id: string
+          luftfartstilsynet_ref: string | null
+          max_height_m: number | null
+          max_weight_kg: number | null
+          min_distance_people_m: number | null
+          requirements_no: string | null
+          requires_operator_reg: boolean | null
+          requires_pilot_cert: string | null
+          subcategory: string | null
+          use_case_ids: string[] | null
+        }
+        Insert: {
+          allows_bvlos?: boolean | null
+          allows_over_people?: boolean | null
+          c_class?: string | null
+          category: string
+          created_at?: string
+          description_no: string
+          id?: string
+          luftfartstilsynet_ref?: string | null
+          max_height_m?: number | null
+          max_weight_kg?: number | null
+          min_distance_people_m?: number | null
+          requirements_no?: string | null
+          requires_operator_reg?: boolean | null
+          requires_pilot_cert?: string | null
+          subcategory?: string | null
+          use_case_ids?: string[] | null
+        }
+        Update: {
+          allows_bvlos?: boolean | null
+          allows_over_people?: boolean | null
+          c_class?: string | null
+          category?: string
+          created_at?: string
+          description_no?: string
+          id?: string
+          luftfartstilsynet_ref?: string | null
+          max_height_m?: number | null
+          max_weight_kg?: number | null
+          min_distance_people_m?: number | null
+          requirements_no?: string | null
+          requires_operator_reg?: boolean | null
+          requires_pilot_cert?: string | null
+          subcategory?: string | null
+          use_case_ids?: string[] | null
+        }
+        Relationships: []
+      }
+      kostra_data: {
+        Row: {
+          fetched_at: string
+          id: string
+          indicator_id: string
+          indicator_name: string
+          municipality_code: string
+          municipality_name: string
+          unit: string | null
+          value: number | null
+          year: number
+        }
+        Insert: {
+          fetched_at?: string
+          id?: string
+          indicator_id: string
+          indicator_name: string
+          municipality_code: string
+          municipality_name: string
+          unit?: string | null
+          value?: number | null
+          year: number
+        }
+        Update: {
+          fetched_at?: string
+          id?: string
+          indicator_id?: string
+          indicator_name?: string
+          municipality_code?: string
+          municipality_name?: string
+          unit?: string | null
+          value?: number | null
+          year?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
