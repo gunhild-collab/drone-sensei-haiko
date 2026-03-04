@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { dimensions } from "@/data/dmvData";
 import { useAssessment } from "@/hooks/useAssessment";
+import { useRef } from "react";
 import { ChevronLeft, ChevronRight, CheckCircle2, Target, Shield, Cpu, Building2, Network } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -24,6 +25,7 @@ export default function Assessment() {
   } = useAssessment();
 
   const [showIntro, setShowIntro] = useState(true);
+  const topRef = useRef<HTMLDivElement>(null);
   const dim = dimensions[currentDimension];
   const Icon = dimensionIcons[currentDimension];
   const currentDimScore = dimensionScores[currentDimension];
@@ -70,7 +72,7 @@ export default function Assessment() {
   }
 
   return (
-    <div className="p-6 lg:p-10 max-w-4xl mx-auto space-y-6">
+    <div ref={topRef} className="p-6 lg:p-10 max-w-4xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -146,7 +148,12 @@ export default function Assessment() {
                 </div>
                 <RadioGroup
                   value={answers[q.id]?.toString()}
-                  onValueChange={val => setAnswer(q.id, parseInt(val))}
+                  onValueChange={val => {
+                    setAnswer(q.id, parseInt(val));
+                    if (qi === dim.questions.length - 1) {
+                      topRef.current?.scrollIntoView({ behavior: "smooth" });
+                    }
+                  }}
                   className="grid gap-2"
                 >
                   {q.levels.map((level, li) => (
