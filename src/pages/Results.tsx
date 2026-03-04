@@ -9,7 +9,7 @@ import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Responsi
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, ClipboardCheck, Loader2, AlertTriangle, Shield, Cpu, MapPin, ExternalLink } from "lucide-react";
+import { ArrowRight, ClipboardCheck, Loader2, AlertTriangle, Shield, Cpu, MapPin, ExternalLink, Target } from "lucide-react";
 
 export default function Results() {
   const answers: Record<string, number> = useMemo(() => {
