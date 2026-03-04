@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { evaluationApi, KostraData } from "@/lib/evaluationApi";
-import { ChevronRight, MapPin, Users, Route, Building2, Droplets, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { ChevronRight, MapPin, Users, Route, Building2, Droplets, AlertTriangle, CheckCircle2, Plane, TreePine } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface KostraPreviewProps {
@@ -42,7 +42,7 @@ export function KostraPreview({ municipalityName, onContinue, onBack }: KostraPr
           population: pop,
           roadKm: data.drone_relevance?.estimated_road_km ?? null,
           buildings: data.drone_relevance?.estimated_buildings ?? null,
-          vaKm: (data.drone_relevance as any)?.estimated_va_km ?? null,
+          vaKm: data.drone_relevance?.estimated_va_km ?? null,
         });
       }
       setLoading(false);
@@ -89,17 +89,46 @@ export function KostraPreview({ municipalityName, onContinue, onBack }: KostraPr
         </div>
 
         {kostra?.success ? (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="outline" className="gap-1 text-xs">
               <CheckCircle2 className="w-3 h-3" />
               Kilde: {kostra.source === "ssb" ? "SSB (live)" : "Estimat"}
             </Badge>
+            {kostra.drone_relevance?.urban_rural && (
+              <Badge variant="secondary" className="text-xs">{kostra.drone_relevance.urban_rural}</Badge>
+            )}
+            {kostra.drone_relevance?.controlled_airspace && (
+              <Badge variant="destructive" className="text-xs gap-1">
+                <Plane className="w-3 h-3" /> {kostra.drone_relevance.controlled_airspace.type} ({kostra.drone_relevance.controlled_airspace.airport})
+              </Badge>
+            )}
+            {kostra.drone_relevance?.protected_areas && kostra.drone_relevance.protected_areas.length > 0 && (
+              <Badge variant="secondary" className="text-xs gap-1">
+                <TreePine className="w-3 h-3" /> {kostra.drone_relevance.protected_areas.length} verneområde(r)
+              </Badge>
+            )}
           </div>
         ) : (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <AlertTriangle className="w-4 h-4 text-yellow-500" />
             Kunne ikke hente data automatisk. Fyll inn manuelt.
           </div>
+        )}
+
+        {/* Services */}
+        {kostra?.services && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Identifiserte kommunale tjenester</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-1">
+                {kostra.services.active_services.map(s => (
+                  <Badge key={s} variant="outline" className="text-xs">{s}</Badge>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         <Card>
