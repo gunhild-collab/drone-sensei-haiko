@@ -113,6 +113,37 @@ export default function Assessment() {
         })}
       </div>
 
+      {/* Top navigation */}
+      <div className="flex justify-between">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => { setCurrentDimension(Math.max(0, currentDimension - 1)); scrollToTop(); }}
+          disabled={currentDimension === 0}
+          className="gap-2"
+        >
+          <ChevronLeft className="w-4 h-4" /> Forrige
+        </Button>
+        {currentDimension < dimensions.length - 1 ? (
+          <Button
+            size="sm"
+            onClick={() => { setCurrentDimension(currentDimension + 1); scrollToTop(); }}
+            disabled={!allCurrentAnswered}
+            className="gap-2"
+          >
+            Neste <ChevronRight className="w-4 h-4" />
+          </Button>
+        ) : (
+          <Button
+            size="sm"
+            onClick={handleFinish}
+            disabled={!allCurrentAnswered}
+            className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
+          >
+            Se resultater <CheckCircle2 className="w-4 h-4" />
+          </Button>
+        )}
+
       {/* Questions */}
       <AnimatePresence mode="wait">
         <motion.div
