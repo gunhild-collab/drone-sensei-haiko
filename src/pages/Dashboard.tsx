@@ -38,6 +38,32 @@ export default function Dashboard() {
         </div>
       </motion.div>
 
+      {/* SORA Builder Hero */}
+      <motion.div {...fadeUp} transition={{ duration: 0.5, delay: 0.05 }}>
+        <div className="relative overflow-hidden rounded-2xl p-8 lg:p-12" style={{ background: 'linear-gradient(135deg, #0f0f17 0%, #1a1025 50%, #0f0f17 100%)', border: '1px solid #2a2a3e' }}>
+          <div className="relative z-10">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="px-2 py-0.5 rounded text-xs font-bold bg-[#7c3aed]/20 text-[#7c3aed]">NY</span>
+              <span className="text-gray-400 text-sm">SORA 2.5</span>
+            </div>
+            <h2 className="text-3xl lg:text-4xl font-bold text-white mb-3" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+              <span className="bg-gradient-to-r from-[#7c3aed] to-[#ec4899] bg-clip-text text-transparent">SORA Builder</span>
+            </h2>
+            <p className="text-gray-400 max-w-xl text-lg mb-6">
+              Beregn GRC, ARC, SAIL og generer komplett OSO-dokumentasjon og ConOps-utkast for din droneoperasjon.
+            </p>
+            <Link to="/sora">
+              <Button size="lg" className="gap-2 font-semibold bg-[#7c3aed] hover:bg-[#6d28d9] text-white">
+                Start SORA-vurdering
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            </Link>
+          </div>
+          <div className="absolute -right-10 -top-10 w-64 h-64 rounded-full bg-[#7c3aed]/5" />
+          <div className="absolute -right-5 -bottom-20 w-48 h-48 rounded-full bg-[#ec4899]/5" />
+        </div>
+      </motion.div>
+
       {/* Dimensions overview */}
       <motion.div {...fadeUp} transition={{ duration: 0.5, delay: 0.1 }}>
         <h2 className="text-xl font-display font-semibold mb-4">Fem dimensjoner</h2>
