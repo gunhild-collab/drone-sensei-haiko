@@ -155,8 +155,27 @@ export default function SoraStep6({ inputs, results, osoTexts, conopsFields, onC
       {/* Section 3 */}
       <div className={sectionClass}>
         <h3 className={headingClass}>3. Operasjonelt volum</h3>
+        <p className="text-gray-400 text-xs leading-relaxed mb-2">
+          Operasjonelt volum er det 3D-området som definerer hvor dronen kan fly, inkludert sikkerhetssoner rundt. Det er bygget opp av tre lag:
+        </p>
+
+        <div className="bg-[#0f0f17] border border-[#2a2a3e] rounded-lg p-4 space-y-3 mb-3">
+          <div>
+            <p className="text-[#7c3aed] font-semibold text-sm">🎯 Flygegeografi (Flight Geography / FG)</p>
+            <p className="text-gray-400 text-xs leading-relaxed">Det faktiske området der dronen er planlagt å fly — selve «arbeidsområdet». Tenk på det som det innerste laget: den eksakte ruten eller sonen dronen skal operere i. Eksempel: «En 200 × 100 m rektangulær sone over et industriområde, 0–80 m høyde.»</p>
+          </div>
+          <div>
+            <p className="text-yellow-400 font-semibold text-sm">⚠️ Beredskapsvolum (Contingency Volume / CV)</p>
+            <p className="text-gray-400 text-xs leading-relaxed">En sikkerhetssone <em>rundt</em> flygegeografien. Hvis noe uventet skjer (f.eks. sterk vind, GPS-avvik), har piloten tid og plass til å hente dronen tilbake. Dronen skal <strong className="text-gray-300">normalt aldri</strong> fly inn i dette volumet — det er kun et «pusterom» for nødsituasjoner. Typisk 30–100 m utover FG.</p>
+          </div>
+          <div>
+            <p className="text-[#ec4899] font-semibold text-sm">🛑 Bakkerisikobuffer (Ground Risk Buffer / GRB)</p>
+            <p className="text-gray-400 text-xs leading-relaxed">Det <em>ytterste</em> laget — et område på bakken utenfor beredskapsvolumets ytterkant. Selv om dronen mister all kontroll og faller, skal den <strong className="text-gray-300">ikke kunne nå personer</strong> utenfor GRB. Bufferen beregnes ut fra dronens energi, hastighet og vindforhold. Typisk 10–50 m ekstra. Det er innenfor GRB at befolkningstettheten vurderes for GRC.</p>
+          </div>
+        </div>
+
         <div className="space-y-2">
-          <div><span className={labelClass}>Flygegeografi (FG):</span> <input className={editableClass} value={conopsFields.flightGeography} onChange={e => onConopsChange({ flightGeography: e.target.value })} placeholder="Beskriv operasjonsområdet" /></div>
+          <div><span className={labelClass}>Flygegeografi (FG):</span> <input className={editableClass} value={conopsFields.flightGeography} onChange={e => onConopsChange({ flightGeography: e.target.value })} placeholder="Beskriv operasjonsområdet, f.eks. '200 × 100 m rektangulær sone over industriområde'" /></div>
           <div><span className={labelClass}>Beredskapsvolum (CV) buffer:</span> <input className={editableClass} value={conopsFields.contingencyBuffer} onChange={e => onConopsChange({ contingencyBuffer: e.target.value })} placeholder="f.eks. 50 meter" /></div>
           <div><span className={labelClass}>Bakkerisikobuffer (GRB):</span> <input className={editableClass} value={conopsFields.grbMeters} onChange={e => onConopsChange({ grbMeters: e.target.value })} placeholder="f.eks. 30 meter" /></div>
           <div><span className="text-gray-400 text-sm">Maks høyde: {inputs.maxAltitude} m AGL | Tid: {inputs.dayNight === 'day' ? 'Dag' : inputs.dayNight === 'night' ? 'Natt' : 'Dag og natt'}</span></div>
