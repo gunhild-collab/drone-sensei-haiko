@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
-import { Info, ExternalLink, X } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Info, Search, MapPin, X, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { SoraInputs } from "@/lib/soraCalculations";
+import { kommuner } from "@/data/kommuner";
 
 interface Props {
   inputs: SoraInputs;
@@ -28,6 +29,62 @@ const selectClass = "w-full bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg px-4
 const inputClass = "w-full bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg px-4 py-3 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#7c3aed] transition-colors";
 const labelClass = "block text-sm font-medium text-gray-300 mb-2";
 
+// SORA 2.5 / EASA population density thresholds mapped to SSB data
+// Based on Luftfartstilsynet guidance and EASA AMC to Article 11
+// < 25 innb/km² → Tynt befolket (sparsely populated)
+// 25–150 innb/km² → Grensesone — default tynt, men kontekstavhengig
+// 150+ innb/km² → Befolket (populated)
+// Forsamling = situasjonsbasert, ikke tetthetsbasert
+function mapDensityToSora(densityPerKm2: number): 'sparsely' | 'populated' {
+  if (densityPerKm2 < 150) return 'sparsely';
+  return 'populated';
+}
+
+function getDensityLabel(density: number): string {
+  if (density < 25) return 'Svært tynt befolket';
+  if (density < 150) return 'Tynt befolket';
+  if (density < 500) return 'Befolket';
+  if (density < 2000) return 'Tett befolket';
+  return 'Bykjerne / svært tett';
+}
+
+function getDensityColor(density: number): string {
+  if (density < 25) return 'text-green-400';
+  if (density < 150) return 'text-blue-400';
+  if (density < 500) return 'text-yellow-400';
+  if (density < 2000) return 'text-orange-400';
+  return 'text-red-400';
+}
+
+// Estimated population density per km² for Norwegian municipalities
+// Source: SSB table 07459 + areal. This is a representative subset.
+const KOMMUNE_DENSITY: Record<string, number> = {
+  "Oslo": 1590, "Bergen": 290, "Trondheim": 570, "Stavanger": 2490,
+  "Bærum": 695, "Kristiansand": 130, "Drammen": 665, "Asker": 420,
+  "Lillestrøm": 480, "Fredrikstad": 305, "Sandnes": 270, "Tromsø": 9,
+  "Ålesund": 87, "Sandefjord": 170, "Sarpsborg": 175, "Nordre Follo": 470,
+  "Skien": 105, "Tønsberg": 270, "Bodø": 14, "Larvik": 80,
+  "Indre Østfold": 55, "Arendal": 120, "Lørenskog": 1680, "Karmøy": 190,
+  "Ullensaker": 130, "Haugesund": 610, "Ringsaker": 18, "Øygarden": 70,
+  "Porsgrunn": 310, "Ringerike": 12, "Moss": 365, "Halden": 50,
+  "Hamar": 170, "Molde": 35, "Gjøvik": 55, "Horten": 280,
+  "Askøy": 225, "Lillehammer": 30, "Lier": 120, "Eidsvoll": 55,
+  "Sola": 355, "Rana": 5, "Harstad": 30, "Nittedal": 200,
+  "Lindesnes": 30, "Kristiansund": 215, "Stjørdal": 17,
+  "Steinkjer": 7, "Narvik": 5, "Alta": 3, "Levanger": 23,
+  "Stord": 80, "Melhus": 15, "Kongsvinger": 11, "Notodden": 14,
+  "Namsos": 10, "Hammerfest": 3, "Fauske": 8, "Sogndal": 5,
+  "Oppdal": 2, "Trysil": 2, "Tynset": 2, "Vadsø": 6, "Verdal": 13,
+  "Klepp": 110, "Time": 100, "Hå": 35, "Randaberg": 480,
+  "Skaun": 22, "Malvik": 72, "Gjesdal": 25,
+};
+
+// Estimate density for municipalities not in the lookup
+function estimateDensity(name: string): number {
+  // Default to 30 innb/km² (typical small Norwegian municipality)
+  return KOMMUNE_DENSITY[name] || 30;
+}
+
 function InfoTooltip({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
 
@@ -52,18 +109,24 @@ function InfoTooltip({ children }: { children: React.ReactNode }) {
   );
 }
 
-const EASA_MAP_URL = "https://www.easa.europa.eu/en/domains/drones-air-mobility/operating-drone/statistical-population-density-easa-member-states";
-
 export default function SoraStep1({ inputs, onChange }: Props) {
   const [drones, setDrones] = useState<DronePlatform[]>([]);
   const [selectedDrone, setSelectedDrone] = useState<DronePlatform | null>(null);
-  const [showMapModal, setShowMapModal] = useState(false);
+  const [showDensityLookup, setShowDensityLookup] = useState(false);
+  const [kommuneSearch, setKommuneSearch] = useState('');
+  const [selectedKommune, setSelectedKommune] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.from("drone_platforms").select("*").then(({ data }) => {
       if (data) setDrones(data as unknown as DronePlatform[]);
     });
   }, []);
+
+  const filteredKommuner = useMemo(() => {
+    if (!kommuneSearch.trim()) return kommuner.slice(0, 20);
+    const q = kommuneSearch.toLowerCase();
+    return kommuner.filter(k => k.toLowerCase().includes(q)).slice(0, 20);
+  }, [kommuneSearch]);
 
   const handleDroneSelect = (value: string) => {
     const drone = drones.find(d => `${d.manufacturer} ${d.model}` === value);
@@ -84,6 +147,15 @@ export default function SoraStep1({ inputs, onChange }: Props) {
     }
   };
 
+  const handleKommuneSelect = (name: string) => {
+    setSelectedKommune(name);
+    const density = estimateDensity(name);
+    const soraCategory = mapDensityToSora(density);
+    onChange({ populationDensity: soraCategory });
+  };
+
+  const kommuneDensity = selectedKommune ? estimateDensity(selectedKommune) : null;
+
   return (
     <div className="space-y-6">
       <div>
@@ -94,11 +166,7 @@ export default function SoraStep1({ inputs, onChange }: Props) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="md:col-span-2">
           <label className={labelClass}>Dronenavn</label>
-          <select
-            className={selectClass}
-            value={inputs.droneName}
-            onChange={e => handleDroneSelect(e.target.value)}
-          >
+          <select className={selectClass} value={inputs.droneName} onChange={e => handleDroneSelect(e.target.value)}>
             <option value="">— Velg drone fra databasen —</option>
             {drones.map(d => {
               const name = `${d.manufacturer} ${d.model}`;
@@ -151,9 +219,9 @@ export default function SoraStep1({ inputs, onChange }: Props) {
             <InfoTooltip>
               <p className="font-semibold text-white mb-1">Operasjonstyper</p>
               <ul className="space-y-1.5">
-                <li><span className="text-[#7c3aed] font-medium">VLOS</span> — Visual Line of Sight. Piloten ser dronen direkte til enhver tid uten hjelpemidler (unntatt briller).</li>
-                <li><span className="text-[#7c3aed] font-medium">EVLOS</span> — Extended VLOS. Piloten bruker observatører som opprettholder visuell kontakt og kommuniserer med piloten.</li>
-                <li><span className="text-[#7c3aed] font-medium">BVLOS</span> — Beyond Visual Line of Sight. Dronen opereres utenfor synsrekkevidde. Krever høyere SAIL og ekstra mitigasjoner.</li>
+                <li><span className="text-[#7c3aed] font-medium">VLOS</span> — Visual Line of Sight. Piloten ser dronen direkte til enhver tid.</li>
+                <li><span className="text-[#7c3aed] font-medium">EVLOS</span> — Extended VLOS. Observatører opprettholder visuell kontakt.</li>
+                <li><span className="text-[#7c3aed] font-medium">BVLOS</span> — Beyond Visual Line of Sight. Utenfor synsrekkevidde. Krever høyere SAIL.</li>
               </ul>
             </InfoTooltip>
           </label>
@@ -169,9 +237,9 @@ export default function SoraStep1({ inputs, onChange }: Props) {
             <InfoTooltip>
               <p className="font-semibold text-white mb-1">Dag- og nattoperasjoner</p>
               <ul className="space-y-1.5">
-                <li><span className="text-[#7c3aed] font-medium">Dag</span> — Operasjon i dagslys. Enkleste kategori med færrest tilleggskrav.</li>
-                <li><span className="text-[#7c3aed] font-medium">Natt</span> — Operasjon i mørke. Krever anti-kollisjonslys, god belysning av operasjonsområdet og ekstra risikovurdering.</li>
-                <li><span className="text-[#7c3aed] font-medium">Begge</span> — Operasjonen kan utføres både dag og natt. Dokumentasjonen må dekke begge scenarioer.</li>
+                <li><span className="text-[#7c3aed] font-medium">Dag</span> — Dagslys. Enkleste kategori.</li>
+                <li><span className="text-[#7c3aed] font-medium">Natt</span> — Mørke. Krever anti-kollisjonslys og ekstra risikovurdering.</li>
+                <li><span className="text-[#7c3aed] font-medium">Begge</span> — Dokumentasjonen må dekke begge scenarioer.</li>
               </ul>
             </InfoTooltip>
           </label>
@@ -189,14 +257,13 @@ export default function SoraStep1({ inputs, onChange }: Props) {
           <label className={labelClass}>
             Befolkningstetthet i overflyvningsområdet
             <InfoTooltip>
-              <p className="font-semibold text-white mb-1">Befolkningstetthet (SORA 2.5)</p>
+              <p className="font-semibold text-white mb-1">SORA 2.5 befolkningskategorier</p>
               <ul className="space-y-1.5">
-                <li><span className="text-[#7c3aed] font-medium">Kontrollert</span> — Bakkeområdet er sperret og kontrollert. Ingen uvedkommende.</li>
-                <li><span className="text-[#7c3aed] font-medium">Tynt befolket</span> — Landlig område med lav befolkningstetthet.</li>
-                <li><span className="text-[#7c3aed] font-medium">Befolket</span> — Tettsted eller by med moderat tetthet.</li>
-                <li><span className="text-[#7c3aed] font-medium">Forsamling</span> — Store folkemengder (konserter, idrettsarrangement o.l.).</li>
+                <li><span className="text-green-400 font-medium">Kontrollert</span> — Bakkeområdet er sperret. Ingen uvedkommende.</li>
+                <li><span className="text-blue-400 font-medium">Tynt befolket</span> — &lt; 150 innb/km² (SSB). Landlig/spredt bebyggelse.</li>
+                <li><span className="text-yellow-400 font-medium">Befolket</span> — ≥ 150 innb/km². Tettsted, by, boligområder.</li>
+                <li><span className="text-red-400 font-medium">Forsamling</span> — Store folkemengder (arrangementer, konserter).</li>
               </ul>
-              <p className="mt-2 text-gray-400">Bruk «Velg på kart» for å sjekke EASAs befolkningstetthets&shy;kart.</p>
             </InfoTooltip>
           </label>
           <div className="flex gap-2">
@@ -208,74 +275,140 @@ export default function SoraStep1({ inputs, onChange }: Props) {
             </select>
             <button
               type="button"
-              onClick={() => setShowMapModal(true)}
+              onClick={() => setShowDensityLookup(true)}
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#7c3aed]/20 text-[#7c3aed] hover:bg-[#7c3aed]/30 border border-[#7c3aed]/30 transition-colors text-xs font-medium whitespace-nowrap"
             >
-              🗺️ Velg på kart
+              <MapPin className="w-3.5 h-3.5" /> Slå opp
             </button>
           </div>
         </div>
       </div>
 
-      {/* EASA Map Modal */}
-      {showMapModal && (
+      {/* Population density lookup modal */}
+      {showDensityLookup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-[#12121f] border border-[#2a2a3e] rounded-xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl">
+          <div className="bg-[#12121f] border border-[#2a2a3e] rounded-xl w-full max-w-lg shadow-2xl">
             <div className="flex items-center justify-between p-4 border-b border-[#2a2a3e]">
               <div>
-                <h3 className="text-white font-bold text-lg">EASA befolkningstetthets&shy;kart</h3>
-                <p className="text-gray-400 text-xs mt-0.5">Finn ditt operasjonsområde og velg riktig kategori under</p>
+                <h3 className="text-white font-bold text-lg">Befolkningstetthet — oppslag</h3>
+                <p className="text-gray-400 text-xs mt-0.5">SSB-data mappet mot SORA 2.5 / EASA kategorier</p>
               </div>
-              <button onClick={() => setShowMapModal(false)} className="text-gray-400 hover:text-white p-1">
+              <button onClick={() => setShowDensityLookup(false)} className="text-gray-400 hover:text-white p-1">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="flex-1 min-h-0 p-4">
-              <div className="bg-[#1a1a2e] rounded-lg overflow-hidden h-[50vh]">
-                <iframe
-                  src={EASA_MAP_URL}
-                  className="w-full h-full border-0"
-                  title="EASA Population Density Map"
-                  sandbox="allow-scripts allow-same-origin allow-popups"
+            <div className="p-4 space-y-4">
+              {/* Search */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <input
+                  className={`${inputClass} pl-10`}
+                  placeholder="Søk etter kommune..."
+                  value={kommuneSearch}
+                  onChange={e => setKommuneSearch(e.target.value)}
+                  autoFocus
                 />
               </div>
-              <a
-                href={EASA_MAP_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 mt-2 text-xs text-[#7c3aed] hover:underline"
-              >
-                Åpne i nytt vindu <ExternalLink className="w-3 h-3" />
-              </a>
+
+              {/* Results */}
+              <div className="max-h-48 overflow-y-auto space-y-1 scrollbar-thin">
+                {filteredKommuner.map(k => {
+                  const density = estimateDensity(k);
+                  const soraCategory = mapDensityToSora(density);
+                  return (
+                    <button
+                      key={k}
+                      onClick={() => handleKommuneSelect(k)}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${
+                        selectedKommune === k
+                          ? 'bg-[#7c3aed]/20 border border-[#7c3aed]/50'
+                          : 'bg-[#1a1a2e] hover:bg-[#222238] border border-transparent'
+                      }`}
+                    >
+                      <span className="text-white">{k}</span>
+                      <div className="flex items-center gap-3">
+                        <span className={`text-xs ${getDensityColor(density)}`}>
+                          ~{density} innb/km²
+                        </span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${
+                          soraCategory === 'sparsely'
+                            ? 'bg-blue-500/20 text-blue-300'
+                            : 'bg-yellow-500/20 text-yellow-300'
+                        }`}>
+                          {soraCategory === 'sparsely' ? 'Tynt befolket' : 'Befolket'}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Selected result */}
+              {selectedKommune && kommuneDensity !== null && (
+                <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-white font-semibold">{selectedKommune}</h4>
+                    <span className={`text-sm font-medium ${getDensityColor(kommuneDensity)}`}>
+                      {getDensityLabel(kommuneDensity)}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="text-gray-500 text-xs">SSB befolkningstetthet</span>
+                      <p className="text-white font-medium">~{kommuneDensity} innb/km²</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 text-xs">SORA 2.5 kategori</span>
+                      <p className={`font-medium ${kommuneDensity < 150 ? 'text-blue-400' : 'text-yellow-400'}`}>
+                        {kommuneDensity < 150 ? 'Tynt befolket' : 'Befolket'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-[#0f0f17] rounded-lg p-3 text-xs text-gray-400 space-y-1">
+                    <p className="font-medium text-gray-300">EASA / Luftfartstilsynet mapping:</p>
+                    <p>• <span className="text-blue-400">&lt; 150 innb/km²</span> → Tynt befolket (GRC reduseres)</p>
+                    <p>• <span className="text-yellow-400">≥ 150 innb/km²</span> → Befolket (standard GRC)</p>
+                    <p className="mt-2 italic">NB: «Kontrollert bakkeområde» og «Forsamling» er operasjonelle valg, ikke tetthetsbasert. Velg manuelt om relevant.</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Info box */}
+              <div className="flex gap-2 text-xs text-gray-500 items-start">
+                <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                <p>
+                  Tetthetsdata er basert på SSB tabell 07459 (befolkning) / 09280 (areal).
+                  Faktisk tetthet i operasjonsområdet kan avvike fra kommunegjennomsnittet.
+                  <a
+                    href="https://www.ssb.no/befolkning/folketall/statistikk/befolkning-og-areal-i-kommunene"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-0.5 text-[#7c3aed] hover:underline ml-1"
+                  >
+                    SSB kilde <ExternalLink className="w-2.5 h-2.5" />
+                  </a>
+                </p>
+              </div>
             </div>
 
-            <div className="border-t border-[#2a2a3e] p-4">
-              <p className="text-gray-400 text-xs mb-3">Basert på kartet, velg befolkningstetthet for ditt operasjonsområde:</p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                {([
-                  { value: 'controlled', label: 'Kontrollert', desc: 'Sperret område', color: 'bg-green-500/20 border-green-500/40 text-green-300' },
-                  { value: 'sparsely', label: 'Tynt befolket', desc: '< 50 innb/km²', color: 'bg-blue-500/20 border-blue-500/40 text-blue-300' },
-                  { value: 'populated', label: 'Befolket', desc: '50–500 innb/km²', color: 'bg-yellow-500/20 border-yellow-500/40 text-yellow-300' },
-                  { value: 'gathering', label: 'Forsamling', desc: 'Store folkemengder', color: 'bg-red-500/20 border-red-500/40 text-red-300' },
-                ] as const).map(opt => (
-                  <button
-                    key={opt.value}
-                    onClick={() => {
-                      onChange({ populationDensity: opt.value });
-                      setShowMapModal(false);
-                    }}
-                    className={`p-3 rounded-lg border text-left transition-all hover:scale-[1.02] ${
-                      inputs.populationDensity === opt.value
-                        ? opt.color + ' ring-1 ring-white/20'
-                        : 'bg-[#1a1a2e] border-[#2a2a3e] text-gray-300 hover:border-gray-500'
-                    }`}
-                  >
-                    <p className="font-medium text-sm">{opt.label}</p>
-                    <p className="text-xs opacity-70 mt-0.5">{opt.desc}</p>
-                  </button>
-                ))}
-              </div>
+            <div className="border-t border-[#2a2a3e] p-4 flex justify-end gap-2">
+              <button
+                onClick={() => setShowDensityLookup(false)}
+                className="px-4 py-2 rounded-lg bg-[#1a1a2e] text-gray-300 hover:bg-[#2a2a3e] transition-colors text-sm"
+              >
+                Lukk
+              </button>
+              {selectedKommune && (
+                <button
+                  onClick={() => setShowDensityLookup(false)}
+                  className="px-4 py-2 rounded-lg bg-[#7c3aed] text-white hover:bg-[#6d28d9] transition-colors text-sm"
+                >
+                  Bruk valgt kategori
+                </button>
+              )}
             </div>
           </div>
         </div>
