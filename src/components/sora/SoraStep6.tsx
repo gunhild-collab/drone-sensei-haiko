@@ -176,7 +176,24 @@ export default function SoraStep6({ inputs, results, osoTexts, conopsFields, onC
           </div>
         </div>
 
-        <div className="space-y-2">
+        {/* Interactive map */}
+        <div className="mt-4">
+          <p className="text-gray-400 text-xs font-semibold mb-2">📍 Tegn operasjonelt volum på kart:</p>
+          <p className="text-gray-500 text-xs mb-3">Tegn FG først, deretter CV rundt FG, og til slutt GRB som ytterste lag. Dimensjonene beregnes og fylles inn automatisk.</p>
+          <Suspense fallback={<div className="h-[400px] bg-[#0f0f17] rounded-xl border border-[#2a2a3e] flex items-center justify-center text-gray-500 text-sm">Laster kart...</div>}>
+            <OperationalVolumeMap
+              onVolumesCalculated={(data) => {
+                onConopsChange({
+                  flightGeography: data.flightGeography,
+                  contingencyBuffer: data.contingencyBuffer,
+                  grbMeters: data.grbMeters,
+                });
+              }}
+            />
+          </Suspense>
+        </div>
+
+        <div className="space-y-2 mt-4">
           <div><span className={labelClass}>Flygegeografi (FG):</span> <input className={editableClass} value={conopsFields.flightGeography} onChange={e => onConopsChange({ flightGeography: e.target.value })} placeholder="Beskriv operasjonsområdet, f.eks. '200 × 100 m rektangulær sone over industriområde'" /></div>
           <div><span className={labelClass}>Beredskapsvolum (CV) buffer:</span> <input className={editableClass} value={conopsFields.contingencyBuffer} onChange={e => onConopsChange({ contingencyBuffer: e.target.value })} placeholder="f.eks. 50 meter" /></div>
           <div><span className={labelClass}>Bakkerisikobuffer (GRB):</span> <input className={editableClass} value={conopsFields.grbMeters} onChange={e => onConopsChange({ grbMeters: e.target.value })} placeholder="f.eks. 30 meter" /></div>
