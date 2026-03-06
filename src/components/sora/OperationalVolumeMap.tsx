@@ -220,7 +220,7 @@ export default function OperationalVolumeMap({ onVolumesCalculated }: Props) {
                 borderColor: style.color,
                 backgroundColor: isActive ? style.fillColor : "rgba(15,15,23,0.8)",
                 color: style.color,
-                ringColor: style.color,
+                
               }}
             >
               <span
