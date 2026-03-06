@@ -1,6 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, lazy, Suspense } from "react";
 import { SoraInputs, SoraResults, OSO_DEFINITIONS, getOsoRobustness } from "@/lib/soraCalculations";
 import { Copy, Download, Check } from "lucide-react";
+
+const OperationalVolumeMap = lazy(() => import("./OperationalVolumeMap"));
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell, WidthType, BorderStyle } from "docx";
 import { saveAs } from "file-saver";
 
