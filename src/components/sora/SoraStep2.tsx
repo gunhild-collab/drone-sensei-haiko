@@ -1,4 +1,5 @@
 import { SoraInputs, calculateIntrinsicGrc, calculateFinalGrc } from "@/lib/soraCalculations";
+import { Info } from "lucide-react";
 
 interface Props {
   inputs: SoraInputs;
@@ -7,6 +8,8 @@ interface Props {
 
 const selectClass = "w-full bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-[#7c3aed] transition-colors";
 const labelClass = "block text-sm font-medium text-gray-300 mb-2";
+const hintClass = "text-xs text-gray-500 mt-1.5 leading-relaxed";
+const sectionHintClass = "bg-[#1a1a2e]/50 border border-[#2a2a3e] rounded-lg p-3 text-xs text-gray-400 leading-relaxed flex gap-2";
 
 const GRC_TABLE = [
   { dim: '< 1 m', values: [1, 2, 3, 4] },
@@ -39,7 +42,16 @@ export default function SoraStep2({ inputs, onChange }: Props) {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-white mb-1">Ground Risk Class (GRC)</h2>
-        <p className="text-gray-400 text-sm">Beregnet basert på karakteristisk dimensjon og befolkningstetthet.</p>
+        <p className="text-gray-400 text-sm">GRC beskriver risikoen for folk på bakken dersom dronen faller ned. Jo større drone og jo flere mennesker i området, desto høyere GRC.</p>
+      </div>
+
+      {/* Explanation box */}
+      <div className={sectionHintClass}>
+        <Info className="w-4 h-4 text-[#7c3aed] shrink-0 mt-0.5" />
+        <div>
+          <p className="text-gray-300 font-medium mb-1">Hvordan GRC beregnes</p>
+          <p>Tabellen under viser GRC-verdien basert på to faktorer: <span className="text-white">dronens størrelse</span> (lengste side, «karakteristisk dimensjon») og <span className="text-white">hvor mange mennesker som befinner seg i operasjonsområdet</span>. Høyere GRC betyr strengere krav til sikkerhetstiltak og dokumentasjon.</p>
+        </div>
       </div>
 
       {/* GRC Matrix */}
@@ -75,27 +87,47 @@ export default function SoraStep2({ inputs, onChange }: Props) {
         </div>
         <div>
           <p className="text-white font-semibold">Intrinsic GRC</p>
-          <p className="text-gray-400 text-sm">Basert på {inputs.characteristicDimension || 0} m dimensjon i {inputs.populationDensity === 'controlled' ? 'kontrollert' : inputs.populationDensity === 'sparsely' ? 'tynt befolket' : inputs.populationDensity === 'populated' ? 'befolket' : 'forsamlings'}område</p>
+          <p className="text-gray-400 text-sm">Grunnrisiko basert på {inputs.characteristicDimension || 0} m dimensjon i {inputs.populationDensity === 'controlled' ? 'kontrollert' : inputs.populationDensity === 'sparsely' ? 'tynt befolket' : inputs.populationDensity === 'populated' ? 'befolket' : 'forsamlings'}område — <em>før</em> sikkerhetstiltak.</p>
         </div>
       </div>
 
       {/* Mitigations */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-white">Bakkemitigasjoner</h3>
+      <div className="space-y-5">
         <div>
-          <label className={labelClass}>M1 — Strategisk mitigering</label>
-          <select className={selectClass} value={inputs.m1} onChange={e => onChange({ m1: parseInt(e.target.value) as any })}>
-            <option value={0}>Ingen (0)</option>
-            <option value={-1}>Lav robusthet (−1)</option>
-            <option value={-2}>Middels robusthet (−2)</option>
-          </select>
+          <h3 className="text-lg font-semibold text-white">Bakkemitigasjoner</h3>
+          <p className="text-gray-400 text-sm mt-1">Tiltak som reduserer risikoen for folk på bakken. Jo bedre tiltak, desto lavere endelig GRC — og enklere godkjenningsprosess.</p>
         </div>
+
+        {/* M1 */}
         <div>
-          <label className={labelClass}>M2 — Effekt av nedslag</label>
-          <select className={selectClass} value={inputs.m2} onChange={e => onChange({ m2: parseInt(e.target.value) as any })}>
-            <option value={0}>Ingen (0)</option>
-            <option value={-1}>Lav robusthet (−1)</option>
+          <label className={labelClass}>M1 — Strategisk mitigering av bakkerisiko</label>
+          <select className={selectClass} value={inputs.m1} onChange={e => onChange({ m1: parseInt(e.target.value) as any })}>
+            <option value={0}>Ingen tiltak (0) — Ingen spesielle tiltak for å hindre overflyvning av mennesker</option>
+            <option value={-1}>Lav robusthet (−1) — Grunnleggende tiltak, f.eks. NOTAM publisert, enkel sperring av området</option>
+            <option value={-2}>Middels robusthet (−2) — Fysisk sperring, sikkerhetsvakter, kontrollert adgang til området</option>
           </select>
+          <p className={hintClass}>
+            M1 handler om hva du gjør for å <span className="text-gray-300">holde mennesker unna operasjonsområdet</span>. 
+            «Ingen tiltak» betyr at du flyr over et område der folk kan være. 
+            «Lav» betyr at du har tatt noen forholdsregler (f.eks. varslet om flygingen). 
+            «Middels» betyr at du fysisk kontrollerer hvem som er i området under flygingen.
+          </p>
+        </div>
+
+        {/* M2 */}
+        <div>
+          <label className={labelClass}>M2 — Reduksjon av effekt ved nedslag</label>
+          <select className={selectClass} value={inputs.m2} onChange={e => onChange({ m2: parseInt(e.target.value) as any })}>
+            <option value={0}>Ingen tiltak (0) — Dronen har ingen spesielle systemer for å begrense skade ved fall</option>
+            <option value={-1}>Lav robusthet (−1) — Dronen har fallskjerm, frangibel konstruksjon eller annen energiabsorbering</option>
+          </select>
+          <p className={hintClass}>
+            M2 handler om hva som skjer <span className="text-gray-300">dersom dronen faktisk faller ned</span>. 
+            «Ingen tiltak» betyr at dronen treffer bakken med full kraft. 
+            «Lav robusthet» betyr at dronen har systemer som reduserer skadepotensialet — 
+            for eksempel en <span className="text-gray-300">fallskjerm</span> som bremser fallet, 
+            eller en <span className="text-gray-300">knusbar konstruksjon</span> (frangibel) som absorberer energi ved nedslag.
+          </p>
         </div>
       </div>
 
@@ -106,8 +138,15 @@ export default function SoraStep2({ inputs, onChange }: Props) {
         </div>
         <div>
           <p className="text-white font-semibold">Final GRC</p>
-          <p className="text-gray-400 text-sm">Intrinsic GRC ({intrinsicGrc}) {inputs.m1 !== 0 ? `+ M1 (${inputs.m1})` : ''} {inputs.m2 !== 0 ? `+ M2 (${inputs.m2})` : ''} = {finalGrc}</p>
+          <p className="text-gray-400 text-sm">
+            Grunnrisiko ({intrinsicGrc}) etter sikkerhetstiltak: {inputs.m1 !== 0 ? `M1 (${inputs.m1})` : ''} {inputs.m2 !== 0 ? `${inputs.m1 !== 0 ? ' + ' : ''}M2 (${inputs.m2})` : ''}{inputs.m1 === 0 && inputs.m2 === 0 ? 'ingen mitigasjoner valgt' : ''} = <span className="text-white font-bold">{finalGrc}</span>
+          </p>
         </div>
+      </div>
+
+      <div className={sectionHintClass}>
+        <Info className="w-4 h-4 text-[#7c3aed] shrink-0 mt-0.5" />
+        <p>Lavere Final GRC gir lavere SAIL-nivå, som betyr enklere søknadsprosess hos Luftfartstilsynet. GRC 1–2 er typisk for små droner i åpent terreng. GRC 5+ krever grundig dokumentasjon.</p>
       </div>
     </div>
   );
