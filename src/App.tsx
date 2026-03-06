@@ -8,6 +8,7 @@ import Dashboard from "@/pages/Dashboard";
 import Assessment from "@/pages/Assessment";
 import Results from "@/pages/Results";
 import UseCases from "@/pages/UseCases";
+import SoraWizard from "@/pages/SoraWizard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -18,15 +19,20 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/vurdering" element={<Assessment />} />
-            <Route path="/resultater" element={<Results />} />
-            <Route path="/bruksomrader" element={<UseCases />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Layout>
+        <Routes>
+          <Route path="/sora" element={<SoraWizard />} />
+          <Route path="*" element={
+            <Layout>
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/vurdering" element={<Assessment />} />
+                <Route path="/resultater" element={<Results />} />
+                <Route path="/bruksomrader" element={<UseCases />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Layout>
+          } />
+        </Routes>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
