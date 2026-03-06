@@ -93,7 +93,7 @@ export default function OperationalVolumeMap({ onVolumesCalculated }: Props) {
 
       const style = LAYER_STYLES[mode];
       previewRectRef.current = L.rectangle(
-        [e.latlng, e.latlng],
+        L.latLngBounds(e.latlng, e.latlng),
         {
           color: style.color,
           fillColor: style.fillColor,
