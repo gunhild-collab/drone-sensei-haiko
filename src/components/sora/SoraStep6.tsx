@@ -301,9 +301,3 @@ function buildOsoTable(sail: number, osoTexts: Record<number, string>): Table {
   });
 }
 
-const popLabels: Record<string, string> = {
-  controlled: 'kontrollert bakkeområde',
-  sparsely: 'tynt befolket område',
-  populated: 'befolket område',
-  gathering: 'forsamling av mennesker',
-};
