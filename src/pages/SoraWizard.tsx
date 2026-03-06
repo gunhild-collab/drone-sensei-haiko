@@ -117,6 +117,7 @@ export default function SoraWizard() {
             {step === 3 && <SoraStep4 results={results} />}
             {step === 4 && <SoraStep5 sail={results.sail} osoTexts={osoTexts} onOsoChange={updateOso} />}
             {step === 5 && <SoraStep6 inputs={inputs} results={results} osoTexts={osoTexts} conopsFields={conopsFields} onConopsChange={updateConops} />}
+            {step === 6 && <SoraStep7 inputs={inputs} results={results} osoTexts={osoTexts} conopsFields={conopsFields} />}
           </motion.div>
         </AnimatePresence>
       </div>
