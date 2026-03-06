@@ -9,6 +9,7 @@ import SoraStep3 from "@/components/sora/SoraStep3";
 import SoraStep4 from "@/components/sora/SoraStep4";
 import SoraStep5 from "@/components/sora/SoraStep5";
 import SoraStep6, { ConOpsFields } from "@/components/sora/SoraStep6";
+import SoraStep7 from "@/components/sora/SoraStep7";
 
 const STEPS = [
   { label: 'Drone & operasjon', short: '1' },
@@ -17,6 +18,7 @@ const STEPS = [
   { label: 'SAIL', short: '4' },
   { label: 'OSO', short: '5' },
   { label: 'ConOps', short: '6' },
+  { label: 'Dokumenter', short: '7' },
 ];
 
 const defaultInputs: SoraInputs = {
