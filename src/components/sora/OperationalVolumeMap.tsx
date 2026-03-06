@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import "leaflet-draw";
-import "leaflet-draw/dist/leaflet.draw.css";
 
 interface Props {
   onVolumesCalculated: (data: {
@@ -14,10 +12,10 @@ interface Props {
 
 type DrawingMode = "fg" | "cv" | "grb" | null;
 
-const LAYER_STYLES: Record<string, { color: string; fillColor: string; label: string }> = {
-  fg: { color: "#7c3aed", fillColor: "rgba(124,58,237,0.2)", label: "Flygegeografi (FG)" },
-  cv: { color: "#eab308", fillColor: "rgba(234,179,8,0.15)", label: "Beredskapsvolum (CV)" },
-  grb: { color: "#ec4899", fillColor: "rgba(236,72,153,0.12)", label: "Bakkerisikobuffer (GRB)" },
+const LAYER_STYLES: Record<string, { color: string; fillColor: string; fillOpacity: number; label: string }> = {
+  fg: { color: "#7c3aed", fillColor: "#7c3aed", fillOpacity: 0.2, label: "Flygegeografi (FG)" },
+  cv: { color: "#eab308", fillColor: "#eab308", fillOpacity: 0.15, label: "Beredskapsvolum (CV)" },
+  grb: { color: "#ec4899", fillColor: "#ec4899", fillOpacity: 0.12, label: "Bakkerisikobuffer (GRB)" },
 };
 
 function formatArea(m2: number): string {
@@ -33,19 +31,6 @@ function getBoundsDimensions(bounds: L.LatLngBounds): { width: number; height: n
   return { width, height };
 }
 
-function getLayerArea(layer: L.Layer): number {
-  if ((layer as any).getRadius) {
-    const r = (layer as any).getRadius();
-    return Math.PI * r * r;
-  }
-  if ((layer as any).getLatLngs) {
-    const latlngs = (layer as any).getLatLngs();
-    const flat = Array.isArray(latlngs[0]) ? latlngs[0] : latlngs;
-    return L.GeometryUtil?.geodesicArea?.(flat) ?? computeGeodesicArea(flat);
-  }
-  return 0;
-}
-
 function computeGeodesicArea(latlngs: L.LatLng[]): number {
   const d2r = Math.PI / 180;
   let area = 0;
@@ -58,14 +43,9 @@ function computeGeodesicArea(latlngs: L.LatLng[]): number {
   return Math.abs(area * 6378137 * 6378137 / 2);
 }
 
-function getBufferDistance(innerLayer: L.Layer, outerLayer: L.Layer): number {
-  const innerBounds = (innerLayer as any).getBounds?.();
-  const outerBounds = (outerLayer as any).getBounds?.();
-  if (!innerBounds || !outerBounds) return 0;
-
+function getBufferDistance(innerBounds: L.LatLngBounds, outerBounds: L.LatLngBounds): number {
   const innerDims = getBoundsDimensions(innerBounds);
   const outerDims = getBoundsDimensions(outerBounds);
-
   const bufferW = (outerDims.width - innerDims.width) / 2;
   const bufferH = (outerDims.height - innerDims.height) / 2;
   return Math.round(Math.max(bufferW, bufferH));
@@ -74,19 +54,24 @@ function getBufferDistance(innerLayer: L.Layer, outerLayer: L.Layer): number {
 export default function OperationalVolumeMap({ onVolumesCalculated }: Props) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
-  const drawControlRef = useRef<any>(null);
   const [activeMode, setActiveMode] = useState<DrawingMode>(null);
-  const [layers, setLayers] = useState<Record<string, L.Layer | null>>({ fg: null, cv: null, grb: null });
+  const activeModeRef = useRef<DrawingMode>(null);
+  const [drawnLayers, setDrawnLayers] = useState<Record<string, L.Rectangle | null>>({ fg: null, cv: null, grb: null });
+  const drawnLayersRef = useRef(drawnLayers);
+  drawnLayersRef.current = drawnLayers;
   const [stats, setStats] = useState<Record<string, string>>({});
-  const layersRef = useRef(layers);
-  layersRef.current = layers;
+  
+  // Drawing state refs
+  const isDrawingRef = useRef(false);
+  const startLatLngRef = useRef<L.LatLng | null>(null);
+  const previewRectRef = useRef<L.Rectangle | null>(null);
 
   // Initialize map
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
 
     const map = L.map(mapRef.current, {
-      center: [63.43, 10.39], // Trondheim default
+      center: [63.43, 10.39],
       zoom: 14,
       zoomControl: true,
     });
@@ -98,102 +83,131 @@ export default function OperationalVolumeMap({ onVolumesCalculated }: Props) {
 
     mapInstanceRef.current = map;
 
-    // Try to get user location
-    navigator.geolocation?.getCurrentPosition(
-      (pos) => map.setView([pos.coords.latitude, pos.coords.longitude], 15),
-      () => {} // keep default
-    );
+    // Mouse drawing handlers
+    const onMouseDown = (e: L.LeafletMouseEvent) => {
+      const mode = activeModeRef.current;
+      if (!mode) return;
+      map.dragging.disable();
+      isDrawingRef.current = true;
+      startLatLngRef.current = e.latlng;
 
-    return () => {
-      map.remove();
-      mapInstanceRef.current = null;
+      const style = LAYER_STYLES[mode];
+      previewRectRef.current = L.rectangle(
+        [e.latlng, e.latlng],
+        {
+          color: style.color,
+          fillColor: style.fillColor,
+          fillOpacity: style.fillOpacity,
+          weight: 2,
+          dashArray: mode === "fg" ? undefined : "8 4",
+        }
+      ).addTo(map);
     };
-  }, []);
 
-  const startDrawing = useCallback((mode: DrawingMode) => {
-    const map = mapInstanceRef.current;
-    if (!map || !mode) return;
+    const onMouseMove = (e: L.LeafletMouseEvent) => {
+      if (!isDrawingRef.current || !startLatLngRef.current || !previewRectRef.current) return;
+      previewRectRef.current.setBounds(L.latLngBounds(startLatLngRef.current, e.latlng));
+    };
 
-    setActiveMode(mode);
-    const style = LAYER_STYLES[mode];
+    const onMouseUp = (e: L.LeafletMouseEvent) => {
+      map.dragging.enable();
+      const mode = activeModeRef.current;
+      if (!isDrawingRef.current || !startLatLngRef.current || !mode) return;
+      isDrawingRef.current = false;
 
-    // Remove existing layer for this mode
-    const existing = layersRef.current[mode];
-    if (existing) {
-      map.removeLayer(existing);
-      setLayers(prev => ({ ...prev, [mode]: null }));
-    }
-
-    // Enable drawing
-    const drawHandler = new (L.Draw as any).Rectangle(map, {
-      shapeOptions: {
-        color: style.color,
-        fillColor: style.fillColor,
-        fillOpacity: 0.3,
-        weight: 2,
-        dashArray: mode === "fg" ? undefined : "8 4",
-      },
-    });
-
-    drawHandler.enable();
-
-    map.once(L.Draw.Event.CREATED, (e: any) => {
-      const layer = e.layer;
-
-      // Add label
-      const bounds = layer.getBounds();
-      const center = bounds.getCenter();
-      const area = getLayerArea(layer);
+      const bounds = L.latLngBounds(startLatLngRef.current, e.latlng);
       const dims = getBoundsDimensions(bounds);
-      const label = `${style.label}\n${Math.round(dims.width)} × ${Math.round(dims.height)} m\n${formatArea(area)}`;
-
-      layer.bindTooltip(label, { permanent: true, direction: "center", className: "volume-tooltip" });
-      layer.addTo(map);
-
-      const newLayers = { ...layersRef.current, [mode]: layer };
-      setLayers(newLayers);
-      setActiveMode(null);
-
-      // Update stats
-      const newStats: Record<string, string> = {};
-      if (newLayers.fg) {
-        const fgBounds = (newLayers.fg as any).getBounds();
-        const fgDims = getBoundsDimensions(fgBounds);
-        const fgArea = getLayerArea(newLayers.fg);
-        newStats.fg = `${Math.round(fgDims.width)} × ${Math.round(fgDims.height)} m (${formatArea(fgArea)})`;
+      
+      // Ignore tiny accidental clicks (< 5m)
+      if (dims.width < 5 && dims.height < 5) {
+        if (previewRectRef.current) map.removeLayer(previewRectRef.current);
+        previewRectRef.current = null;
+        startLatLngRef.current = null;
+        return;
       }
 
+      // Remove old layer for this mode
+      const existing = drawnLayersRef.current[mode];
+      if (existing) map.removeLayer(existing);
+
+      // Keep the preview rect as the final layer
+      const rect = previewRectRef.current!;
+      const style = LAYER_STYLES[mode];
+      const area = dims.width * dims.height;
+      const label = `${style.label}\n${Math.round(dims.width)} × ${Math.round(dims.height)} m\n${formatArea(area)}`;
+      rect.bindTooltip(label, { permanent: true, direction: "center", className: "volume-tooltip" });
+
+      const newLayers = { ...drawnLayersRef.current, [mode]: rect };
+      drawnLayersRef.current = newLayers;
+      setDrawnLayers(newLayers);
+
+      // Calculate stats & auto-fill
+      const newStats: Record<string, string> = {};
+      let fgDesc = "";
       let cvBuffer = "";
+      let grbBuffer = "";
+
+      if (newLayers.fg) {
+        const fgBounds = newLayers.fg.getBounds();
+        const fgDims = getBoundsDimensions(fgBounds);
+        const fgArea = fgDims.width * fgDims.height;
+        fgDesc = `${Math.round(fgDims.width)} × ${Math.round(fgDims.height)} m (${formatArea(fgArea)})`;
+        newStats.fg = fgDesc;
+      }
       if (newLayers.fg && newLayers.cv) {
-        const dist = getBufferDistance(newLayers.fg, newLayers.cv);
+        const dist = getBufferDistance(newLayers.fg.getBounds(), newLayers.cv.getBounds());
         cvBuffer = `${dist}`;
         newStats.cv = `${dist} m buffer`;
       }
-
-      let grbBuffer = "";
       const grbRef = newLayers.cv || newLayers.fg;
       if (grbRef && newLayers.grb) {
-        const dist = getBufferDistance(grbRef, newLayers.grb);
+        const dist = getBufferDistance(grbRef.getBounds(), newLayers.grb.getBounds());
         grbBuffer = `${dist}`;
         newStats.grb = `${dist} m buffer`;
       }
 
       setStats(newStats);
+      onVolumesCalculated({ flightGeography: fgDesc, contingencyBuffer: cvBuffer, grbMeters: grbBuffer });
 
-      // Auto-fill form
-      onVolumesCalculated({
-        flightGeography: newStats.fg || "",
-        contingencyBuffer: cvBuffer,
-        grbMeters: grbBuffer,
-      });
-    });
+      // Reset
+      previewRectRef.current = null;
+      startLatLngRef.current = null;
+      activeModeRef.current = null;
+      setActiveMode(null);
+    };
+
+    map.on("mousedown", onMouseDown);
+    map.on("mousemove", onMouseMove);
+    map.on("mouseup", onMouseUp);
+
+    navigator.geolocation?.getCurrentPosition(
+      (pos) => map.setView([pos.coords.latitude, pos.coords.longitude], 15),
+      () => {}
+    );
+
+    return () => {
+      map.off("mousedown", onMouseDown);
+      map.off("mousemove", onMouseMove);
+      map.off("mouseup", onMouseUp);
+      map.remove();
+      mapInstanceRef.current = null;
+    };
   }, [onVolumesCalculated]);
+
+  const activateMode = useCallback((mode: DrawingMode) => {
+    activeModeRef.current = mode;
+    setActiveMode(mode);
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.getContainer().style.cursor = mode ? "crosshair" : "";
+    }
+  }, []);
 
   const clearAll = useCallback(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
-    Object.values(layersRef.current).forEach(l => { if (l) map.removeLayer(l); });
-    setLayers({ fg: null, cv: null, grb: null });
+    Object.values(drawnLayersRef.current).forEach(l => { if (l) map.removeLayer(l); });
+    drawnLayersRef.current = { fg: null, cv: null, grb: null };
+    setDrawnLayers({ fg: null, cv: null, grb: null });
     setStats({});
   }, []);
 
@@ -204,23 +218,18 @@ export default function OperationalVolumeMap({ onVolumesCalculated }: Props) {
         {(["fg", "cv", "grb"] as const).map(mode => {
           const style = LAYER_STYLES[mode];
           const isActive = activeMode === mode;
-          const hasLayer = !!layers[mode];
+          const hasLayer = !!drawnLayers[mode];
           return (
             <button
               key={mode}
-              onClick={() => startDrawing(mode)}
+              onClick={() => activateMode(mode)}
               className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all border ${
-                isActive
-                  ? "ring-2 ring-offset-1 ring-offset-[#1a1a2e]"
-                  : hasLayer
-                  ? "opacity-80"
-                  : ""
+                isActive ? "ring-2 ring-offset-1 ring-offset-[#1a1a2e]" : ""
               }`}
               style={{
                 borderColor: style.color,
                 backgroundColor: isActive ? style.fillColor : "rgba(15,15,23,0.8)",
                 color: style.color,
-                
               }}
             >
               <span
@@ -242,26 +251,26 @@ export default function OperationalVolumeMap({ onVolumesCalculated }: Props) {
       {/* Instructions */}
       {activeMode && (
         <div className="bg-[#0f0f17] border border-[#2a2a3e] rounded-lg p-3 text-xs text-gray-300 animate-pulse">
-          📍 Klikk og dra på kartet for å tegne <strong style={{ color: LAYER_STYLES[activeMode].color }}>{LAYER_STYLES[activeMode].label}</strong> som et rektangel. 
+          📍 Klikk og dra på kartet for å tegne <strong style={{ color: LAYER_STYLES[activeMode].color }}>{LAYER_STYLES[activeMode].label}</strong> som et rektangel.
           {activeMode === "cv" && " Tegn rundt FG med litt ekstra margin."}
           {activeMode === "grb" && " Tegn det ytterste laget rundt CV/FG."}
         </div>
       )}
 
-      {!activeMode && !layers.fg && (
+      {!activeMode && !drawnLayers.fg && (
         <p className="text-gray-500 text-xs">
           Start med å tegne <strong className="text-[#7c3aed]">Flygegeografi (FG)</strong> — klikk knappen over og tegn et rektangel på kartet.
         </p>
       )}
 
-      {/* Map container */}
+      {/* Map */}
       <div
         ref={mapRef}
         className="w-full rounded-xl border border-[#2a2a3e] overflow-hidden"
         style={{ height: 400 }}
       />
 
-      {/* Auto-calculated results */}
+      {/* Results */}
       {Object.keys(stats).length > 0 && (
         <div className="bg-[#0f0f17] border border-[#2a2a3e] rounded-lg p-3 space-y-1">
           <p className="text-gray-400 text-xs font-semibold mb-2">📐 Beregnede verdier (automatisk overført):</p>
@@ -271,7 +280,6 @@ export default function OperationalVolumeMap({ onVolumesCalculated }: Props) {
         </div>
       )}
 
-      {/* Custom tooltip styling */}
       <style>{`
         .volume-tooltip {
           background: rgba(15,15,23,0.9) !important;
@@ -283,12 +291,7 @@ export default function OperationalVolumeMap({ onVolumesCalculated }: Props) {
           border-radius: 6px !important;
           box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
         }
-        .volume-tooltip::before {
-          display: none !important;
-        }
-        .leaflet-draw-toolbar {
-          display: none !important;
-        }
+        .volume-tooltip::before { display: none !important; }
       `}</style>
     </div>
   );
