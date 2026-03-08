@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { Search, MapPin, Users, Ruler, Mountain } from "lucide-react";
-import { KOMMUNER } from "@/data/kommuner";
+import { kommuner as KOMMUNER_LIST } from "@/data/kommuner";
 
 export interface MunicipalityData {
   name: string;
