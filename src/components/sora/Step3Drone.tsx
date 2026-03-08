@@ -57,11 +57,15 @@ export default function Step3Drone({ selectedDrone, onSelect }: Props) {
               </div>
               <div>
                 <p className="text-sora-text font-medium text-sm">{d.name}</p>
-                <p className="text-sora-text-dim text-xs">{d.manufacturer} · {d.mtom} kg · {d.categoryClass}</p>
+                <p className="text-sora-text-dim text-xs">
+                  {d.manufacturer} · {d.mtom} kg · {d.categoryClass} · {d.easaCategory}
+                </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap justify-end">
               {d.supportsBVLOS && <span className="text-xs px-2 py-0.5 rounded-full bg-sora-purple/20 text-sora-purple">BVLOS</span>}
+              {d.hasThermal && <span className="text-xs px-2 py-0.5 rounded-full bg-sora-pink/20 text-sora-pink">Termisk</span>}
+              {d.hasRTK && <span className="text-xs px-2 py-0.5 rounded-full bg-sora-success/20 text-sora-success">RTK</span>}
               {selectedDrone?.id === d.id && <Check className="w-5 h-5 text-sora-purple" />}
             </div>
           </button>
@@ -93,6 +97,10 @@ export default function Step3Drone({ selectedDrone, onSelect }: Props) {
               <p className={valueClass}>{selectedDrone.categoryClass}</p>
             </div>
             <div className={fieldClass}>
+              <p className={labelClass}>EASA-kategori</p>
+              <p className={valueClass}>{selectedDrone.easaCategory}</p>
+            </div>
+            <div className={fieldClass}>
               <p className={labelClass}>Flytid</p>
               <p className={valueClass}>{selectedDrone.maxFlightTime} min</p>
             </div>
@@ -103,8 +111,22 @@ export default function Step3Drone({ selectedDrone, onSelect }: Props) {
               </p>
             </div>
             <div className={fieldClass}>
-              <p className={labelClass}>Fremdrift</p>
-              <p className={valueClass}>{selectedDrone.propulsion}</p>
+              <p className={labelClass}>Termisk kamera</p>
+              <p className={`font-semibold text-sm ${selectedDrone.hasThermal ? 'text-sora-success' : 'text-sora-text-dim'}`}>
+                {selectedDrone.hasThermal ? 'Ja' : 'Nei'}
+              </p>
+            </div>
+            <div className={fieldClass}>
+              <p className={labelClass}>Fallskjerm</p>
+              <p className={`font-semibold text-sm ${selectedDrone.hasParachute ? 'text-sora-success' : 'text-sora-text-dim'}`}>
+                {selectedDrone.hasParachute ? 'Ja' : 'Nei'}
+              </p>
+            </div>
+            <div className={fieldClass}>
+              <p className={labelClass}>RTK</p>
+              <p className={`font-semibold text-sm ${selectedDrone.hasRTK ? 'text-sora-success' : 'text-sora-text-dim'}`}>
+                {selectedDrone.hasRTK ? 'Ja' : 'Nei'}
+              </p>
             </div>
             <div className={fieldClass}>
               <p className={labelClass}>Remote ID</p>
@@ -112,7 +134,16 @@ export default function Step3Drone({ selectedDrone, onSelect }: Props) {
                 {selectedDrone.hasRemoteId ? 'Ja' : 'Nei'}
               </p>
             </div>
+            {selectedDrone.payloadKg > 0 && (
+              <div className={fieldClass}>
+                <p className={labelClass}>Payload</p>
+                <p className={valueClass}>{selectedDrone.payloadKg} kg</p>
+              </div>
+            )}
           </div>
+          {selectedDrone.notes && (
+            <p className="text-sora-text-muted text-xs italic">{selectedDrone.notes}</p>
+          )}
         </div>
       )}
     </div>

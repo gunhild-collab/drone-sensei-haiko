@@ -76,9 +76,9 @@ export default function Step7Explanation({ sailLevel, matchedScenario }: Props) 
             url="https://hmswx.com"
           />
           <ToolCard
-            name="Ninox Drones"
-            desc="Norsk luftromskart og realtidsdata for droneflygere."
-            url="https://ninoxdrones.com"
+            name="Nixon"
+            desc="Norsk operatørportal for droneflygere — luftromskart og realtidsdata."
+            url="https://operatorportal.ninoxdrone.no/"
           />
           <ToolCard
             name="SafeSky"
