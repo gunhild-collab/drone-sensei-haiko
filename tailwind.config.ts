@@ -16,6 +16,7 @@ export default {
       fontFamily: {
         display: ["Space Grotesk", "sans-serif"],
         body: ["Inter", "sans-serif"],
+        sora: ["DM Sans", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
