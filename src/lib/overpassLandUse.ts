@@ -3,7 +3,7 @@ import L from "leaflet";
 export type PopulationDensityClass = 'controlled' | 'sparsely' | 'populated' | 'gathering';
 
 export interface LandUseResult {
-  detectedClass: PopulationDensityClass;
+  detectedClass: PopulationDensityClass | null; // null = query failed, show manual prompt
   hasResidential: boolean;
   hasCommercial: boolean;
   hasIndustrial: boolean;
@@ -12,6 +12,8 @@ export interface LandUseResult {
   hasGathering: boolean;
   rawTags: string[];
   queryTime: number;
+  elementCount: number;
+  queryFailed: boolean;
 }
 
 /**
@@ -22,7 +24,7 @@ function toOverpassPoly(latlngs: L.LatLng[]): string {
 }
 
 /**
- * Expand polygon by GRB distance to get the "ground risk area"
+ * Expand polygon outward by distance in meters (simple radial expansion from centroid)
  */
 export function expandPolygonByGrb(latlngs: L.LatLng[], grbMeters: number): L.LatLng[] {
   const center = L.polygon(latlngs).getBounds().getCenter();
@@ -35,130 +37,172 @@ export function expandPolygonByGrb(latlngs: L.LatLng[], grbMeters: number): L.La
 }
 
 /**
- * Query Overpass API for land use within the given polygon (GRB-expanded).
- * Classifies based on worst-case (highest density) tag found.
+ * Two-phase Overpass query:
+ * Phase 1: Count residential/commercial/retail + building + place tags
+ * Phase 2: If phase 1 returns 0, check for any residential landuse
+ * 
+ * Uses `out count` for fast, reliable counting.
  */
 export async function queryLandUseInPolygon(grbPolygon: L.LatLng[]): Promise<LandUseResult> {
   const polyStr = toOverpassPoly(grbPolygon);
   const startTime = Date.now();
 
-  // Build Overpass query
-  const query = `
-[out:json][timeout:15];
+  // Phase 1: populated indicators (residential, commercial, buildings, place nodes)
+  const query1 = `
+[out:json][timeout:10];
 (
-  way["landuse"~"residential|commercial|retail"](poly:"${polyStr}");
-  node["place"~"town|town_centre|suburb|city_centre|city|village"](poly:"${polyStr}");
-  way["landuse"~"industrial|farmyard"](poly:"${polyStr}");
-  way["landuse"~"forest|meadow|farmland|grass"](poly:"${polyStr}");
-  way["natural"="water"](poly:"${polyStr}");
-  node["amenity"~"school|hospital|marketplace"](poly:"${polyStr}");
-  way["leisure"~"park|stadium"](poly:"${polyStr}");
-  node["amenity"="public_gathering"](poly:"${polyStr}");
+  way["landuse"~"^(residential|commercial|retail)$"](poly:"${polyStr}");
+  way["place"~"^(city_centre|town_centre|suburb|neighbourhood)$"](poly:"${polyStr}");
+  node["place"~"^(city_centre|town_centre|suburb|neighbourhood|city|town|village)$"](poly:"${polyStr}");
+  way["building"~"^(apartments|residential|commercial|retail|office)$"](poly:"${polyStr}");
 );
-out tags;
+out count;
 `;
 
   try {
-    const response = await fetch('https://overpass-api.de/api/interpreter', {
+    const res1 = await fetch('https://overpass-api.de/api/interpreter', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `data=${encodeURIComponent(query)}`,
+      body: 'data=' + encodeURIComponent(query1),
     });
 
-    if (!response.ok) {
-      console.warn('Overpass API error:', response.status);
-      return fallbackResult(Date.now() - startTime);
+    if (!res1.ok) {
+      console.warn('Overpass API phase 1 error:', res1.status);
+      return failedResult(Date.now() - startTime);
     }
 
-    const data = await response.json();
-    return classifyFromElements(data.elements || [], Date.now() - startTime);
+    const data1 = await res1.json();
+    const count1 = parseInt(data1.elements?.[0]?.tags?.total || '0', 10);
+
+    if (count1 > 5) {
+      // Clearly populated area
+      return {
+        detectedClass: 'populated',
+        hasResidential: true,
+        hasCommercial: count1 > 20,
+        hasIndustrial: false,
+        hasFarmland: false,
+        hasForest: false,
+        hasGathering: false,
+        rawTags: [`populated_count=${count1}`],
+        queryTime: Date.now() - startTime,
+        elementCount: count1,
+        queryFailed: false,
+      };
+    }
+
+    // Phase 2: Check for any residential at all
+    const query2 = `[out:json][timeout:10];(way["landuse"="residential"](poly:"${polyStr}"););out count;`;
+    const res2 = await fetch('https://overpass-api.de/api/interpreter', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'data=' + encodeURIComponent(query2),
+    });
+
+    if (!res2.ok) {
+      console.warn('Overpass API phase 2 error:', res2.status);
+      return failedResult(Date.now() - startTime);
+    }
+
+    const data2 = await res2.json();
+    const count2 = parseInt(data2.elements?.[0]?.tags?.total || '0', 10);
+
+    if (count2 > 0) {
+      return {
+        detectedClass: 'populated',
+        hasResidential: true,
+        hasCommercial: false,
+        hasIndustrial: false,
+        hasFarmland: false,
+        hasForest: false,
+        hasGathering: false,
+        rawTags: [`residential_count=${count2}`],
+        queryTime: Date.now() - startTime,
+        elementCount: count2,
+        queryFailed: false,
+      };
+    }
+
+    // Phase 3: Check for industrial/farmyard (sparsely populated)
+    const query3 = `[out:json][timeout:10];(way["landuse"~"^(industrial|farmyard)$"](poly:"${polyStr}"););out count;`;
+    const res3 = await fetch('https://overpass-api.de/api/interpreter', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'data=' + encodeURIComponent(query3),
+    });
+
+    if (res3.ok) {
+      const data3 = await res3.json();
+      const count3 = parseInt(data3.elements?.[0]?.tags?.total || '0', 10);
+      if (count3 > 0) {
+        return {
+          detectedClass: 'sparsely',
+          hasResidential: false,
+          hasCommercial: false,
+          hasIndustrial: true,
+          hasFarmland: false,
+          hasForest: false,
+          hasGathering: false,
+          rawTags: [`industrial_count=${count3}`],
+          queryTime: Date.now() - startTime,
+          elementCount: count3,
+          queryFailed: false,
+        };
+      }
+    }
+
+    // Phase 4: Check for nature/forest/farmland (controlled)
+    const query4 = `[out:json][timeout:10];(way["landuse"~"^(forest|meadow|farmland|grass)$"](poly:"${polyStr}");way["natural"="water"](poly:"${polyStr}"););out count;`;
+    const res4 = await fetch('https://overpass-api.de/api/interpreter', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'data=' + encodeURIComponent(query4),
+    });
+
+    if (res4.ok) {
+      const data4 = await res4.json();
+      const count4 = parseInt(data4.elements?.[0]?.tags?.total || '0', 10);
+      if (count4 > 0) {
+        return {
+          detectedClass: 'controlled',
+          hasResidential: false,
+          hasCommercial: false,
+          hasIndustrial: false,
+          hasFarmland: true,
+          hasForest: true,
+          hasGathering: false,
+          rawTags: [`nature_count=${count4}`],
+          queryTime: Date.now() - startTime,
+          elementCount: count4,
+          queryFailed: false,
+        };
+      }
+    }
+
+    // No data found at all — return null to trigger manual classification
+    return {
+      detectedClass: null,
+      hasResidential: false,
+      hasCommercial: false,
+      hasIndustrial: false,
+      hasFarmland: false,
+      hasForest: false,
+      hasGathering: false,
+      rawTags: [],
+      queryTime: Date.now() - startTime,
+      elementCount: 0,
+      queryFailed: false,
+    };
+
   } catch (err) {
     console.warn('Overpass API fetch failed:', err);
-    return fallbackResult(Date.now() - startTime);
+    return failedResult(Date.now() - startTime);
   }
 }
 
-function classifyFromElements(elements: any[], queryTime: number): LandUseResult {
-  const rawTags: string[] = [];
-  let hasResidential = false;
-  let hasCommercial = false;
-  let hasIndustrial = false;
-  let hasFarmland = false;
-  let hasForest = false;
-  let hasGathering = false;
-
-  for (const el of elements) {
-    const tags = el.tags || {};
-    const landuse = tags.landuse || '';
-    const natural = tags.natural || '';
-    const place = tags.place || '';
-    const amenity = tags.amenity || '';
-    const leisure = tags.leisure || '';
-
-    if (landuse) rawTags.push(`landuse=${landuse}`);
-    if (natural) rawTags.push(`natural=${natural}`);
-    if (place) rawTags.push(`place=${place}`);
-    if (amenity) rawTags.push(`amenity=${amenity}`);
-    if (leisure) rawTags.push(`leisure=${leisure}`);
-
-    // Gatherings
-    if (amenity === 'public_gathering' || amenity === 'marketplace' ||
-        leisure === 'stadium' || amenity === 'school' || amenity === 'hospital') {
-      hasGathering = true;
-    }
-
-    // Populated
-    if (['residential', 'commercial', 'retail'].includes(landuse) ||
-        ['town', 'town_centre', 'suburb', 'city_centre', 'city', 'village'].includes(place)) {
-      hasResidential = true;
-    }
-    if (['commercial', 'retail'].includes(landuse)) {
-      hasCommercial = true;
-    }
-
-    // Sparsely
-    if (['industrial', 'farmyard'].includes(landuse)) {
-      hasIndustrial = true;
-    }
-
-    // Controlled/uninhabited
-    if (['forest', 'meadow', 'farmland', 'grass'].includes(landuse) || natural === 'water') {
-      if (!hasResidential && !hasIndustrial) hasFarmland = true;
-      hasForest = true;
-    }
-  }
-
-  // Worst-case classification
-  let detectedClass: PopulationDensityClass;
-  if (hasGathering) {
-    detectedClass = 'gathering';
-  } else if (hasResidential || hasCommercial) {
-    detectedClass = 'populated';
-  } else if (hasIndustrial) {
-    detectedClass = 'sparsely';
-  } else if (hasForest || hasFarmland) {
-    detectedClass = 'controlled';
-  } else {
-    // No OSM data found — conservative default
-    detectedClass = 'sparsely';
-  }
-
+function failedResult(queryTime: number): LandUseResult {
   return {
-    detectedClass,
-    hasResidential,
-    hasCommercial,
-    hasIndustrial,
-    hasFarmland,
-    hasForest,
-    hasGathering,
-    rawTags: [...new Set(rawTags)],
-    queryTime,
-  };
-}
-
-function fallbackResult(queryTime: number): LandUseResult {
-  return {
-    detectedClass: 'sparsely',
+    detectedClass: null, // null signals manual classification needed
     hasResidential: false,
     hasCommercial: false,
     hasIndustrial: false,
@@ -167,5 +211,7 @@ function fallbackResult(queryTime: number): LandUseResult {
     hasGathering: false,
     rawTags: [],
     queryTime,
+    elementCount: 0,
+    queryFailed: true,
   };
 }

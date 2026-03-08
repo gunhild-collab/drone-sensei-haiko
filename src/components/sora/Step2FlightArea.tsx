@@ -33,10 +33,10 @@ interface Props {
 }
 
 const DENSITY_COLORS: Record<PopulationDensityClass, string> = {
-  controlled: '#22c55e',   // green
-  sparsely: '#eab308',     // yellow
-  populated: '#f97316',    // orange
-  gathering: '#ef4444',    // red
+  controlled: '#22c55e',
+  sparsely: '#eab308',
+  populated: '#f97316',
+  gathering: '#ef4444',
 };
 
 const DENSITY_LABELS: Record<PopulationDensityClass, string> = {
@@ -61,6 +61,27 @@ const MUNICIPALITY_COORDS: Record<string, [number, number]> = {
   'Årnes': [60.1225, 11.4645],
 };
 
+/**
+ * Offset polygon outward from centroid. Uses proper per-vertex expansion.
+ */
+function offsetPolygon(latlngs: L.LatLng[], meters: number): L.LatLng[] {
+  if (latlngs.length < 3 || meters <= 0) return latlngs;
+  const center = L.polygon(latlngs).getBounds().getCenter();
+  return latlngs.map(ll => {
+    const dLat = ll.lat - center.lat;
+    const dLng = ll.lng - center.lng;
+    const dist = Math.sqrt(dLat * dLat + dLng * dLng);
+    if (dist === 0) return ll;
+    // Scale factor: move each vertex outward by `meters` in real distance
+    const currentDistMeters = center.distanceTo(ll);
+    const scale = (currentDistMeters + meters) / currentDistMeters;
+    return L.latLng(
+      center.lat + dLat * scale,
+      center.lng + dLng * scale
+    );
+  });
+}
+
 export default function Step2FlightArea({ municipality, municipalityDensity, drone, flightAreaData, maxAltitude, onUpdate }: Props) {
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -74,6 +95,7 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
   const [localData, setLocalData] = useState<FlightAreaData | null>(flightAreaData);
   const [queryingLandUse, setQueryingLandUse] = useState(false);
   const [overrideOpen, setOverrideOpen] = useState(false);
+  const [manualRequired, setManualRequired] = useState(false);
 
   const charDim = drone?.characteristicDimension ?? 1;
   const grbDistance = charDim * 2;
@@ -102,9 +124,7 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
 
     map.on(L.Draw.Event.CREATED, (e: any) => {
       drawnItemsRef.current.clearLayers();
-      if (grbLayerRef.current) map.removeLayer(grbLayerRef.current);
-      if (cvLayerRef.current) map.removeLayer(cvLayerRef.current);
-      if (densityOverlayRef.current) map.removeLayer(densityOverlayRef.current);
+      removeBufferLayers(map);
 
       const layer = e.layer;
       drawnItemsRef.current.addLayer(layer);
@@ -115,9 +135,26 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
       }
     });
 
+    // Also handle edits
+    map.on(L.Draw.Event.EDITED, () => {
+      const layers: L.Layer[] = [];
+      drawnItemsRef.current.eachLayer(l => layers.push(l));
+      if (layers.length > 0 && layers[0] instanceof L.Polygon) {
+        const latlngs = (layers[0] as L.Polygon).getLatLngs()[0] as L.LatLng[];
+        removeBufferLayers(map);
+        processPolygon(latlngs, map);
+      }
+    });
+
     mapRef.current = map;
     return () => { map.remove(); mapRef.current = null; };
   }, [municipality]);
+
+  function removeBufferLayers(map: L.Map) {
+    if (grbLayerRef.current) { map.removeLayer(grbLayerRef.current); grbLayerRef.current = null; }
+    if (cvLayerRef.current) { map.removeLayer(cvLayerRef.current); cvLayerRef.current = null; }
+    if (densityOverlayRef.current) { map.removeLayer(densityOverlayRef.current); densityOverlayRef.current = null; }
+  }
 
   // Handle pin placement
   useEffect(() => {
@@ -146,24 +183,28 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
     return () => { map.off('click', handler); };
   }, [placingPin]);
 
-  // Redraw buffers when drone changes
+  // Redraw buffers when drone changes (GRB depends on drone dimension)
   useEffect(() => {
     if (!mapRef.current || !localData?.polygon) return;
     const map = mapRef.current;
-    if (grbLayerRef.current) map.removeLayer(grbLayerRef.current);
-    if (cvLayerRef.current) map.removeLayer(cvLayerRef.current);
+    removeBufferLayers(map);
     drawBuffers(localData.polygon, map);
     // Re-query land use with updated GRB
     runLandUseQuery(localData.polygon);
   }, [drone, maxAltitude]);
 
   const processPolygon = useCallback(async (latlngs: L.LatLng[], map: L.Map) => {
+    // BUG 1 FIX: Calculate diagonal using Leaflet's distanceTo (returns meters)
     const polygon = L.polygon(latlngs);
     const bounds = polygon.getBounds();
     const ne = bounds.getNorthEast();
     const sw = bounds.getSouthWest();
-    const diagonal = ne.distanceTo(sw);
+    const diagonalMeters = ne.distanceTo(sw); // Leaflet built-in, meters
 
+    // VLOS/BVLOS: diagonal > 500m = BVLOS, regardless of drone capability
+    const operationType: 'VLOS' | 'BVLOS' = diagonalMeters > 500 ? 'BVLOS' : 'VLOS';
+
+    // Calculate area
     let area = 0;
     for (let i = 0; i < latlngs.length; i++) {
       const j = (i + 1) % latlngs.length;
@@ -171,41 +212,55 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
     }
     area = Math.abs(area) * 6378137 * 6378137 / 2 * Math.PI / 180 / 1e6;
 
-    const opType = (diagonal > 1000 && (drone?.supportsBVLOS ?? false)) ? 'BVLOS' : 'VLOS';
-
+    // BUG 3 FIX: Draw buffers immediately
     drawBuffers(latlngs, map);
 
-    // Set initial data with loading state — density will be updated by Overpass
     const initialData: FlightAreaData = {
       polygon: latlngs,
       takeoffPoint: takeoffMarkerRef.current?.getLatLng() || null,
       landingPoint: landingMarkerRef.current?.getLatLng() || null,
       areaKm2: Math.round(area * 1000) / 1000,
-      diagonalM: Math.round(diagonal),
-      operationType: opType,
+      diagonalM: Math.round(diagonalMeters),
+      operationType,
       grbMeters: Math.round(grbDistance * 10) / 10,
       cvMeters: Math.round(cvDistance),
       populationDensityClass: 'sparsely', // placeholder until Overpass returns
       airspaceClass: 'uncontrolled_low',
-      flightDescription: `Flygeområde i ${municipality}, ${area.toFixed(3)} km², ${opType}`,
+      flightDescription: `Flygeområde i ${municipality}, ${area.toFixed(3)} km², ${operationType}`,
       landUseResult: null,
       densityOverridden: false,
     };
     setLocalData(initialData);
+    setManualRequired(false);
     onUpdate(initialData);
 
-    // Query Overpass API for land use within GRB-expanded polygon
+    // BUG 2 FIX: Query Overpass with improved count-based queries
     await runLandUseQuery(latlngs, initialData);
   }, [municipality, drone, grbDistance, cvDistance, onUpdate]);
 
   const runLandUseQuery = useCallback(async (latlngs: L.LatLng[], baseData?: FlightAreaData) => {
     setQueryingLandUse(true);
+    setManualRequired(false);
     try {
       const grbExpanded = expandPolygonByGrb(latlngs, grbDistance);
       const result = await queryLandUseInPolygon(grbExpanded);
 
       const current = baseData || localData;
       if (!current) return;
+
+      // If query failed or returned null class → trigger manual classification
+      if (result.detectedClass === null) {
+        setManualRequired(true);
+        const updated: FlightAreaData = {
+          ...current,
+          polygon: latlngs,
+          landUseResult: result,
+          // Keep current class but mark as needing manual override
+        };
+        setLocalData(updated);
+        onUpdate(updated);
+        return;
+      }
 
       const updated: FlightAreaData = {
         ...current,
@@ -222,26 +277,42 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
       }
     } catch (err) {
       console.warn('Land use query failed:', err);
+      setManualRequired(true);
     } finally {
       setQueryingLandUse(false);
     }
   }, [grbDistance, localData, onUpdate]);
 
   const drawBuffers = (latlngs: L.LatLng[], map: L.Map) => {
-    try {
-      const grbCoords = offsetPolygon(latlngs, grbDistance);
-      const grbPoly = L.polygon(grbCoords, { color: '#ec4899', weight: 1, dashArray: '5,5', fillOpacity: 0.05, fillColor: '#ec4899' });
-      grbPoly.bindTooltip(`GRB: ${grbDistance.toFixed(1)}m`, { permanent: false });
+    // GRB buffer
+    const grbCoords = offsetPolygon(latlngs, grbDistance);
+    if (grbCoords.length >= 3) {
+      const grbPoly = L.polygon(grbCoords, {
+        color: '#f97316',
+        weight: 2,
+        dashArray: '6,4',
+        fillOpacity: 0.18,
+        fillColor: '#f97316',
+      });
+      grbPoly.bindTooltip(`GRB: ${grbDistance.toFixed(1)}m`, { permanent: true, direction: 'center', className: 'map-buffer-label' });
       grbPoly.addTo(map);
       grbLayerRef.current = grbPoly;
-    } catch {}
-    try {
-      const cvCoords = offsetPolygon(latlngs, grbDistance + cvDistance);
-      const cvPoly = L.polygon(cvCoords, { color: '#f59e0b', weight: 1, dashArray: '10,5', fillOpacity: 0.03, fillColor: '#f59e0b' });
-      cvPoly.bindTooltip(`CV: ${cvDistance}m`, { permanent: false });
+    }
+
+    // CV buffer (outer, larger)
+    const cvCoords = offsetPolygon(latlngs, grbDistance + cvDistance);
+    if (cvCoords.length >= 3) {
+      const cvPoly = L.polygon(cvCoords, {
+        color: '#ec4899',
+        weight: 2,
+        dashArray: '6,4',
+        fillOpacity: 0.12,
+        fillColor: '#ec4899',
+      });
+      cvPoly.bindTooltip(`CV: ${cvDistance}m`, { permanent: true, direction: 'center', className: 'map-buffer-label' });
       cvPoly.addTo(map);
       cvLayerRef.current = cvPoly;
-    } catch {}
+    }
   };
 
   const drawDensityOverlay = (latlngs: L.LatLng[], densityClass: PopulationDensityClass, map: L.Map) => {
@@ -250,7 +321,7 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
     const overlay = L.polygon(latlngs, {
       color,
       weight: 2,
-      fillOpacity: 0.2,
+      fillOpacity: 0.25,
       fillColor: color,
     });
     overlay.bindTooltip(`Befolkningstetthet: ${DENSITY_LABELS[densityClass]}`, { permanent: false, direction: 'center' });
@@ -280,8 +351,8 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
     setLocalData(updated);
     onUpdate(updated);
     setOverrideOpen(false);
+    setManualRequired(false);
 
-    // Update map overlay color
     if (mapRef.current && localData.polygon) {
       drawDensityOverlay(localData.polygon, newClass, mapRef.current);
     }
@@ -319,6 +390,27 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
       {/* Map */}
       <div ref={mapContainerRef} className="w-full h-[450px] rounded-xl border border-sora-border overflow-hidden" />
 
+      {/* Manual classification warning */}
+      {manualRequired && !localData?.densityOverridden && (
+        <div className="bg-yellow-500/15 border border-yellow-500/40 rounded-lg px-4 py-3">
+          <p className="text-yellow-400 text-sm font-semibold flex items-center gap-2 mb-2">
+            <AlertTriangle className="w-4 h-4" /> Kunne ikke hente befolkningsdata automatisk. Velg tetthetsklasse manuelt:
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {(Object.keys(DENSITY_LABELS) as PopulationDensityClass[]).map(cls => (
+              <button
+                key={cls}
+                onClick={() => handleDensityOverride(cls)}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm bg-sora-surface border border-sora-border text-sora-text-muted hover:bg-sora-surface-hover transition-colors"
+              >
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: DENSITY_COLORS[cls] }} />
+                {DENSITY_LABELS[cls]}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Density classification result */}
       {localData && (
         <div className="space-y-3">
@@ -343,14 +435,14 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
                   {queryingLandUse ? (
                     <span className="flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Analyserer arealbruk via Overpass API...</span>
                   ) : localData.landUseResult ? (
-                    <>Klassifisert fra OSM-data ({localData.landUseResult.rawTags.slice(0, 4).join(', ')}{localData.landUseResult.rawTags.length > 4 ? '...' : ''}) · {localData.landUseResult.queryTime}ms</>
+                    <>Klassifisert fra OSM-data ({localData.landUseResult.rawTags.slice(0, 4).join(', ')}{localData.landUseResult.rawTags.length > 4 ? '...' : ''}) · {localData.landUseResult.elementCount} elementer · {localData.landUseResult.queryTime}ms</>
                   ) : (
                     'Tegn polygon for å analysere'
                   )}
                 </p>
                 {localData.densityOverridden && (
                   <p className="text-sora-pink text-xs mt-0.5 flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3" /> Manuelt overstyrt
+                    <AlertTriangle className="w-3 h-3" /> Manuelt overstyrt — du er ansvarlig for at valget er korrekt
                   </p>
                 )}
               </div>
@@ -392,8 +484,12 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <MetricCard label="Areal" value={`${localData.areaKm2} km²`} />
             <MetricCard label="Diagonal" value={`${localData.diagonalM} m`} />
-            <MetricCard label="Type" value={localData.operationType} highlight />
-            <MetricCard label="GRB" value={`${localData.grbMeters} m`} sub={drone ? `(${charDim}m × 2)` : 'Velg drone først'} />
+            <MetricCard label="Type" value={localData.operationType} highlight={localData.operationType === 'BVLOS'} warn={localData.operationType === 'BVLOS'} />
+            <MetricCard
+              label="GRB"
+              value={`${localData.grbMeters} m`}
+              sub={drone ? `(${charDim}m × 2)` : '(velg drone for nøyaktig GRB)'}
+            />
             <MetricCard label="CV" value={`${localData.cvMeters} m`} sub={`max(${maxAltitude}×0.1, 30)`} />
             <MetricCard
               label="Tetthetsklasse"
@@ -407,7 +503,7 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
           {/* Detected tags detail */}
           {localData.landUseResult && localData.landUseResult.rawTags.length > 0 && (
             <div className="bg-sora-surface border border-sora-border rounded-lg p-3">
-              <p className="text-xs text-sora-text-dim mb-1">Detekterte OSM-tagger i bakkerisikobufferen:</p>
+              <p className="text-xs text-sora-text-dim mb-1">Detekterte OSM-data i bakkerisikobufferen:</p>
               <div className="flex flex-wrap gap-1">
                 {localData.landUseResult.rawTags.map((tag, i) => (
                   <span key={i} className="text-xs bg-sora-bg px-2 py-0.5 rounded text-sora-text-muted border border-sora-border">
@@ -423,22 +519,17 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
   );
 }
 
-function MetricCard({ label, value, sub, highlight, color }: { label: string; value: string; sub?: string; highlight?: boolean; color?: string }) {
+function MetricCard({ label, value, sub, highlight, warn, color }: { label: string; value: string; sub?: string; highlight?: boolean; warn?: boolean; color?: string }) {
   return (
-    <div className="bg-sora-surface border border-sora-border rounded-lg p-3">
+    <div className={`bg-sora-surface border rounded-lg p-3 ${warn ? 'border-red-500/50' : 'border-sora-border'}`}>
       <p className="text-sora-text-dim text-xs">{label}</p>
-      <p className={`font-semibold text-sm ${highlight ? 'text-sora-purple' : 'text-sora-text'}`} style={color ? { color } : undefined}>{value}</p>
+      <p
+        className={`font-semibold text-sm ${warn ? 'text-red-400' : highlight ? 'text-sora-purple' : 'text-sora-text'}`}
+        style={color ? { color } : undefined}
+      >
+        {value}
+      </p>
       {sub && <p className="text-sora-text-dim text-xs">{sub}</p>}
     </div>
   );
-}
-
-function offsetPolygon(latlngs: L.LatLng[], meters: number): L.LatLng[] {
-  const center = L.polygon(latlngs).getBounds().getCenter();
-  return latlngs.map(ll => {
-    const bearing = Math.atan2(ll.lng - center.lng, ll.lat - center.lat);
-    const dLat = (meters / 111320) * Math.cos(bearing);
-    const dLng = (meters / (111320 * Math.cos(ll.lat * Math.PI / 180))) * Math.sin(bearing);
-    return L.latLng(ll.lat + dLat, ll.lng + dLng);
-  });
 }
