@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
-import { Info, Search, MapPin, X, ExternalLink } from "lucide-react";
+import { Info, Search, MapPin, X, ExternalLink, FileText, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { SoraInputs } from "@/lib/soraCalculations";
 import { kommuner } from "@/data/kommuner";
+import { USE_CASES, TYPE_COLORS, PRIORITY_COLORS, UseCaseRecord } from "@/data/useCaseData";
 
 interface Props {
   inputs: SoraInputs;
