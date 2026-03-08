@@ -127,7 +127,8 @@ export default function SoraWizard() {
   const handleMunicipalitySelect = useCallback((name: string, data: MunicipalityData) => {
     setMunicipality(name);
     setMunicipalityData(data);
-    if (data) updateInputs({ populationDensity: data.densityClass });
+    // NOTE: Municipality density is NOT used for GRC. Only for info panel.
+    // Population density for GRC comes from polygon land use analysis (Step 2).
   }, [updateInputs]);
 
   const handleDroneSelect = useCallback((drone: DroneSpec) => {

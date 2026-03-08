@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { MapPin, Maximize2, AlertTriangle } from "lucide-react";
+import { MapPin, AlertTriangle, Loader2, ChevronDown, Info } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet-draw";
 import "leaflet-draw/dist/leaflet.draw.css";
 import { DroneSpec } from "@/data/droneDatabase";
+import { queryLandUseInPolygon, expandPolygonByGrb, PopulationDensityClass, LandUseResult } from "@/lib/overpassLandUse";
 
 export interface FlightAreaData {
   polygon: L.LatLng[] | null;
@@ -15,9 +16,11 @@ export interface FlightAreaData {
   operationType: 'VLOS' | 'BVLOS';
   grbMeters: number;
   cvMeters: number;
-  populationDensityClass: 'controlled' | 'sparsely' | 'populated' | 'gathering';
+  populationDensityClass: PopulationDensityClass;
   airspaceClass: 'uncontrolled_low' | 'uncontrolled_high' | 'class_e' | 'controlled';
   flightDescription: string;
+  landUseResult: LandUseResult | null;
+  densityOverridden: boolean;
 }
 
 interface Props {
@@ -29,12 +32,19 @@ interface Props {
   onUpdate: (data: FlightAreaData) => void;
 }
 
-function classifyDensityFromValue(d: number): FlightAreaData['populationDensityClass'] {
-  if (d < 20) return 'controlled';
-  if (d < 100) return 'sparsely';
-  if (d < 500) return 'populated';
-  return 'gathering';
-}
+const DENSITY_COLORS: Record<PopulationDensityClass, string> = {
+  controlled: '#22c55e',   // green
+  sparsely: '#eab308',     // yellow
+  populated: '#f97316',    // orange
+  gathering: '#ef4444',    // red
+};
+
+const DENSITY_LABELS: Record<PopulationDensityClass, string> = {
+  controlled: 'Kontrollert/ubebodd',
+  sparsely: 'Spredt befolket',
+  populated: 'Befolket',
+  gathering: 'Folkemengde',
+};
 
 const MUNICIPALITY_COORDS: Record<string, [number, number]> = {
   'Oslo': [59.9139, 10.7522],
@@ -47,6 +57,8 @@ const MUNICIPALITY_COORDS: Record<string, [number, number]> = {
   'Bodø': [67.2804, 14.4049],
   'Fredrikstad': [59.2181, 10.9298],
   'Sandnes': [58.8527, 5.7352],
+  'Nes': [60.1225, 11.4645],
+  'Årnes': [60.1225, 11.4645],
 };
 
 export default function Step2FlightArea({ municipality, municipalityDensity, drone, flightAreaData, maxAltitude, onUpdate }: Props) {
@@ -55,10 +67,13 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
   const drawnItemsRef = useRef<L.FeatureGroup>(new L.FeatureGroup());
   const grbLayerRef = useRef<L.Layer | null>(null);
   const cvLayerRef = useRef<L.Layer | null>(null);
+  const densityOverlayRef = useRef<L.Layer | null>(null);
   const [placingPin, setPlacingPin] = useState<'takeoff' | 'landing' | null>(null);
   const takeoffMarkerRef = useRef<L.Marker | null>(null);
   const landingMarkerRef = useRef<L.Marker | null>(null);
   const [localData, setLocalData] = useState<FlightAreaData | null>(flightAreaData);
+  const [queryingLandUse, setQueryingLandUse] = useState(false);
+  const [overrideOpen, setOverrideOpen] = useState(false);
 
   const charDim = drone?.characteristicDimension ?? 1;
   const grbDistance = charDim * 2;
@@ -89,6 +104,7 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
       drawnItemsRef.current.clearLayers();
       if (grbLayerRef.current) map.removeLayer(grbLayerRef.current);
       if (cvLayerRef.current) map.removeLayer(cvLayerRef.current);
+      if (densityOverlayRef.current) map.removeLayer(densityOverlayRef.current);
 
       const layer = e.layer;
       drawnItemsRef.current.addLayer(layer);
@@ -99,21 +115,14 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
       }
     });
 
-    // Click handler for pins
-    map.on('click', (e: L.LeafletMouseEvent) => {
-      // Handled via state
-    });
-
     mapRef.current = map;
-
     return () => { map.remove(); mapRef.current = null; };
   }, [municipality]);
 
-  // Handle pin placement clicks
+  // Handle pin placement
   useEffect(() => {
     if (!mapRef.current) return;
     const map = mapRef.current;
-
     const handler = (e: L.LeafletMouseEvent) => {
       if (placingPin === 'takeoff') {
         if (takeoffMarkerRef.current) map.removeLayer(takeoffMarkerRef.current);
@@ -133,7 +142,6 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
         updateFlightData();
       }
     };
-
     map.on('click', handler);
     return () => { map.off('click', handler); };
   }, [placingPin]);
@@ -145,16 +153,17 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
     if (grbLayerRef.current) map.removeLayer(grbLayerRef.current);
     if (cvLayerRef.current) map.removeLayer(cvLayerRef.current);
     drawBuffers(localData.polygon, map);
+    // Re-query land use with updated GRB
+    runLandUseQuery(localData.polygon);
   }, [drone, maxAltitude]);
 
-  const processPolygon = useCallback((latlngs: L.LatLng[], map: L.Map) => {
+  const processPolygon = useCallback(async (latlngs: L.LatLng[], map: L.Map) => {
     const polygon = L.polygon(latlngs);
     const bounds = polygon.getBounds();
     const ne = bounds.getNorthEast();
     const sw = bounds.getSouthWest();
     const diagonal = ne.distanceTo(sw);
 
-    // Calculate area using spherical excess approximation
     let area = 0;
     for (let i = 0; i < latlngs.length; i++) {
       const j = (i + 1) % latlngs.length;
@@ -163,11 +172,11 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
     area = Math.abs(area) * 6378137 * 6378137 / 2 * Math.PI / 180 / 1e6;
 
     const opType = (diagonal > 1000 && (drone?.supportsBVLOS ?? false)) ? 'BVLOS' : 'VLOS';
-    const densClass = classifyDensityFromValue(municipalityDensity);
 
     drawBuffers(latlngs, map);
 
-    const data: FlightAreaData = {
+    // Set initial data with loading state — density will be updated by Overpass
+    const initialData: FlightAreaData = {
       polygon: latlngs,
       takeoffPoint: takeoffMarkerRef.current?.getLatLng() || null,
       landingPoint: landingMarkerRef.current?.getLatLng() || null,
@@ -176,16 +185,49 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
       operationType: opType,
       grbMeters: Math.round(grbDistance * 10) / 10,
       cvMeters: Math.round(cvDistance),
-      populationDensityClass: densClass,
+      populationDensityClass: 'sparsely', // placeholder until Overpass returns
       airspaceClass: 'uncontrolled_low',
       flightDescription: `Flygeområde i ${municipality}, ${area.toFixed(3)} km², ${opType}`,
+      landUseResult: null,
+      densityOverridden: false,
     };
-    setLocalData(data);
-    onUpdate(data);
-  }, [municipality, municipalityDensity, drone, grbDistance, cvDistance, onUpdate]);
+    setLocalData(initialData);
+    onUpdate(initialData);
+
+    // Query Overpass API for land use within GRB-expanded polygon
+    await runLandUseQuery(latlngs, initialData);
+  }, [municipality, drone, grbDistance, cvDistance, onUpdate]);
+
+  const runLandUseQuery = useCallback(async (latlngs: L.LatLng[], baseData?: FlightAreaData) => {
+    setQueryingLandUse(true);
+    try {
+      const grbExpanded = expandPolygonByGrb(latlngs, grbDistance);
+      const result = await queryLandUseInPolygon(grbExpanded);
+
+      const current = baseData || localData;
+      if (!current) return;
+
+      const updated: FlightAreaData = {
+        ...current,
+        polygon: latlngs,
+        populationDensityClass: current.densityOverridden ? current.populationDensityClass : result.detectedClass,
+        landUseResult: result,
+      };
+      setLocalData(updated);
+      onUpdate(updated);
+
+      // Draw density overlay on map
+      if (mapRef.current) {
+        drawDensityOverlay(latlngs, result.detectedClass, mapRef.current);
+      }
+    } catch (err) {
+      console.warn('Land use query failed:', err);
+    } finally {
+      setQueryingLandUse(false);
+    }
+  }, [grbDistance, localData, onUpdate]);
 
   const drawBuffers = (latlngs: L.LatLng[], map: L.Map) => {
-    // GRB buffer (inner)
     try {
       const grbCoords = offsetPolygon(latlngs, grbDistance);
       const grbPoly = L.polygon(grbCoords, { color: '#ec4899', weight: 1, dashArray: '5,5', fillOpacity: 0.05, fillColor: '#ec4899' });
@@ -193,8 +235,6 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
       grbPoly.addTo(map);
       grbLayerRef.current = grbPoly;
     } catch {}
-
-    // CV buffer (outer)
     try {
       const cvCoords = offsetPolygon(latlngs, grbDistance + cvDistance);
       const cvPoly = L.polygon(cvCoords, { color: '#f59e0b', weight: 1, dashArray: '10,5', fillOpacity: 0.03, fillColor: '#f59e0b' });
@@ -202,6 +242,20 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
       cvPoly.addTo(map);
       cvLayerRef.current = cvPoly;
     } catch {}
+  };
+
+  const drawDensityOverlay = (latlngs: L.LatLng[], densityClass: PopulationDensityClass, map: L.Map) => {
+    if (densityOverlayRef.current) map.removeLayer(densityOverlayRef.current);
+    const color = DENSITY_COLORS[densityClass];
+    const overlay = L.polygon(latlngs, {
+      color,
+      weight: 2,
+      fillOpacity: 0.2,
+      fillColor: color,
+    });
+    overlay.bindTooltip(`Befolkningstetthet: ${DENSITY_LABELS[densityClass]}`, { permanent: false, direction: 'center' });
+    overlay.addTo(map);
+    densityOverlayRef.current = overlay;
   };
 
   const updateFlightData = () => {
@@ -216,11 +270,28 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
     }
   };
 
+  const handleDensityOverride = (newClass: PopulationDensityClass) => {
+    if (!localData) return;
+    const updated: FlightAreaData = {
+      ...localData,
+      populationDensityClass: newClass,
+      densityOverridden: true,
+    };
+    setLocalData(updated);
+    onUpdate(updated);
+    setOverrideOpen(false);
+
+    // Update map overlay color
+    if (mapRef.current && localData.polygon) {
+      drawDensityOverlay(localData.polygon, newClass, mapRef.current);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div>
         <h2 className="text-2xl font-bold text-sora-text mb-1">Tegn flygeområde</h2>
-        <p className="text-sora-text-muted text-sm">Tegn et polygon over ditt flygeområde. Plasser avgangs- og landingspunkt.</p>
+        <p className="text-sora-text-muted text-sm">Tegn et polygon over ditt flygeområde. Befolkningstetthet klassifiseres automatisk fra arealbruk i polygonet (Overpass/OSM).</p>
       </div>
 
       {/* Pin buttons */}
@@ -248,38 +319,120 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
       {/* Map */}
       <div ref={mapContainerRef} className="w-full h-[450px] rounded-xl border border-sora-border overflow-hidden" />
 
-      {/* Info panel */}
+      {/* Density classification result */}
       {localData && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <MetricCard label="Areal" value={`${localData.areaKm2} km²`} />
-          <MetricCard label="Diagonal" value={`${localData.diagonalM} m`} />
-          <MetricCard label="Type" value={localData.operationType} highlight />
-          <MetricCard label="GRB" value={`${localData.grbMeters} m`} sub={drone ? `(${charDim}m × 2)` : 'Velg drone først'} />
-          <MetricCard label="CV" value={`${localData.cvMeters} m`} sub={`max(${maxAltitude}×0.1, 30)`} />
-          <MetricCard label="Tetthetsklasse" value={densityLabel(localData.populationDensityClass)} />
-          <MetricCard label="Luftrom" value="Ukontrollert G" />
-          <MetricCard label="Maks høyde" value={`${maxAltitude} m AGL`} />
+        <div className="space-y-3">
+          {/* Population density banner */}
+          <div
+            className="rounded-lg px-4 py-3 border flex items-center justify-between"
+            style={{
+              borderColor: DENSITY_COLORS[localData.populationDensityClass] + '66',
+              backgroundColor: DENSITY_COLORS[localData.populationDensityClass] + '15',
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className="w-4 h-4 rounded-full"
+                style={{ backgroundColor: DENSITY_COLORS[localData.populationDensityClass] }}
+              />
+              <div>
+                <p className="text-sora-text font-semibold text-sm">
+                  Befolkningstetthet i flygeområdet: {DENSITY_LABELS[localData.populationDensityClass]}
+                </p>
+                <p className="text-sora-text-dim text-xs">
+                  {queryingLandUse ? (
+                    <span className="flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Analyserer arealbruk via Overpass API...</span>
+                  ) : localData.landUseResult ? (
+                    <>Klassifisert fra OSM-data ({localData.landUseResult.rawTags.slice(0, 4).join(', ')}{localData.landUseResult.rawTags.length > 4 ? '...' : ''}) · {localData.landUseResult.queryTime}ms</>
+                  ) : (
+                    'Tegn polygon for å analysere'
+                  )}
+                </p>
+                {localData.densityOverridden && (
+                  <p className="text-sora-pink text-xs mt-0.5 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" /> Manuelt overstyrt
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Override dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setOverrideOpen(!overrideOpen)}
+                className="text-xs text-sora-text-muted border border-sora-border rounded-md px-3 py-1.5 hover:bg-sora-surface-hover transition-colors flex items-center gap-1"
+              >
+                Overstyr <ChevronDown className="w-3 h-3" />
+              </button>
+              {overrideOpen && (
+                <div className="absolute right-0 top-full mt-1 bg-sora-surface border border-sora-border rounded-lg shadow-lg z-50 w-64">
+                  <div className="px-3 py-2 border-b border-sora-border">
+                    <p className="text-xs text-sora-text-dim flex items-center gap-1">
+                      <Info className="w-3 h-3" /> Overstyring av automatisk klassifisering. Du er ansvarlig for at valget er korrekt.
+                    </p>
+                  </div>
+                  {(Object.keys(DENSITY_LABELS) as PopulationDensityClass[]).map(cls => (
+                    <button
+                      key={cls}
+                      onClick={() => handleDensityOverride(cls)}
+                      className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-sora-surface-hover transition-colors ${
+                        localData.populationDensityClass === cls ? 'text-sora-text font-semibold' : 'text-sora-text-muted'
+                      }`}
+                    >
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: DENSITY_COLORS[cls] }} />
+                      {DENSITY_LABELS[cls]}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Metrics grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <MetricCard label="Areal" value={`${localData.areaKm2} km²`} />
+            <MetricCard label="Diagonal" value={`${localData.diagonalM} m`} />
+            <MetricCard label="Type" value={localData.operationType} highlight />
+            <MetricCard label="GRB" value={`${localData.grbMeters} m`} sub={drone ? `(${charDim}m × 2)` : 'Velg drone først'} />
+            <MetricCard label="CV" value={`${localData.cvMeters} m`} sub={`max(${maxAltitude}×0.1, 30)`} />
+            <MetricCard
+              label="Tetthetsklasse"
+              value={DENSITY_LABELS[localData.populationDensityClass]}
+              color={DENSITY_COLORS[localData.populationDensityClass]}
+            />
+            <MetricCard label="Luftrom" value="Ukontrollert G" />
+            <MetricCard label="Maks høyde" value={`${maxAltitude} m AGL`} />
+          </div>
+
+          {/* Detected tags detail */}
+          {localData.landUseResult && localData.landUseResult.rawTags.length > 0 && (
+            <div className="bg-sora-surface border border-sora-border rounded-lg p-3">
+              <p className="text-xs text-sora-text-dim mb-1">Detekterte OSM-tagger i bakkerisikobufferen:</p>
+              <div className="flex flex-wrap gap-1">
+                {localData.landUseResult.rawTags.map((tag, i) => (
+                  <span key={i} className="text-xs bg-sora-bg px-2 py-0.5 rounded text-sora-text-muted border border-sora-border">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-function MetricCard({ label, value, sub, highlight }: { label: string; value: string; sub?: string; highlight?: boolean }) {
+function MetricCard({ label, value, sub, highlight, color }: { label: string; value: string; sub?: string; highlight?: boolean; color?: string }) {
   return (
     <div className="bg-sora-surface border border-sora-border rounded-lg p-3">
       <p className="text-sora-text-dim text-xs">{label}</p>
-      <p className={`font-semibold text-sm ${highlight ? 'text-sora-purple' : 'text-sora-text'}`}>{value}</p>
+      <p className={`font-semibold text-sm ${highlight ? 'text-sora-purple' : 'text-sora-text'}`} style={color ? { color } : undefined}>{value}</p>
       {sub && <p className="text-sora-text-dim text-xs">{sub}</p>}
     </div>
   );
 }
 
-function densityLabel(d: string): string {
-  return { controlled: 'Kontrollert', sparsely: 'Spredt', populated: 'Befolket', gathering: 'Folkemengde' }[d] || d;
-}
-
-// Simple polygon offset (approximate buffer using bearing expansion)
 function offsetPolygon(latlngs: L.LatLng[], meters: number): L.LatLng[] {
   const center = L.polygon(latlngs).getBounds().getCenter();
   return latlngs.map(ll => {
