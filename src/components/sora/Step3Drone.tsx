@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Search, Check, Plane, Shield, Eye, Parachute } from "lucide-react";
+import { Search, Check, Plane } from "lucide-react";
 import { DroneSpec, DRONE_DATABASE } from "@/data/droneDatabase";
 
 interface Props {

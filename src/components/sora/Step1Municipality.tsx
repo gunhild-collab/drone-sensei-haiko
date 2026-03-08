@@ -59,11 +59,13 @@ export default function Step1Municipality({ municipality, municipalityData, onSe
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
 
+  const KOMMUNER = useMemo(() => KOMMUNER_LIST.map((name, i) => ({ code: String(i + 1).padStart(4, '0'), name })), []);
+
   const filtered = useMemo(() => {
     if (!search) return KOMMUNER.slice(0, 30);
     const q = search.toLowerCase();
     return KOMMUNER.filter(k => k.name.toLowerCase().includes(q)).slice(0, 30);
-  }, [search]);
+  }, [search, KOMMUNER]);
 
   const handleSelect = (name: string) => {
     const stats = MUNICIPALITY_STATS[name] || { pop: Math.floor(Math.random() * 20000) + 2000, area: Math.floor(Math.random() * 1000) + 100 };
