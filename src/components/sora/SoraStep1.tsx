@@ -111,6 +111,10 @@ function InfoTooltip({ children }: { children: React.ReactNode }) {
 }
 
 export default function SoraStep1({ inputs, onChange }: Props) {
+  const [showUseCaseSelector, setShowUseCaseSelector] = useState(false);
+  const [useCaseFilter, setUseCaseFilter] = useState('');
+  const [selectedUseCase, setSelectedUseCase] = useState<UseCaseRecord | null>(null);
+
   const [drones, setDrones] = useState<DronePlatform[]>([]);
   const [selectedDrone, setSelectedDrone] = useState<DronePlatform | null>(null);
   const [showDensityLookup, setShowDensityLookup] = useState(false);
