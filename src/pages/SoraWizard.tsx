@@ -182,7 +182,9 @@ export default function SoraWizard() {
               <h1 className="text-xl font-bold bg-gradient-to-r from-sora-purple to-sora-pink bg-clip-text text-transparent">SORA DMA</h1>
               <p className="text-sora-text-dim text-xs">
                 {applicantName} · {applicantEmail}
-                {flightDate && ` · ${flightDate}`}
+                {flightDate && ` · ${format(parseISO(flightDate), 'dd/MM/yyyy')}`}
+                {timeFrom && timeTo && ` · ${timeFrom}–${timeTo}`}
+              </p>
                 {timeFrom && timeTo && ` · ${timeFrom}–${timeTo}`}
               </p>
             </div>
