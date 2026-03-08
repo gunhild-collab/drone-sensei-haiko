@@ -97,6 +97,10 @@ export default function Step3Drone({ selectedDrone, onSelect }: Props) {
               <p className={valueClass}>{selectedDrone.categoryClass}</p>
             </div>
             <div className={fieldClass}>
+              <p className={labelClass}>EASA-kategori</p>
+              <p className={valueClass}>{selectedDrone.easaCategory}</p>
+            </div>
+            <div className={fieldClass}>
               <p className={labelClass}>Flytid</p>
               <p className={valueClass}>{selectedDrone.maxFlightTime} min</p>
             </div>
@@ -107,8 +111,22 @@ export default function Step3Drone({ selectedDrone, onSelect }: Props) {
               </p>
             </div>
             <div className={fieldClass}>
-              <p className={labelClass}>Fremdrift</p>
-              <p className={valueClass}>{selectedDrone.propulsion}</p>
+              <p className={labelClass}>Termisk kamera</p>
+              <p className={`font-semibold text-sm ${selectedDrone.hasThermal ? 'text-sora-success' : 'text-sora-text-dim'}`}>
+                {selectedDrone.hasThermal ? 'Ja' : 'Nei'}
+              </p>
+            </div>
+            <div className={fieldClass}>
+              <p className={labelClass}>Fallskjerm</p>
+              <p className={`font-semibold text-sm ${selectedDrone.hasParachute ? 'text-sora-success' : 'text-sora-text-dim'}`}>
+                {selectedDrone.hasParachute ? 'Ja' : 'Nei'}
+              </p>
+            </div>
+            <div className={fieldClass}>
+              <p className={labelClass}>RTK</p>
+              <p className={`font-semibold text-sm ${selectedDrone.hasRTK ? 'text-sora-success' : 'text-sora-text-dim'}`}>
+                {selectedDrone.hasRTK ? 'Ja' : 'Nei'}
+              </p>
             </div>
             <div className={fieldClass}>
               <p className={labelClass}>Remote ID</p>
@@ -116,7 +134,16 @@ export default function Step3Drone({ selectedDrone, onSelect }: Props) {
                 {selectedDrone.hasRemoteId ? 'Ja' : 'Nei'}
               </p>
             </div>
+            {selectedDrone.payloadKg > 0 && (
+              <div className={fieldClass}>
+                <p className={labelClass}>Payload</p>
+                <p className={valueClass}>{selectedDrone.payloadKg} kg</p>
+              </div>
+            )}
           </div>
+          {selectedDrone.notes && (
+            <p className="text-sora-text-muted text-xs italic">{selectedDrone.notes}</p>
+          )}
         </div>
       )}
     </div>
