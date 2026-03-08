@@ -127,6 +127,26 @@ export default function SoraStep1({ inputs, onChange }: Props) {
     });
   }, []);
 
+  const filteredUseCases = useMemo(() => {
+    if (!useCaseFilter.trim()) return USE_CASES;
+    const q = useCaseFilter.toLowerCase();
+    return USE_CASES.filter(uc =>
+      uc.name.toLowerCase().includes(q) ||
+      uc.id.toLowerCase().includes(q) ||
+      uc.department.toLowerCase().includes(q) ||
+      uc.type.toLowerCase().includes(q)
+    );
+  }, [useCaseFilter]);
+
+  const handleUseCaseSelect = (uc: UseCaseRecord) => {
+    setSelectedUseCase(uc);
+    onChange({
+      ...uc.soraInputs,
+      droneName: inputs.droneName, // keep user's drone selection
+    } as Partial<SoraInputs>);
+    setShowUseCaseSelector(false);
+  };
+
   const filteredKommuner = useMemo(() => {
     if (!kommuneSearch.trim()) return kommuner.slice(0, 20);
     const q = kommuneSearch.toLowerCase();
