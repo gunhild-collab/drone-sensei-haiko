@@ -1,4 +1,10 @@
-import { ArrowRight, Plane } from "lucide-react";
+import { useState } from "react";
+import { ArrowRight, Plane, CalendarIcon, Clock } from "lucide-react";
+import { format } from "date-fns";
+import { nb } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface Props {
   applicantName: string;
@@ -23,6 +29,16 @@ export default function PreStep({
   onContinue,
 }: Props) {
   const canContinue = applicantName.trim() && applicantEmail.trim();
+  const [calendarOpen, setCalendarOpen] = useState(false);
+
+  const selectedDate = flightDate ? new Date(flightDate) : undefined;
+
+  const handleDateSelect = (date: Date | undefined) => {
+    if (date) {
+      onChangeFlightDate(format(date, 'yyyy-MM-dd'));
+    }
+    setCalendarOpen(false);
+  };
 
   return (
     <div className="min-h-screen bg-sora-bg flex items-center justify-center px-4 font-sora">
@@ -50,17 +66,58 @@ export default function PreStep({
 
           <div>
             <label className={labelClass}>Dato for flyging</label>
-            <input type="date" className={inputClass} value={flightDate} onChange={e => onChangeFlightDate(e.target.value)} />
+            <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className={cn(
+                    inputClass,
+                    "flex items-center gap-3 text-left",
+                    !flightDate && "text-sora-text-dim"
+                  )}
+                >
+                  <CalendarIcon className="w-4 h-4 text-sora-text shrink-0" />
+                  {selectedDate ? format(selectedDate, 'dd/MM/yyyy') : 'Velg dato'}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0 bg-sora-surface border-sora-border" align="start">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={handleDateSelect}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>Klokkeslett fra</label>
-              <input type="time" className={inputClass} value={timeFrom} onChange={e => onChangeTimeFrom(e.target.value)} />
+              <div className="relative">
+                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sora-text pointer-events-none" />
+                <input
+                  type="time"
+                  className={cn(inputClass, "pl-10 [&::-webkit-calendar-picker-indicator]:invert")}
+                  value={timeFrom}
+                  onChange={e => onChangeTimeFrom(e.target.value)}
+                  placeholder="TT:MM"
+                />
+              </div>
             </div>
             <div>
               <label className={labelClass}>Klokkeslett til</label>
-              <input type="time" className={inputClass} value={timeTo} onChange={e => onChangeTimeTo(e.target.value)} />
+              <div className="relative">
+                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sora-text pointer-events-none" />
+                <input
+                  type="time"
+                  className={cn(inputClass, "pl-10 [&::-webkit-calendar-picker-indicator]:invert")}
+                  value={timeTo}
+                  onChange={e => onChangeTimeTo(e.target.value)}
+                  placeholder="TT:MM"
+                />
+              </div>
             </div>
           </div>
 
