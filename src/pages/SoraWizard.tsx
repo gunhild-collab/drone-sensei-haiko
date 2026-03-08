@@ -4,23 +4,28 @@ import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SoraInputs, calculateAll } from "@/lib/soraCalculations";
 import { DroneSpec } from "@/data/droneDatabase";
-import { ConOpsFields } from "@/components/sora/SoraStep6";
+import { matchPdraScenarios, PdraScenario } from "@/data/pdraScenarios";
 import PreStep from "@/components/sora/PreStep";
-import NewStep1Municipality, { MunicipalityData } from "@/components/sora/NewStep1Municipality";
-import NewStep2Drone from "@/components/sora/NewStep2Drone";
-import NewStep3FlightArea, { FlightAreaData } from "@/components/sora/NewStep3FlightArea";
-import NewStep4RiskCalc from "@/components/sora/NewStep4RiskCalc";
-import NewStep5OSO from "@/components/sora/NewStep5OSO";
-import NewStep6Documents from "@/components/sora/NewStep6Documents";
+import Step1Municipality, { MunicipalityData } from "@/components/sora/Step1Municipality";
+import Step2FlightArea, { FlightAreaData } from "@/components/sora/Step2FlightArea";
+import Step3Drone from "@/components/sora/Step3Drone";
+import Step4Mitigations, { MitigationState } from "@/components/sora/Step4Mitigations";
+import Step5ScenarioForm, { ScenarioFormData } from "@/components/sora/Step5ScenarioForm";
+import Step6OSO from "@/components/sora/Step6OSO";
+import Step7Explanation from "@/components/sora/Step7Explanation";
+import Step8Documents from "@/components/sora/Step8Documents";
 import LiveSummary from "@/components/sora/LiveSummary";
+import ContactHaiko from "@/components/sora/ContactHaiko";
 
 const STEPS = [
   { label: 'Kommune', short: '1' },
-  { label: 'Drone', short: '2' },
-  { label: 'Flygeområde', short: '3' },
-  { label: 'Risiko', short: '4' },
-  { label: 'OSO', short: '5' },
-  { label: 'Dokumenter', short: '6' },
+  { label: 'Flygeområde', short: '2' },
+  { label: 'Drone', short: '3' },
+  { label: 'Mitigrasjoner', short: '4' },
+  { label: 'Scenario', short: '5' },
+  { label: 'OSO', short: '6' },
+  { label: 'Forklaring', short: '7' },
+  { label: 'Dokumenter', short: '8' },
 ];
 
 const defaultInputs: SoraInputs = {
@@ -38,15 +43,25 @@ const defaultInputs: SoraInputs = {
   hasAirspaceObservers: false,
 };
 
-const defaultConops: ConOpsFields = {
-  operatorName: '',
-  maxSpeed: '15',
-  propulsion: 'elektrisk',
-  hasRemoteId: 'ja',
-  flightGeography: '',
+const defaultMitigations: MitigationState = {
+  areaControlled: false,
+  hasWrittenProcedure: false,
+  hasParachute: false,
+  hasTransponder: false,
+  dayNight: 'day',
+  hasObservers: false,
+};
+
+const defaultScenarioForm: ScenarioFormData = {
+  pilotCertNumber: '',
+  atoName: '',
+  insuranceCompany: '',
+  insuranceNumber: '',
+  operationsManualRef: '',
+  conopsDescription: '',
+  maxFlightAltitude: '120',
   contingencyBuffer: '50',
   grbMeters: '30',
-  operationDuration: '',
   terrain: '',
   nearestAirport: '',
   restrictions: '',
@@ -57,35 +72,62 @@ export default function SoraWizard() {
   const [started, setStarted] = useState(false);
   const [applicantName, setApplicantName] = useState('');
   const [applicantEmail, setApplicantEmail] = useState('');
+  const [flightDate, setFlightDate] = useState('');
+  const [timeFrom, setTimeFrom] = useState('');
+  const [timeTo, setTimeTo] = useState('');
 
   // Step state
   const [step, setStep] = useState(0);
   const [inputs, setInputs] = useState<SoraInputs>(defaultInputs);
   const [osoTexts, setOsoTexts] = useState<Record<number, string>>({});
-  const [conopsFields, setConopsFields] = useState<ConOpsFields>(defaultConops);
+  const [mitigations, setMitigations] = useState<MitigationState>(defaultMitigations);
+  const [scenarioFormData, setScenarioFormData] = useState<ScenarioFormData>(defaultScenarioForm);
 
   // Step 1 - Municipality
   const [municipality, setMunicipality] = useState('');
   const [municipalityData, setMunicipalityData] = useState<MunicipalityData | null>(null);
 
-  // Step 2 - Drone
-  const [selectedDrone, setSelectedDrone] = useState<DroneSpec | null>(null);
-
-  // Step 3 - Flight area
+  // Step 2 - Flight area
   const [flightAreaData, setFlightAreaData] = useState<FlightAreaData | null>(null);
 
-  const results = useMemo(() => calculateAll(inputs), [inputs]);
+  // Step 3 - Drone
+  const [selectedDrone, setSelectedDrone] = useState<DroneSpec | null>(null);
 
   const updateInputs = useCallback((updates: Partial<SoraInputs>) => setInputs(prev => ({ ...prev, ...updates })), []);
   const updateOso = useCallback((id: number, text: string) => setOsoTexts(prev => ({ ...prev, [id]: text })), []);
-  const updateConops = useCallback((updates: Partial<ConOpsFields>) => setConopsFields(prev => ({ ...prev, ...updates })), []);
+  const updateMitigations = useCallback((updates: Partial<MitigationState>) => setMitigations(prev => ({ ...prev, ...updates })), []);
+  const updateScenarioForm = useCallback((updates: Partial<ScenarioFormData>) => setScenarioFormData(prev => ({ ...prev, ...updates })), []);
+
+  // Derive SoraInputs from mitigations
+  const derivedInputs = useMemo(() => {
+    const m1 = mitigations.areaControlled ? (mitigations.hasWrittenProcedure ? -2 : -1) : 0;
+    const m2 = mitigations.hasParachute ? -1 : 0;
+    return {
+      ...inputs,
+      m1: m1 as SoraInputs['m1'],
+      m2: m2 as SoraInputs['m2'],
+      hasTransponder: mitigations.hasTransponder,
+      hasAirspaceObservers: mitigations.hasObservers,
+      dayNight: mitigations.dayNight,
+    };
+  }, [inputs, mitigations]);
+
+  const results = useMemo(() => calculateAll(derivedInputs), [derivedInputs]);
+
+  // Scenario matching
+  const matchedScenarios = useMemo(() =>
+    matchPdraScenarios(derivedInputs.mtom, derivedInputs.characteristicDimension, derivedInputs.operationType, derivedInputs.maxAltitude, derivedInputs.populationDensity),
+    [derivedInputs]
+  );
+  const bestScenario: PdraScenario | null = matchedScenarios[0] || null;
+
+  // Determine if OSO step should be shown
+  const osoRequired = !bestScenario || results.sail >= 3;
 
   const handleMunicipalitySelect = useCallback((name: string, data: MunicipalityData) => {
     setMunicipality(name);
     setMunicipalityData(data);
-    if (data) {
-      updateInputs({ populationDensity: data.densityClass });
-    }
+    if (data) updateInputs({ populationDensity: data.densityClass });
   }, [updateInputs]);
 
   const handleDroneSelect = useCallback((drone: DroneSpec) => {
@@ -95,12 +137,7 @@ export default function SoraWizard() {
       mtom: drone.mtom,
       characteristicDimension: drone.characteristicDimension,
     });
-    updateConops({
-      maxSpeed: String(drone.maxSpeed),
-      propulsion: drone.propulsion,
-      hasRemoteId: drone.hasRemoteId ? 'ja' : 'nei',
-    });
-  }, [updateInputs, updateConops]);
+  }, [updateInputs]);
 
   const handleFlightAreaUpdate = useCallback((data: FlightAreaData) => {
     setFlightAreaData(data);
@@ -109,8 +146,7 @@ export default function SoraWizard() {
       populationDensity: data.populationDensityClass,
       airspaceClass: data.airspaceClass,
     });
-    updateConops({ flightGeography: data.flightDescription });
-  }, [updateInputs, updateConops]);
+  }, [updateInputs]);
 
   // Pre-step screen
   if (!started) {
@@ -118,50 +154,67 @@ export default function SoraWizard() {
       <PreStep
         applicantName={applicantName}
         applicantEmail={applicantEmail}
+        flightDate={flightDate}
+        timeFrom={timeFrom}
+        timeTo={timeTo}
         onChangeName={setApplicantName}
         onChangeEmail={setApplicantEmail}
-        onContinue={() => {
-          setStarted(true);
-          setConopsFields(prev => ({ ...prev, operatorName: applicantName }));
-        }}
+        onChangeFlightDate={setFlightDate}
+        onChangeTimeFrom={setTimeFrom}
+        onChangeTimeTo={setTimeTo}
+        onContinue={() => setStarted(true)}
       />
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0f0f17] text-white" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-      {/* Header */}
-      <div className="border-b border-[#1a1a2e] px-6 py-4">
+    <div className="min-h-screen bg-sora-bg text-sora-text font-sora">
+      {/* Top bar with applicant info */}
+      <div className="border-b border-sora-border px-6 py-3">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link to="/" className="text-gray-400 hover:text-white transition-colors">
+            <Link to="/" className="text-sora-text-muted hover:text-sora-text transition-colors">
               <ArrowLeft className="w-5 h-5" />
             </Link>
             <div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-[#7c3aed] to-[#ec4899] bg-clip-text text-transparent">SORA DMA</h1>
-              <p className="text-gray-500 text-xs">SORA 2.5 Risk Assessment • {applicantName}</p>
+              <h1 className="text-xl font-bold bg-gradient-to-r from-sora-purple to-sora-pink bg-clip-text text-transparent">SORA DMA</h1>
+              <p className="text-sora-text-dim text-xs">
+                {applicantName} · {applicantEmail}
+                {flightDate && ` · ${flightDate}`}
+                {timeFrom && timeTo && ` · ${timeFrom}–${timeTo}`}
+              </p>
             </div>
           </div>
-          <div className="text-sm text-gray-500 hidden md:block">
-            SAIL {results.sailRoman} | GRC {results.finalGrc} | {results.residualArc}
+          <div className="text-sm text-sora-text-dim hidden md:flex items-center gap-3">
+            <span>SAIL <span className="text-sora-purple font-bold">{results.sailRoman || '—'}</span></span>
+            <span className="text-sora-border">|</span>
+            <span>GRC <span className="text-sora-pink font-bold">{results.finalGrc || '—'}</span></span>
+            <span className="text-sora-border">|</span>
+            <span>ARC <span className="text-sora-purple font-bold">{results.residualArc || '—'}</span></span>
+            {bestScenario && (
+              <>
+                <span className="text-sora-border">|</span>
+                <span className="text-sora-success font-bold">{bestScenario.id}</span>
+              </>
+            )}
           </div>
         </div>
       </div>
 
       {/* Progress bar */}
-      <div className="border-b border-[#1a1a2e] px-6 py-3">
+      <div className="border-b border-sora-border px-6 py-3">
         <div className="max-w-6xl mx-auto flex items-center gap-1">
           {STEPS.map((s, i) => (
             <button key={i} onClick={() => setStep(i)} className="flex items-center gap-1 flex-1">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                i === step ? 'bg-[#7c3aed] text-white scale-110' :
-                i < step ? 'bg-[#7c3aed]/30 text-[#7c3aed]' :
-                'bg-[#1a1a2e] text-gray-500'
+                i === step ? 'bg-sora-purple text-sora-text scale-110' :
+                i < step ? 'bg-sora-purple/30 text-sora-purple' :
+                'bg-sora-surface text-sora-text-dim'
               }`}>
                 {i < step ? <Check className="w-4 h-4" /> : s.short}
               </div>
-              <span className={`text-xs hidden md:block ${i === step ? 'text-white' : 'text-gray-500'}`}>{s.label}</span>
-              {i < STEPS.length - 1 && <div className={`flex-1 h-px mx-1 ${i < step ? 'bg-[#7c3aed]/50' : 'bg-[#1a1a2e]'}`} />}
+              <span className={`text-xs hidden lg:block ${i === step ? 'text-sora-text' : 'text-sora-text-dim'}`}>{s.label}</span>
+              {i < STEPS.length - 1 && <div className={`flex-1 h-px mx-1 ${i < step ? 'bg-sora-purple/50' : 'bg-sora-border'}`} />}
             </button>
           ))}
         </div>
@@ -169,7 +222,6 @@ export default function SoraWizard() {
 
       {/* Main content with sidebar */}
       <div className="max-w-6xl mx-auto px-6 py-8 flex gap-8 pb-24">
-        {/* Main content */}
         <div className="flex-1 min-w-0">
           <AnimatePresence mode="wait">
             <motion.div
@@ -180,93 +232,118 @@ export default function SoraWizard() {
               transition={{ duration: 0.2 }}
             >
               {step === 0 && (
-                <NewStep1Municipality
+                <Step1Municipality
                   municipality={municipality}
                   municipalityData={municipalityData}
                   onSelect={handleMunicipalitySelect}
                 />
               )}
               {step === 1 && (
-                <NewStep2Drone
-                  selectedDrone={selectedDrone}
-                  onSelect={handleDroneSelect}
-                />
-              )}
-              {step === 2 && (
-                <NewStep3FlightArea
+                <Step2FlightArea
                   municipality={municipality || 'Trondheim'}
                   municipalityDensity={municipalityData?.densityPerKm2 || 30}
                   drone={selectedDrone}
                   flightAreaData={flightAreaData}
+                  maxAltitude={derivedInputs.maxAltitude}
                   onUpdate={handleFlightAreaUpdate}
                 />
               )}
+              {step === 2 && (
+                <Step3Drone
+                  selectedDrone={selectedDrone}
+                  onSelect={handleDroneSelect}
+                />
+              )}
               {step === 3 && (
-                <NewStep4RiskCalc
-                  inputs={inputs}
-                  results={results}
-                  onChange={updateInputs}
+                <Step4Mitigations
+                  mitigations={mitigations}
+                  isBVLOS={derivedInputs.operationType === 'BVLOS'}
+                  onChange={updateMitigations}
                 />
               )}
               {step === 4 && (
-                <NewStep5OSO
+                <Step5ScenarioForm
+                  matchedScenario={bestScenario}
+                  sailLevel={results.sail}
+                  formData={scenarioFormData}
+                  applicantName={applicantName}
+                  municipality={municipality}
+                  droneName={derivedInputs.droneName}
+                  operationType={derivedInputs.operationType}
+                  flightDate={flightDate}
+                  onChange={updateScenarioForm}
+                />
+              )}
+              {step === 5 && (
+                <Step6OSO
                   sail={results.sail}
                   osoTexts={osoTexts}
                   onOsoChange={updateOso}
                   applicantName={applicantName}
-                  droneName={inputs.droneName}
+                  droneName={derivedInputs.droneName}
                   municipality={municipality}
-                  operationType={inputs.operationType}
-                  dayNight={inputs.dayNight}
+                  operationType={derivedInputs.operationType}
+                  dayNight={derivedInputs.dayNight}
                   flightAreaDescription={flightAreaData?.flightDescription || ''}
                 />
               )}
-              {step === 5 && (
-                <NewStep6Documents
-                  inputs={inputs}
+              {step === 6 && (
+                <Step7Explanation
+                  sailLevel={results.sail}
+                  matchedScenario={bestScenario}
+                />
+              )}
+              {step === 7 && (
+                <Step8Documents
+                  inputs={derivedInputs}
                   results={results}
                   osoTexts={osoTexts}
-                  conopsFields={conopsFields}
                   applicantName={applicantName}
                   applicantEmail={applicantEmail}
                   municipality={municipality}
                   flightAreaDescription={flightAreaData?.flightDescription || ''}
+                  matchedScenario={bestScenario}
+                  scenarioFormData={scenarioFormData}
                 />
               )}
             </motion.div>
           </AnimatePresence>
         </div>
 
-        {/* Live Summary Sidebar */}
         <LiveSummary
           applicantName={applicantName}
           municipality={municipality}
-          droneName={inputs.droneName}
+          droneName={derivedInputs.droneName}
           results={results}
+          matchedScenario={bestScenario}
           step={step + 1}
+          totalSteps={STEPS.length}
         />
       </div>
 
       {/* Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 border-t border-[#1a1a2e] bg-[#0f0f17]/95 backdrop-blur-sm px-6 py-4 z-50">
+      <div className="fixed bottom-0 left-0 right-0 border-t border-sora-border bg-sora-bg/95 backdrop-blur-sm px-6 py-4 z-50">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <button
             onClick={() => setStep(Math.max(0, step - 1))}
             disabled={step === 0}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#1a1a2e] text-gray-300 hover:bg-[#2a2a3e] disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-sm"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-sora-surface text-sora-text-muted hover:bg-sora-surface-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-sm"
           >
             <ArrowLeft className="w-4 h-4" /> Forrige
           </button>
-          <span className="text-gray-500 text-sm">Steg {step + 1} av {STEPS.length}</span>
+          <span className="text-sora-text-dim text-sm">Steg {step + 1} av {STEPS.length}</span>
           <button
             onClick={() => setStep(Math.min(STEPS.length - 1, step + 1))}
             disabled={step === STEPS.length - 1}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#7c3aed] text-white hover:bg-[#6d28d9] disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-sm"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-sora-purple text-sora-text hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-sm"
           >
             Neste <ArrowRight className="w-4 h-4" />
           </button>
         </div>
       </div>
+
+      {/* Contact Haiko */}
+      <ContactHaiko prominent={step === 5 || step === 7} />
     </div>
   );
 }

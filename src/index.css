@@ -8,32 +8,23 @@
   :root {
     --background: 220 20% 97%;
     --foreground: 220 30% 10%;
-
     --card: 0 0% 100%;
     --card-foreground: 220 30% 10%;
-
     --popover: 0 0% 100%;
     --popover-foreground: 220 30% 10%;
-
     --primary: 220 70% 45%;
     --primary-foreground: 0 0% 100%;
-
     --secondary: 220 15% 92%;
     --secondary-foreground: 220 30% 15%;
-
     --muted: 220 15% 94%;
     --muted-foreground: 220 10% 45%;
-
     --accent: 165 60% 40%;
     --accent-foreground: 0 0% 100%;
-
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-
     --border: 220 15% 88%;
     --input: 220 15% 88%;
     --ring: 220 70% 45%;
-
     --radius: 0.75rem;
 
     --chart-1: 220 70% 45%;
@@ -55,37 +46,43 @@
     --sidebar-accent-foreground: 220 15% 85%;
     --sidebar-border: 220 25% 18%;
     --sidebar-ring: 220 70% 55%;
+
+    /* SORA DMA tokens */
+    --sora-bg: 240 33% 5%;
+    --sora-surface: 240 25% 11%;
+    --sora-surface-hover: 240 22% 15%;
+    --sora-border: 240 20% 18%;
+    --sora-purple: 263 70% 58%;
+    --sora-purple-glow: 263 70% 58%;
+    --sora-pink: 330 81% 60%;
+    --sora-text: 0 0% 100%;
+    --sora-text-muted: 220 10% 55%;
+    --sora-text-dim: 220 10% 38%;
+    --sora-success: 142 71% 45%;
+    --sora-warning: 48 96% 53%;
+    --sora-danger: 0 84% 60%;
   }
 
   .dark {
     --background: 220 25% 8%;
     --foreground: 220 15% 92%;
-
     --card: 220 25% 12%;
     --card-foreground: 220 15% 92%;
-
     --popover: 220 25% 12%;
     --popover-foreground: 220 15% 92%;
-
     --primary: 220 70% 55%;
     --primary-foreground: 0 0% 100%;
-
     --secondary: 220 20% 18%;
     --secondary-foreground: 220 15% 85%;
-
     --muted: 220 20% 16%;
     --muted-foreground: 220 10% 55%;
-
     --accent: 165 60% 45%;
     --accent-foreground: 0 0% 100%;
-
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-
     --border: 220 20% 18%;
     --input: 220 20% 18%;
     --ring: 220 70% 55%;
-
     --sidebar-background: 220 30% 6%;
     --sidebar-foreground: 220 15% 85%;
     --sidebar-primary: 220 70% 55%;

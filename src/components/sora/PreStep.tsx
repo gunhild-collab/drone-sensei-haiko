@@ -1,68 +1,80 @@
+import { ArrowRight, Plane } from "lucide-react";
+
 interface Props {
   applicantName: string;
   applicantEmail: string;
+  flightDate: string;
+  timeFrom: string;
+  timeTo: string;
   onChangeName: (v: string) => void;
   onChangeEmail: (v: string) => void;
+  onChangeFlightDate: (v: string) => void;
+  onChangeTimeFrom: (v: string) => void;
+  onChangeTimeTo: (v: string) => void;
   onContinue: () => void;
 }
 
-const inputClass = "w-full bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg px-4 py-3 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#7c3aed] transition-colors";
+const inputClass = "w-full bg-sora-surface border border-sora-border rounded-lg px-4 py-3 text-sora-text placeholder:text-sora-text-dim focus:outline-none focus:ring-2 focus:ring-sora-purple transition-colors font-sora";
+const labelClass = "block text-sm font-medium text-sora-text-muted mb-2 font-sora";
 
-export default function PreStep({ applicantName, applicantEmail, onChangeName, onChangeEmail, onContinue }: Props) {
-  const canContinue = applicantName.trim().length > 0 && applicantEmail.trim().length > 0;
+export default function PreStep({
+  applicantName, applicantEmail, flightDate, timeFrom, timeTo,
+  onChangeName, onChangeEmail, onChangeFlightDate, onChangeTimeFrom, onChangeTimeTo,
+  onContinue,
+}: Props) {
+  const canContinue = applicantName.trim() && applicantEmail.trim();
 
   return (
-    <div className="min-h-screen bg-[#0f0f17] flex items-center justify-center px-4" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-[#7c3aed] to-[#ec4899] bg-clip-text text-transparent">
-            SORA DMA
-          </h1>
-          <p className="text-gray-400 text-sm mt-2">
-            Spesifikk Operations Risk Assessment — Digital Municipal Assistant
-          </p>
-          <p className="text-gray-500 text-xs mt-1">SORA 2.5 • Luftfartstilsynet</p>
+    <div className="min-h-screen bg-sora-bg flex items-center justify-center px-4 font-sora">
+      <div className="max-w-lg w-full">
+        <div className="text-center mb-10">
+          <div className="w-16 h-16 rounded-2xl bg-sora-purple/20 flex items-center justify-center mx-auto mb-4">
+            <Plane className="w-8 h-8 text-sora-purple" />
+          </div>
+          <h1 className="text-3xl font-bold text-sora-text mb-2">SORA DMA</h1>
+          <p className="text-sora-text-muted text-sm">Norsk droneflyging autorisasjonsveiviser</p>
         </div>
 
-        <div className="bg-[#1a1a2e] rounded-2xl p-6 border border-[#2a2a3e] space-y-5">
+        <div className="bg-sora-surface border border-sora-border rounded-2xl p-6 space-y-5">
+          <h2 className="text-lg font-semibold text-sora-text">Søkerinformasjon</h2>
+
           <div>
-            <p className="text-white font-semibold mb-1">Før vi starter</p>
-            <p className="text-gray-400 text-sm">Oppgi navn og e-post. Brukes i alle genererte dokumenter.</p>
+            <label className={labelClass}>Søkers navn / bedriftsnavn *</label>
+            <input type="text" className={inputClass} placeholder="Navn eller bedrift" value={applicantName} onChange={e => onChangeName(e.target.value)} />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Søkers navn / organisasjon</label>
-            <input
-              className={inputClass}
-              placeholder="F.eks. Verdal kommune"
-              value={applicantName}
-              onChange={e => onChangeName(e.target.value)}
-              autoFocus
-            />
+            <label className={labelClass}>E-post *</label>
+            <input type="email" className={inputClass} placeholder="din@epost.no" value={applicantEmail} onChange={e => onChangeEmail(e.target.value)} />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">E-post</label>
-            <input
-              className={inputClass}
-              type="email"
-              placeholder="kontakt@eksempel.no"
-              value={applicantEmail}
-              onChange={e => onChangeEmail(e.target.value)}
-            />
+            <label className={labelClass}>Dato for flyging</label>
+            <input type="date" className={inputClass} value={flightDate} onChange={e => onChangeFlightDate(e.target.value)} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelClass}>Klokkeslett fra</label>
+              <input type="time" className={inputClass} value={timeFrom} onChange={e => onChangeTimeFrom(e.target.value)} />
+            </div>
+            <div>
+              <label className={labelClass}>Klokkeslett til</label>
+              <input type="time" className={inputClass} value={timeTo} onChange={e => onChangeTimeTo(e.target.value)} />
+            </div>
           </div>
 
           <button
             onClick={onContinue}
             disabled={!canContinue}
-            className="w-full py-3 rounded-lg bg-[#7c3aed] text-white font-medium hover:bg-[#6d28d9] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-sora-purple text-sora-text font-semibold hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-all mt-2"
           >
-            Start SORA-vurdering
+            Start veiviseren <ArrowRight className="w-4 h-4" />
           </button>
         </div>
 
-        <p className="text-center text-gray-600 text-xs">
-          Ingen pålogging kreves. All data holdes i minnet.
+        <p className="text-center text-sora-text-dim text-xs mt-6">
+          Ingen innlogging nødvendig. All data holdes i nettleseren.
         </p>
       </div>
     </div>

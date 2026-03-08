@@ -16,6 +16,7 @@ export default {
       fontFamily: {
         display: ["Space Grotesk", "sans-serif"],
         body: ["Inter", "sans-serif"],
+        sora: ["DM Sans", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -73,6 +74,20 @@ export default {
           3: "hsl(var(--chart-3))",
           4: "hsl(var(--chart-4))",
           5: "hsl(var(--chart-5))",
+        },
+        sora: {
+          bg: "hsl(var(--sora-bg))",
+          surface: "hsl(var(--sora-surface))",
+          "surface-hover": "hsl(var(--sora-surface-hover))",
+          border: "hsl(var(--sora-border))",
+          purple: "hsl(var(--sora-purple))",
+          pink: "hsl(var(--sora-pink))",
+          text: "hsl(var(--sora-text))",
+          "text-muted": "hsl(var(--sora-text-muted))",
+          "text-dim": "hsl(var(--sora-text-dim))",
+          success: "hsl(var(--sora-success))",
+          warning: "hsl(var(--sora-warning))",
+          danger: "hsl(var(--sora-danger))",
         },
       },
       borderRadius: {
