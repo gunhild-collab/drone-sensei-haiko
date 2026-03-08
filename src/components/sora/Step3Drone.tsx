@@ -57,11 +57,15 @@ export default function Step3Drone({ selectedDrone, onSelect }: Props) {
               </div>
               <div>
                 <p className="text-sora-text font-medium text-sm">{d.name}</p>
-                <p className="text-sora-text-dim text-xs">{d.manufacturer} · {d.mtom} kg · {d.categoryClass}</p>
+                <p className="text-sora-text-dim text-xs">
+                  {d.manufacturer} · {d.mtom} kg · {d.categoryClass} · {d.easaCategory}
+                </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap justify-end">
               {d.supportsBVLOS && <span className="text-xs px-2 py-0.5 rounded-full bg-sora-purple/20 text-sora-purple">BVLOS</span>}
+              {d.hasThermal && <span className="text-xs px-2 py-0.5 rounded-full bg-sora-pink/20 text-sora-pink">Termisk</span>}
+              {d.hasRTK && <span className="text-xs px-2 py-0.5 rounded-full bg-sora-success/20 text-sora-success">RTK</span>}
               {selectedDrone?.id === d.id && <Check className="w-5 h-5 text-sora-purple" />}
             </div>
           </button>
