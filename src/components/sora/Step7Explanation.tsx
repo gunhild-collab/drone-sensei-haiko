@@ -85,16 +85,6 @@ export default function Step7Explanation({ sailLevel, matchedScenario }: Props) 
             desc="Europeisk plattform for synlighet mellom droner og bemannet luftfart."
             url="https://www.safesky.app"
           />
-          <ToolCard
-            name="Ninox Drones"
-            desc="Norsk luftromskart og realtidsdata for droneflygere."
-            url="https://ninoxdrones.com"
-          />
-          <ToolCard
-            name="SafeSky"
-            desc="Europeisk plattform for synlighet mellom droner og bemannet luftfart."
-            url="https://www.safesky.app"
-          />
         </div>
       </div>
 
