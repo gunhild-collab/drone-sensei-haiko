@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
+import { format, parseISO } from "date-fns";
 import { Link } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -181,7 +182,7 @@ export default function SoraWizard() {
               <h1 className="text-xl font-bold bg-gradient-to-r from-sora-purple to-sora-pink bg-clip-text text-transparent">SORA DMA</h1>
               <p className="text-sora-text-dim text-xs">
                 {applicantName} · {applicantEmail}
-                {flightDate && ` · ${flightDate}`}
+                {flightDate && ` · ${format(parseISO(flightDate), 'dd/MM/yyyy')}`}
                 {timeFrom && timeTo && ` · ${timeFrom}–${timeTo}`}
               </p>
             </div>
