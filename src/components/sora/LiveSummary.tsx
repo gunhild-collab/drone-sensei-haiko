@@ -1,26 +1,29 @@
 import { SoraResults } from "@/lib/soraCalculations";
+import { PdraScenario } from "@/data/pdraScenarios";
 
 interface Props {
   applicantName: string;
   municipality: string;
   droneName: string;
   results: SoraResults;
+  matchedScenario: PdraScenario | null;
   step: number;
+  totalSteps: number;
 }
 
 function sailColor(sail: number): string {
-  if (sail <= 2) return 'text-green-400';
-  if (sail <= 4) return 'text-yellow-400';
-  return 'text-red-400';
+  if (sail <= 2) return 'text-sora-success';
+  if (sail <= 4) return 'text-sora-warning';
+  return 'text-sora-danger';
 }
 
 function sailBg(sail: number): string {
-  if (sail <= 2) return 'bg-green-400/10 border-green-400/30';
-  if (sail <= 4) return 'bg-yellow-400/10 border-yellow-400/30';
-  return 'bg-red-400/10 border-red-400/30';
+  if (sail <= 2) return 'bg-sora-success/10 border-sora-success/30';
+  if (sail <= 4) return 'bg-sora-warning/10 border-sora-warning/30';
+  return 'bg-sora-danger/10 border-sora-danger/30';
 }
 
-export default function LiveSummary({ applicantName, municipality, droneName, results, step }: Props) {
+export default function LiveSummary({ applicantName, municipality, droneName, results, matchedScenario, step, totalSteps }: Props) {
   return (
     <>
       {/* Desktop sidebar */}
@@ -28,48 +31,40 @@ export default function LiveSummary({ applicantName, municipality, droneName, re
         <div className="sticky top-4 space-y-4">
           {/* SAIL badge */}
           <div className={`rounded-xl p-4 border ${sailBg(results.sail)}`}>
-            <p className="text-gray-400 text-xs font-medium mb-1">SAIL-nivå</p>
+            <p className="text-sora-text-dim text-xs font-medium mb-1">SAIL-nivå</p>
             <p className={`text-4xl font-bold ${sailColor(results.sail)}`}>{results.sailRoman || '—'}</p>
           </div>
 
           {/* Key metrics */}
-          <div className="bg-[#1a1a2e] rounded-xl p-4 border border-[#2a2a3e] space-y-3">
-            <div>
-              <p className="text-gray-500 text-xs">Søker</p>
-              <p className="text-white text-sm font-medium truncate">{applicantName || '—'}</p>
-            </div>
-            <div>
-              <p className="text-gray-500 text-xs">Kommune</p>
-              <p className="text-white text-sm font-medium truncate">{municipality || '—'}</p>
-            </div>
-            <div>
-              <p className="text-gray-500 text-xs">Drone</p>
-              <p className="text-white text-sm font-medium truncate">{droneName || '—'}</p>
-            </div>
-            <div className="h-px bg-[#2a2a3e]" />
+          <div className="bg-sora-surface rounded-xl p-4 border border-sora-border space-y-3">
+            <MetricRow label="Søker" value={applicantName} />
+            <MetricRow label="Kommune" value={municipality} />
+            <MetricRow label="Drone" value={droneName} />
+            {matchedScenario && <MetricRow label="Scenario" value={matchedScenario.id} highlight />}
+            <div className="h-px bg-sora-border" />
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <p className="text-gray-500 text-xs">GRC</p>
-                <p className="text-[#ec4899] text-lg font-bold">{results.finalGrc || '—'}</p>
+                <p className="text-sora-text-dim text-xs">GRC</p>
+                <p className="text-sora-pink text-lg font-bold">{results.finalGrc || '—'}</p>
               </div>
               <div>
-                <p className="text-gray-500 text-xs">ARC</p>
-                <p className="text-[#7c3aed] text-lg font-bold">{results.residualArc || '—'}</p>
+                <p className="text-sora-text-dim text-xs">ARC</p>
+                <p className="text-sora-purple text-lg font-bold">{results.residualArc || '—'}</p>
               </div>
             </div>
           </div>
 
-          {/* Step indicator */}
-          <div className="bg-[#1a1a2e] rounded-xl p-4 border border-[#2a2a3e]">
-            <p className="text-gray-500 text-xs mb-2">Fremgang</p>
+          {/* Progress */}
+          <div className="bg-sora-surface rounded-xl p-4 border border-sora-border">
+            <p className="text-sora-text-dim text-xs mb-2">Steg {step} av {totalSteps}</p>
             <div className="flex gap-1">
-              {[1, 2, 3, 4, 5, 6].map(s => (
+              {Array.from({ length: totalSteps }, (_, i) => (
                 <div
-                  key={s}
+                  key={i}
                   className={`h-1.5 flex-1 rounded-full transition-all ${
-                    s < step ? 'bg-[#7c3aed]' :
-                    s === step ? 'bg-[#ec4899]' :
-                    'bg-[#2a2a3e]'
+                    i + 1 < step ? 'bg-sora-purple' :
+                    i + 1 === step ? 'bg-sora-pink' :
+                    'bg-sora-border'
                   }`}
                 />
               ))}
@@ -79,17 +74,26 @@ export default function LiveSummary({ applicantName, municipality, droneName, re
       </div>
 
       {/* Mobile bottom bar */}
-      <div className="lg:hidden fixed bottom-16 left-0 right-0 bg-[#0f0f17]/95 backdrop-blur-sm border-t border-[#1a1a2e] px-4 py-2 z-40">
+      <div className="lg:hidden fixed bottom-16 left-0 right-0 bg-sora-bg/95 backdrop-blur-sm border-t border-sora-border px-4 py-2 z-40">
         <div className="flex items-center justify-between text-xs">
           <div className="flex items-center gap-3">
             <span className={`font-bold text-lg ${sailColor(results.sail)}`}>SAIL {results.sailRoman || '—'}</span>
-            <span className="text-gray-500">|</span>
-            <span className="text-gray-400">GRC <span className="text-[#ec4899] font-bold">{results.finalGrc || '—'}</span></span>
-            <span className="text-gray-400">ARC <span className="text-[#7c3aed] font-bold">{results.residualArc || '—'}</span></span>
+            <span className="text-sora-text-dim">|</span>
+            <span className="text-sora-text-muted">GRC <span className="text-sora-pink font-bold">{results.finalGrc || '—'}</span></span>
+            <span className="text-sora-text-muted">ARC <span className="text-sora-purple font-bold">{results.residualArc || '—'}</span></span>
           </div>
-          <div className="text-gray-500 truncate max-w-[120px]">{municipality || droneName || ''}</div>
+          <div className="text-sora-text-dim truncate max-w-[120px]">{matchedScenario?.id || municipality || ''}</div>
         </div>
       </div>
     </>
+  );
+}
+
+function MetricRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+  return (
+    <div>
+      <p className="text-sora-text-dim text-xs">{label}</p>
+      <p className={`text-sm font-medium truncate ${highlight ? 'text-sora-purple' : 'text-sora-text'}`}>{value || '—'}</p>
+    </div>
   );
 }
