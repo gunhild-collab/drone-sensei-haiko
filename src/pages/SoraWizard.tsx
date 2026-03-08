@@ -185,8 +185,6 @@ export default function SoraWizard() {
                 {flightDate && ` · ${format(parseISO(flightDate), 'dd/MM/yyyy')}`}
                 {timeFrom && timeTo && ` · ${timeFrom}–${timeTo}`}
               </p>
-                {timeFrom && timeTo && ` · ${timeFrom}–${timeTo}`}
-              </p>
             </div>
           </div>
           <div className="text-sm text-sora-text-dim hidden md:flex items-center gap-3">
