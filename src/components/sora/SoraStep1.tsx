@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
-import { Info, Search, MapPin, X, ExternalLink } from "lucide-react";
+import { Info, Search, MapPin, X, ExternalLink, FileText, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { SoraInputs } from "@/lib/soraCalculations";
 import { kommuner } from "@/data/kommuner";
+import { USE_CASES, TYPE_COLORS, PRIORITY_COLORS, UseCaseRecord } from "@/data/useCaseData";
 
 interface Props {
   inputs: SoraInputs;
@@ -110,6 +111,10 @@ function InfoTooltip({ children }: { children: React.ReactNode }) {
 }
 
 export default function SoraStep1({ inputs, onChange }: Props) {
+  const [showUseCaseSelector, setShowUseCaseSelector] = useState(false);
+  const [useCaseFilter, setUseCaseFilter] = useState('');
+  const [selectedUseCase, setSelectedUseCase] = useState<UseCaseRecord | null>(null);
+
   const [drones, setDrones] = useState<DronePlatform[]>([]);
   const [selectedDrone, setSelectedDrone] = useState<DronePlatform | null>(null);
   const [showDensityLookup, setShowDensityLookup] = useState(false);
@@ -121,6 +126,26 @@ export default function SoraStep1({ inputs, onChange }: Props) {
       if (data) setDrones(data as unknown as DronePlatform[]);
     });
   }, []);
+
+  const filteredUseCases = useMemo(() => {
+    if (!useCaseFilter.trim()) return USE_CASES;
+    const q = useCaseFilter.toLowerCase();
+    return USE_CASES.filter(uc =>
+      uc.name.toLowerCase().includes(q) ||
+      uc.id.toLowerCase().includes(q) ||
+      uc.department.toLowerCase().includes(q) ||
+      uc.type.toLowerCase().includes(q)
+    );
+  }, [useCaseFilter]);
+
+  const handleUseCaseSelect = (uc: UseCaseRecord) => {
+    setSelectedUseCase(uc);
+    onChange({
+      ...uc.soraInputs,
+      droneName: inputs.droneName, // keep user's drone selection
+    } as Partial<SoraInputs>);
+    setShowUseCaseSelector(false);
+  };
 
   const filteredKommuner = useMemo(() => {
     if (!kommuneSearch.trim()) return kommuner.slice(0, 20);
@@ -161,6 +186,69 @@ export default function SoraStep1({ inputs, onChange }: Props) {
       <div>
         <h2 className="text-2xl font-bold text-white mb-1">Drone & operasjonsdata</h2>
         <p className="text-gray-400 text-sm">Velg drone fra databasen eller fyll inn manuelt.</p>
+      </div>
+
+      {/* Use Case Quick-Fill */}
+      <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg p-4">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <FileText className="w-4 h-4 text-[#7c3aed]" />
+            <span className="text-sm font-medium text-white">Forhåndsdefinerte brukstilfeller</span>
+            <span className="text-xs text-gray-500">(30 kommunale UC-er med SORA-parametere)</span>
+          </div>
+          <button
+            onClick={() => setShowUseCaseSelector(!showUseCaseSelector)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#7c3aed]/20 text-[#7c3aed] hover:bg-[#7c3aed]/30 border border-[#7c3aed]/30 transition-colors text-xs font-medium"
+          >
+            {selectedUseCase ? selectedUseCase.id : 'Velg UC'} <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showUseCaseSelector ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+
+        {selectedUseCase && (
+          <div className="flex items-center gap-2 flex-wrap text-xs mt-1">
+            <span className="text-white font-medium">{selectedUseCase.id}: {selectedUseCase.name}</span>
+            <span className={`px-2 py-0.5 rounded-full ${TYPE_COLORS[selectedUseCase.type]}`}>{selectedUseCase.type}</span>
+            <span className={`px-2 py-0.5 rounded-full ${PRIORITY_COLORS[selectedUseCase.priority]}`}>{selectedUseCase.priority}</span>
+            <span className="text-gray-500">SAIL {selectedUseCase.sailRoman} | GRC {selectedUseCase.intrinsicGrc} | {selectedUseCase.arc}</span>
+            <button onClick={() => { setSelectedUseCase(null); }} className="text-gray-500 hover:text-white ml-auto">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        {showUseCaseSelector && (
+          <div className="mt-3 space-y-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+              <input
+                className={`${inputClass} pl-10 text-sm`}
+                placeholder="Søk etter UC-ID, navn, avdeling eller type..."
+                value={useCaseFilter}
+                onChange={e => setUseCaseFilter(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="max-h-64 overflow-y-auto space-y-1 scrollbar-thin">
+              {filteredUseCases.map(uc => (
+                <button
+                  key={uc.id}
+                  onClick={() => handleUseCaseSelect(uc)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors text-left ${
+                    selectedUseCase?.id === uc.id
+                      ? 'bg-[#7c3aed]/20 border border-[#7c3aed]/50'
+                      : 'bg-[#0f0f17] hover:bg-[#222238] border border-transparent'
+                  }`}
+                >
+                  <span className="text-[#7c3aed] font-mono font-bold text-xs w-14 shrink-0">{uc.id}</span>
+                  <span className="text-white flex-1 truncate">{uc.name}</span>
+                  <span className={`px-1.5 py-0.5 rounded text-[10px] ${TYPE_COLORS[uc.type]}`}>{uc.type}</span>
+                  <span className="text-gray-500 text-xs w-12 text-right">SAIL {uc.sailRoman}</span>
+                  <span className={`px-1.5 py-0.5 rounded text-[10px] ${PRIORITY_COLORS[uc.priority]}`}>{uc.priority}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
