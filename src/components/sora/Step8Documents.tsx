@@ -142,8 +142,8 @@ export default function Step8Documents({ scenario }: Props) {
 
       {/* SECTION 1 — Submission */}
       <section className="space-y-3">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-sora-text-dim">Søknad og innsending</h3>
-        <div className="bg-sora-surface border border-sora-border rounded-xl p-5">
+        <h3 className="haiko-label">Søknad og innsending</h3>
+        <div className="haiko-card p-5">
           <p className="text-sora-text font-semibold text-sm">{submission.title}</p>
           <p className="text-sora-text-muted text-xs mt-1">{submission.description}</p>
           <div className="flex flex-wrap gap-2 mt-4">
