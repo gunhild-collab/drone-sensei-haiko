@@ -141,8 +141,8 @@ export default function StepOperationsManual({
   const sec5Done = t('preflight').trim().length > 0;
   const sec7Done = t('pilotName').trim().length > 0;
 
-  const inputCls = "w-full bg-sora-bg border border-sora-border rounded-lg px-3 py-2.5 text-sm text-sora-text placeholder:text-sora-text-dim/50 focus:outline-none focus:ring-1 focus:ring-sora-purple focus:border-sora-purple";
-  const textareaCls = `${inputCls} resize-y min-h-[80px]`;
+  const inputCls = "haiko-input w-full";
+  const textareaCls = "haiko-input w-full resize-y min-h-[80px]";
 
   const handleGenerate = () => {
     setGenerating(true);
