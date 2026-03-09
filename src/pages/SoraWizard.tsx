@@ -149,7 +149,7 @@ export default function SoraWizard() {
   const handleFlightAreaUpdate = useCallback((data: FlightAreaData) => {
     setFlightAreaData(data);
     updateInputs({
-      operationType: data.operationType,
+      operationType: data.operationType || 'VLOS',
       populationDensity: data.populationDensityClass,
       airspaceClass: data.airspaceClass,
     });
