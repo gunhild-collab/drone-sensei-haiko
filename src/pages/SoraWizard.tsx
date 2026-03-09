@@ -111,12 +111,36 @@ export default function SoraWizard() {
     };
   }, [inputs, mitigations]);
 
-  const results = useMemo(() => calculateAll(derivedInputs), [derivedInputs]);
+  // Map populationDensity from legacy "sparsely" to new "sparse"
+  const popMap: Record<string, string> = { sparsely: 'sparse', controlled: 'controlled', populated: 'populated', gathering: 'gathering' };
 
-  const bestScenarioId = useMemo(() => {
-    if (!results.sailRoman || !derivedInputs.operationType) return null;
-    return matchScenario(results.sailRoman, derivedInputs.operationType, derivedInputs.mtom, selectedDrone?.categoryClass || '', derivedInputs.populationDensity);
-  }, [results.sailRoman, derivedInputs, selectedDrone]);
+  const soraResult = useMemo(() => soraCalculate({
+    mtom_kg: derivedInputs.mtom,
+    characteristic_dimension: derivedInputs.characteristicDimension,
+    max_speed_ms: selectedDrone?.maxSpeed ?? 25,
+    operationType: derivedInputs.operationType,
+    populationDensity: popMap[derivedInputs.populationDensity] || derivedInputs.populationDensity,
+    altitude_m: derivedInputs.maxAltitude,
+    nearControlledAirspace: derivedInputs.nearAirport,
+    m1Reduction: Math.abs(derivedInputs.m1),
+    m2Parachute: derivedInputs.m2 === -1,
+    c_class: selectedDrone?.categoryClass || 'none',
+  }), [derivedInputs, selectedDrone]);
+
+  // Map soraCalculate output back to SoraResults for child components
+  const ROMAN_TO_NUM: Record<string, number> = { I: 1, II: 2, III: 3, IV: 4, V: 5, VI: 6 };
+  const results: SoraResults = useMemo(() => ({
+    sizeClass: soraResult.droneClass as SoraResults['sizeClass'],
+    intrinsicGrc: soraResult.intrinsicGRC,
+    finalGrc: soraResult.finalGRC,
+    initialArc: `ARC-${soraResult.arc}` as SoraResults['initialArc'],
+    residualArc: `ARC-${soraResult.arc}` as SoraResults['residualArc'],
+    sail: ROMAN_TO_NUM[soraResult.sail] || 1,
+    sailRoman: soraResult.sail as SoraResults['sailRoman'],
+    scenario: soraResult.scenario,
+  }), [soraResult]);
+
+  const bestScenarioId = soraResult.scenario;
 
   const bestScenario: PdraScenario | null = useMemo(() => {
     if (!bestScenarioId) return null;
