@@ -92,12 +92,12 @@ function SectionCard({ title, index, complete, children }: { title: string; inde
 
 function PreviewRow({ label, value, missing }: { label: string; value: string; missing?: boolean }) {
   return (
-    <div className="flex gap-2 text-sm">
-      <span className="font-medium text-gray-500 min-w-[180px]">{label}:</span>
+    <div className="flex gap-2 text-sm font-sora">
+      <span className="font-medium text-sora-text-dim min-w-[180px]">{label}:</span>
       {missing ? (
-        <span className="text-red-400 border-b border-red-400 border-dashed italic">Ikke utfylt</span>
+        <span className="text-sora-pink border-b border-sora-pink border-dashed italic">Ikke utfylt</span>
       ) : (
-        <span className="text-gray-900">{value}</span>
+        <span className="text-sora-text">{value}</span>
       )}
     </div>
   );
