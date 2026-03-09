@@ -48,7 +48,7 @@ export default function ContactHaiko({ prominent }: Props) {
               href="https://haiko.no"
               target="_blank"
               rel="noopener"
-              className="mt-5 w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-sora-purple text-sora-text font-medium text-sm hover:opacity-90 transition-all"
+              className="mt-5 w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-gradient-to-r from-sora-pink to-sora-purple text-white font-medium text-sm hover:opacity-90 transition-all"
             >
               Besøk haiko.no <ExternalLink className="w-4 h-4" />
             </a>

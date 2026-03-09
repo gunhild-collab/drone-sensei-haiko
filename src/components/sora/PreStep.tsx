@@ -126,7 +126,7 @@ export default function PreStep({
           <button
             onClick={onContinue}
             disabled={!canContinue}
-            className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-sora-purple text-sora-text font-semibold hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-all mt-2"
+            className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-sora-pink to-sora-purple text-white font-semibold hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-all mt-2"
           >
             Start veiviseren <ArrowRight className="w-4 h-4" />
           </button>
