@@ -5,7 +5,7 @@ import "leaflet/dist/leaflet.css";
 import "leaflet-draw";
 import "leaflet-draw/dist/leaflet.draw.css";
 import { DroneSpec } from "@/data/droneDatabase";
-import { queryLandUseInPolygon, expandPolygonByGrb, PopulationDensityClass, LandUseResult } from "@/lib/overpassLandUse";
+import { queryWorldPopDensity, expandPolygonByGrb, PopulationDensityClass, WorldPopResult } from "@/lib/worldPopDensity";
 
 interface NominatimResult {
   place_id: number;
@@ -40,7 +40,7 @@ export interface FlightAreaData {
   populationDensityClass: PopulationDensityClass;
   airspaceClass: 'uncontrolled_low' | 'uncontrolled_high' | 'class_e' | 'controlled';
   flightDescription: string;
-  landUseResult: LandUseResult | null;
+  worldPopResult: WorldPopResult | null;
   densityOverridden: boolean;
 }
 
@@ -116,9 +116,10 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
   const takeoffMarkerRef = useRef<L.Marker | null>(null);
   const landingMarkerRef = useRef<L.Marker | null>(null);
   const [localData, setLocalData] = useState<FlightAreaData | null>(flightAreaData);
-  const [queryingLandUse, setQueryingLandUse] = useState(false);
+  const [queryingDensity, setQueryingDensity] = useState(false);
   const [overrideOpen, setOverrideOpen] = useState(false);
   const [manualRequired, setManualRequired] = useState(false);
+  const [highDensityValue, setHighDensityValue] = useState<number | null>(null);
 
   // Address autocomplete state
   const [addressQuery, setAddressQuery] = useState('');
@@ -289,7 +290,7 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
     removeBufferLayers(map);
     drawBuffers(localData.polygon, map);
     // Re-query land use with updated GRB
-    runLandUseQuery(localData.polygon);
+    runDensityQuery(localData.polygon);
   }, [drone, maxAltitude]);
 
   const processPolygon = useCallback(async (latlngs: L.LatLng[], map: L.Map) => {
@@ -307,51 +308,51 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
     }
     area = Math.abs(area) * 6378137 * 6378137 / 2 * Math.PI / 180 / 1e6;
 
-    // Draw buffers immediately
-    drawBuffers(latlngs, map);
-
     const initialData: FlightAreaData = {
       polygon: latlngs,
       takeoffPoint: takeoffMarkerRef.current?.getLatLng() || null,
       landingPoint: landingMarkerRef.current?.getLatLng() || null,
       areaKm2: Math.round(area * 1000) / 1000,
       diagonalM: Math.round(diagonalMeters),
-      operationType: localData?.operationType || null, // User must select manually
+      operationType: localData?.operationType || null,
       grbMeters: Math.round(grbDistance * 10) / 10,
       cvMeters: Math.round(cvDistance),
       populationDensityClass: 'sparsely',
       airspaceClass: 'uncontrolled_low',
       flightDescription: `Flygeområde i ${municipality}, ${area.toFixed(3)} km²`,
-      landUseResult: null,
+      worldPopResult: null,
       densityOverridden: false,
     };
     setLocalData(initialData);
     setManualRequired(false);
+    setHighDensityValue(null);
     onUpdate(initialData);
 
-    // Query Overpass
-    await runLandUseQuery(latlngs, initialData);
+    // Query WorldPop
+    await runDensityQuery(latlngs, initialData);
   }, [municipality, drone, grbDistance, cvDistance, onUpdate, localData?.operationType]);
 
-  const runLandUseQuery = useCallback(async (latlngs: L.LatLng[], baseData?: FlightAreaData) => {
-    setQueryingLandUse(true);
+  const runDensityQuery = useCallback(async (latlngs: L.LatLng[], baseData?: FlightAreaData) => {
+    setQueryingDensity(true);
     setManualRequired(false);
+    setHighDensityValue(null);
     try {
-      const grbExpanded = expandPolygonByGrb(latlngs, grbDistance);
-      const result = await queryLandUseInPolygon(grbExpanded);
-
+      const result = await queryWorldPopDensity(latlngs);
       const current = baseData || localData;
       if (!current) return;
 
-      // If query failed or returned null class → trigger manual classification
-      if (result.detectedClass === null) {
+      if (result.queryFailed || (result.density === null && !result.needsManualGathering)) {
         setManualRequired(true);
-        const updated: FlightAreaData = {
-          ...current,
-          polygon: latlngs,
-          landUseResult: result,
-          // Keep current class but mark as needing manual override
-        };
+        const updated: FlightAreaData = { ...current, polygon: latlngs, worldPopResult: result };
+        setLocalData(updated);
+        onUpdate(updated);
+        return;
+      }
+
+      if (result.needsManualGathering) {
+        setHighDensityValue(result.density);
+        setManualRequired(true);
+        const updated: FlightAreaData = { ...current, polygon: latlngs, worldPopResult: result };
         setLocalData(updated);
         onUpdate(updated);
         return;
@@ -360,23 +361,22 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
       const updated: FlightAreaData = {
         ...current,
         polygon: latlngs,
-        populationDensityClass: current.densityOverridden ? current.populationDensityClass : result.detectedClass,
-        landUseResult: result,
+        populationDensityClass: current.densityOverridden ? current.populationDensityClass : result.detectedClass!,
+        worldPopResult: result,
       };
       setLocalData(updated);
       onUpdate(updated);
 
-      // Draw density overlay on map
       if (mapRef.current) {
-        drawDensityOverlay(latlngs, result.detectedClass, mapRef.current);
+        drawDensityOverlay(latlngs, updated.populationDensityClass, mapRef.current);
       }
     } catch (err) {
-      console.warn('Land use query failed:', err);
+      console.warn('WorldPop query failed:', err);
       setManualRequired(true);
     } finally {
-      setQueryingLandUse(false);
+      setQueryingDensity(false);
     }
-  }, [grbDistance, localData, onUpdate]);
+  }, [localData, onUpdate]);
 
   const drawBuffers = (latlngs: L.LatLng[], map: L.Map) => {
     // GRB buffer
@@ -536,17 +536,22 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
 
       {/* Density status bar — always visible after polygon */}
       {localData?.polygon && (
-        <div className="bg-sora-light border-l-[3px] border-sora-purple rounded-lg px-4 py-2.5 text-[13px] font-sora text-sora-text flex items-center gap-2">
-          <Info className="w-4 h-4 text-sora-purple shrink-0" strokeWidth={1.5} />
-          {queryingLandUse ? (
-            <span className="flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin text-sora-purple" /> Henter befolkningstetthet fra Overpass API...</span>
-          ) : localData.landUseResult && !localData.landUseResult.queryFailed && localData.landUseResult.detectedClass ? (
-            <span>Befolkningstetthet: <strong>{DENSITY_LABELS[localData.populationDensityClass]}</strong> (hentet fra Overpass){localData.densityOverridden && ' — manuelt overstyrt'}</span>
-          ) : manualRequired || (localData.landUseResult?.queryFailed) ? (
-            <span className="text-sora-danger">Befolkningstetthet: Ikke detektert — velg manuelt nedenfor</span>
-          ) : (
-            <span>Befolkningstetthet: <strong>{DENSITY_LABELS[localData.populationDensityClass]}</strong></span>
-          )}
+        <div className="bg-sora-light border-l-[3px] border-sora-purple rounded-lg px-4 py-2.5 text-[13px] font-sora text-sora-text space-y-1">
+          <div className="flex items-center gap-2">
+            <Info className="w-4 h-4 text-sora-purple shrink-0" strokeWidth={1.5} />
+            {queryingDensity ? (
+              <span className="flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin text-sora-purple" /> Henter befolkningstetthet fra WorldPop...</span>
+            ) : localData.worldPopResult && !localData.worldPopResult.queryFailed && localData.worldPopResult.detectedClass ? (
+              <span>Befolkningstetthet: ca. <strong>{Math.round(localData.worldPopResult.density!)} p/km²</strong> → <strong>{DENSITY_LABELS[localData.populationDensityClass]}</strong> (WorldPop 2020){localData.densityOverridden && ' — manuelt overstyrt'}</span>
+            ) : manualRequired ? (
+              <span className="text-sora-danger">{highDensityValue ? `Høy tetthet detektert (${Math.round(highDensityValue)} p/km²). Velg kategori nedenfor.` : 'Kunne ikke hente data automatisk — velg manuelt nedenfor'}</span>
+            ) : (
+              <span>Befolkningstetthet: <strong>{DENSITY_LABELS[localData.populationDensityClass]}</strong></span>
+            )}
+          </div>
+          <div className="ml-6">
+            <a href="https://experience.arcgis.com/experience/b00a6ce43d1943959d21bc957de265f4" target="_blank" rel="noopener noreferrer" className="text-sora-purple hover:underline text-xs">Verifiser mot EASA-kart ↗</a>
+          </div>
         </div>
       )}
 
@@ -593,17 +598,23 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
         </div>
       )}
 
-      {(manualRequired || (localData?.landUseResult?.queryFailed)) && !localData?.densityOverridden && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
-          <p className="text-amber-700 text-sm font-semibold flex items-center gap-2 mb-2">
-            <AlertTriangle className="w-4 h-4" strokeWidth={1.5} /> Kunne ikke hente befolkningsdata automatisk. Velg tetthetsklasse manuelt:
+      {manualRequired && !localData?.densityOverridden && (
+        <div className="bg-sora-surface border border-sora-border rounded-lg px-4 py-3">
+          <p className="text-sora-text text-sm font-semibold flex items-center gap-2 mb-2">
+            <AlertTriangle className="w-4 h-4 text-sora-warning" strokeWidth={1.5} />
+            {highDensityValue
+              ? `Høy tetthet detektert (${Math.round(highDensityValue)} p/km²). Er dette en permanent bosetting eller et arrangement med folkemasse?`
+              : 'Kunne ikke hente befolkningsdata automatisk. Velg tetthetsklasse manuelt:'}
           </p>
           <div className="flex flex-wrap gap-2">
-            {(Object.keys(DENSITY_LABELS) as PopulationDensityClass[]).map(cls => (
+            {(highDensityValue
+              ? (['populated', 'gathering'] as PopulationDensityClass[])
+              : (Object.keys(DENSITY_LABELS) as PopulationDensityClass[])
+            ).map(cls => (
               <button
                 key={cls}
                 onClick={() => handleDensityOverride(cls)}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm bg-white border border-sora-border text-sora-text hover:bg-sora-light transition-colors"
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm bg-sora-surface border border-sora-border text-sora-text hover:bg-sora-surface-hover transition-colors"
               >
                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: DENSITY_COLORS[cls] }} />
                 {DENSITY_LABELS[cls]}
@@ -634,10 +645,10 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
                   Befolkningstetthet i flygeområdet: {DENSITY_LABELS[localData.populationDensityClass]}
                 </p>
                 <p className="text-sora-text-dim text-xs">
-                  {queryingLandUse ? (
-                    <span className="flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Analyserer arealbruk via Overpass API...</span>
-                  ) : localData.landUseResult ? (
-                    <>Klassifisert fra OSM-data ({localData.landUseResult.rawTags.slice(0, 4).join(', ')}{localData.landUseResult.rawTags.length > 4 ? '...' : ''}) · {localData.landUseResult.elementCount} elementer · {localData.landUseResult.queryTime}ms</>
+                  {queryingDensity ? (
+                    <span className="flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Henter data fra WorldPop...</span>
+                  ) : localData.worldPopResult?.density != null ? (
+                    <>ca. {Math.round(localData.worldPopResult.density)} p/km² · WorldPop 2020 · {localData.worldPopResult.queryTime}ms</>
                   ) : (
                     'Tegn polygon for å analysere'
                   )}
@@ -702,19 +713,11 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
             <MetricCard label="Maks høyde" value={`${maxAltitude} m AGL`} />
           </div>
 
-          {/* Detected tags detail */}
-          {localData.landUseResult && localData.landUseResult.rawTags.length > 0 && (
-            <div className="bg-sora-surface border border-sora-border rounded-lg p-3">
-              <p className="text-xs text-sora-text-dim mb-1">Detekterte OSM-data i bakkerisikobufferen:</p>
-              <div className="flex flex-wrap gap-1">
-                {localData.landUseResult.rawTags.map((tag, i) => (
-                  <span key={i} className="text-xs bg-sora-bg px-2 py-0.5 rounded text-sora-text-muted border border-sora-border">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* EASA verification link */}
+          <div className="bg-sora-surface border border-sora-border rounded-lg p-3 flex items-center gap-2">
+            <Info className="w-4 h-4 text-sora-purple shrink-0" />
+            <a href="https://experience.arcgis.com/experience/b00a6ce43d1943959d21bc957de265f4" target="_blank" rel="noopener noreferrer" className="text-sora-purple hover:underline text-xs">Verifiser befolkningstetthet mot EASA-kart ↗</a>
+          </div>
         </div>
       )}
     </div>
