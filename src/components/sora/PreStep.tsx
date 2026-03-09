@@ -80,7 +80,7 @@ export default function PreStep({
                   {selectedDate ? format(selectedDate, 'dd/MM/yyyy') : 'Velg dato'}
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 bg-sora-surface border-sora-border" align="start">
+              <PopoverContent className="w-auto p-0 bg-sora-surface border-sora-border sora-calendar" align="start">
                 <Calendar
                   mode="single"
                   selected={selectedDate}
@@ -99,10 +99,11 @@ export default function PreStep({
                 <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sora-text pointer-events-none" />
                 <input
                   type="time"
-                  className={cn(inputClass, "pl-10 [&::-webkit-calendar-picker-indicator]:invert")}
+                  step="60"
+                  style={{ colorScheme: 'dark' }}
+                  className={cn(inputClass, "pl-10")}
                   value={timeFrom}
                   onChange={e => onChangeTimeFrom(e.target.value)}
-                  placeholder="TT:MM"
                 />
               </div>
             </div>
@@ -112,10 +113,11 @@ export default function PreStep({
                 <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sora-text pointer-events-none" />
                 <input
                   type="time"
-                  className={cn(inputClass, "pl-10 [&::-webkit-calendar-picker-indicator]:invert")}
+                  step="60"
+                  style={{ colorScheme: 'dark' }}
+                  className={cn(inputClass, "pl-10")}
                   value={timeTo}
                   onChange={e => onChangeTimeTo(e.target.value)}
-                  placeholder="TT:MM"
                 />
               </div>
             </div>

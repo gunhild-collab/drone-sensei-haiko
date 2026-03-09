@@ -52,7 +52,7 @@ export default function SoraStep3({ inputs, onChange }: Props) {
           <option value="class_e">Klasse E — Delvis kontrollert, typisk mellom 300–3000 m</option>
           <option value="controlled">Kontrollert luftrom (C/D/A-B) — Nær flyplasser, krever ATC-tillatelse</option>
         </select>
-        <p className="text-xs text-gray-500 mt-1.5">Usikker? De fleste droneoperasjoner under 120 m utenfor flyplass-soner er i <span className="text-gray-300">Klasse G lav høyde</span>. Sjekk luftromskart på <a href="https://luftrom.info" target="_blank" rel="noopener noreferrer" className="text-[#7c3aed] hover:underline">luftrom.info</a> eller <a href="https://ninox.no" target="_blank" rel="noopener noreferrer" className="text-[#7c3aed] hover:underline">Ninox</a>.</p>
+        <p className="text-xs text-gray-500 mt-1.5">Usikker? De fleste droneoperasjoner under 120 m utenfor flyplass-soner er i <span className="text-gray-300">Klasse G lav høyde</span>. Sjekk luftromskart på <a href="https://operatorportal.ninoxdrone.no/" target="_blank" rel="noopener noreferrer" className="text-[#7c3aed] hover:underline">Ninox</a>.</p>
       </div>
 
       {/* Initial ARC */}

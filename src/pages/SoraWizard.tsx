@@ -7,7 +7,7 @@ import { SoraInputs, calculateAll, matchScenario } from "@/lib/soraCalculations"
 import { DroneSpec } from "@/data/droneDatabase";
 import { PDRA_SCENARIOS, PdraScenario } from "@/data/pdraScenarios";
 import PreStep from "@/components/sora/PreStep";
-import Step1Municipality, { MunicipalityData } from "@/components/sora/Step1Municipality";
+import { MunicipalityData } from "@/components/sora/Step1Municipality";
 import Step2FlightArea, { FlightAreaData } from "@/components/sora/Step2FlightArea";
 import Step3Drone from "@/components/sora/Step3Drone";
 import Step4Mitigations, { MitigationState } from "@/components/sora/Step4Mitigations";
@@ -19,14 +19,13 @@ import LiveSummary from "@/components/sora/LiveSummary";
 import ContactHaiko from "@/components/sora/ContactHaiko";
 
 const STEPS = [
-  { label: 'Kommune', short: '1' },
-  { label: 'Flygeområde', short: '2' },
-  { label: 'Drone', short: '3' },
-  { label: 'Mitigrasjoner', short: '4' },
-  { label: 'Scenario', short: '5' },
-  { label: 'OSO', short: '6' },
-  { label: 'Forklaring', short: '7' },
-  { label: 'Dokumenter', short: '8' },
+  { label: 'Adresse & Kart', short: '1' },
+  { label: 'Drone', short: '2' },
+  { label: 'Mitigrasjoner', short: '3' },
+  { label: 'Scenario', short: '4' },
+  { label: 'OSO', short: '5' },
+  { label: 'Forklaring', short: '6' },
+  { label: 'Dokumenter', short: '7' },
 ];
 
 const defaultInputs: SoraInputs = {
@@ -252,13 +251,6 @@ export default function SoraWizard() {
               transition={{ duration: 0.2 }}
             >
               {step === 0 && (
-                <Step1Municipality
-                  municipality={municipality}
-                  municipalityData={municipalityData}
-                  onSelect={handleMunicipalitySelect}
-                />
-              )}
-              {step === 1 && (
                 <Step2FlightArea
                   municipality={municipality || 'Trondheim'}
                   municipalityDensity={0}
@@ -266,22 +258,24 @@ export default function SoraWizard() {
                   flightAreaData={flightAreaData}
                   maxAltitude={derivedInputs.maxAltitude}
                   onUpdate={handleFlightAreaUpdate}
+                  onMunicipalitySelect={handleMunicipalitySelect}
+                  initialCoords={municipalityData ? { lat: municipalityData.lat, lon: municipalityData.lon } : null}
                 />
               )}
-              {step === 2 && (
+              {step === 1 && (
                 <Step3Drone
                   selectedDrone={selectedDrone}
                   onSelect={handleDroneSelect}
                 />
               )}
-              {step === 3 && (
+              {step === 2 && (
                 <Step4Mitigations
                   mitigations={mitigations}
                   isBVLOS={derivedInputs.operationType === 'BVLOS'}
                   onChange={updateMitigations}
                 />
               )}
-              {step === 4 && (
+              {step === 3 && (
                 <Step5ScenarioForm
                   matchedScenario={bestScenario}
                   sailLevel={results.sail}
@@ -294,7 +288,7 @@ export default function SoraWizard() {
                   onChange={updateScenarioForm}
                 />
               )}
-              {step === 5 && (
+              {step === 4 && (
                 <Step6OSO
                   sail={results.sail}
                   osoTexts={osoTexts}
@@ -307,13 +301,13 @@ export default function SoraWizard() {
                   flightAreaDescription={flightAreaData?.flightDescription || ''}
                 />
               )}
-              {step === 6 && (
+              {step === 5 && (
                 <Step7Explanation
                   sailLevel={results.sail}
                   matchedScenario={bestScenario}
                 />
               )}
-              {step === 7 && (
+              {step === 6 && (
                 <Step8Documents
                   inputs={derivedInputs}
                   results={results}
@@ -354,7 +348,7 @@ export default function SoraWizard() {
       </div>
 
       {/* Contact Haiko */}
-      <ContactHaiko prominent={step === 5 || step === 7} />
+      <ContactHaiko prominent={step === 4 || step === 6} />
     </div>
   );
 }
