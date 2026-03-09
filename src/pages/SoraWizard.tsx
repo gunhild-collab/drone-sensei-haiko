@@ -148,9 +148,7 @@ export default function SoraWizard() {
   const handleMunicipalitySelect = useCallback((name: string, data: MunicipalityData) => {
     setMunicipality(name);
     setMunicipalityData(data);
-    // NOTE: Municipality density is NOT used for GRC. Only for info panel.
-    // Population density for GRC comes from polygon land use analysis (Step 2).
-  }, [updateInputs]);
+  }, []);
 
   const handleDroneSelect = useCallback((drone: DroneSpec) => {
     setSelectedDrone(drone);
@@ -263,7 +261,7 @@ export default function SoraWizard() {
               {step === 1 && (
                 <Step2FlightArea
                   municipality={municipality || 'Trondheim'}
-                  municipalityDensity={municipalityData?.densityPerKm2 || 30}
+                  municipalityDensity={0}
                   drone={selectedDrone}
                   flightAreaData={flightAreaData}
                   maxAltitude={derivedInputs.maxAltitude}
