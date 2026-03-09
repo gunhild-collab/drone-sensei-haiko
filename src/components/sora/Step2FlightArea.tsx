@@ -332,25 +332,27 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
     await runDensityQuery(latlngs, initialData);
   }, [municipality, drone, grbDistance, cvDistance, onUpdate, localData?.operationType]);
 
-  const runLandUseQuery = useCallback(async (latlngs: L.LatLng[], baseData?: FlightAreaData) => {
-    setQueryingLandUse(true);
+  const runDensityQuery = useCallback(async (latlngs: L.LatLng[], baseData?: FlightAreaData) => {
+    setQueryingDensity(true);
     setManualRequired(false);
+    setHighDensityValue(null);
     try {
-      const grbExpanded = expandPolygonByGrb(latlngs, grbDistance);
-      const result = await queryLandUseInPolygon(grbExpanded);
-
+      const result = await queryWorldPopDensity(latlngs);
       const current = baseData || localData;
       if (!current) return;
 
-      // If query failed or returned null class → trigger manual classification
-      if (result.detectedClass === null) {
+      if (result.queryFailed || (result.density === null && !result.needsManualGathering)) {
         setManualRequired(true);
-        const updated: FlightAreaData = {
-          ...current,
-          polygon: latlngs,
-          landUseResult: result,
-          // Keep current class but mark as needing manual override
-        };
+        const updated: FlightAreaData = { ...current, polygon: latlngs, worldPopResult: result };
+        setLocalData(updated);
+        onUpdate(updated);
+        return;
+      }
+
+      if (result.needsManualGathering) {
+        setHighDensityValue(result.density);
+        setManualRequired(true);
+        const updated: FlightAreaData = { ...current, polygon: latlngs, worldPopResult: result };
         setLocalData(updated);
         onUpdate(updated);
         return;
@@ -359,23 +361,22 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
       const updated: FlightAreaData = {
         ...current,
         polygon: latlngs,
-        populationDensityClass: current.densityOverridden ? current.populationDensityClass : result.detectedClass,
-        landUseResult: result,
+        populationDensityClass: current.densityOverridden ? current.populationDensityClass : result.detectedClass!,
+        worldPopResult: result,
       };
       setLocalData(updated);
       onUpdate(updated);
 
-      // Draw density overlay on map
       if (mapRef.current) {
-        drawDensityOverlay(latlngs, result.detectedClass, mapRef.current);
+        drawDensityOverlay(latlngs, updated.populationDensityClass, mapRef.current);
       }
     } catch (err) {
-      console.warn('Land use query failed:', err);
+      console.warn('WorldPop query failed:', err);
       setManualRequired(true);
     } finally {
-      setQueryingLandUse(false);
+      setQueryingDensity(false);
     }
-  }, [grbDistance, localData, onUpdate]);
+  }, [localData, onUpdate]);
 
   const drawBuffers = (latlngs: L.LatLng[], map: L.Map) => {
     // GRB buffer
