@@ -80,7 +80,7 @@ export default function PreStep({
                   {selectedDate ? format(selectedDate, 'dd/MM/yyyy') : 'Velg dato'}
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 bg-sora-surface border-sora-border" align="start">
+              <PopoverContent className="w-auto p-0 bg-sora-surface border-sora-border sora-calendar" align="start">
                 <Calendar
                   mode="single"
                   selected={selectedDate}

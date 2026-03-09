@@ -495,7 +495,7 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
       {localData?.polygon && (
         <div className="bg-sora-surface/50 border border-sora-border rounded-lg px-4 py-2.5 text-xs text-sora-text-dim flex items-start gap-2">
           <Info className="w-4 h-4 text-sora-purple shrink-0 mt-0.5" />
-          <span>Luftrom er basert på forenklet klassifisering. Sjekk alltid <a href="https://ninox.no" target="_blank" rel="noopener noreferrer" className="text-sora-purple hover:underline">Ninox</a> eller <a href="https://luftrom.info" target="_blank" rel="noopener noreferrer" className="text-sora-purple hover:underline">HmSWX</a> for faktisk luftromsklasse.</span>
+          <span>Luftrom er basert på forenklet klassifisering. Sjekk alltid <a href="https://operatorportal.ninoxdrone.no/" target="_blank" rel="noopener noreferrer" className="text-sora-purple hover:underline">Ninox</a> eller <a href="https://norskluftambulanse.no/info-hemswx/" target="_blank" rel="noopener noreferrer" className="text-sora-purple hover:underline">HmSWX</a> for faktisk luftromsklasse.</span>
         </div>
       )}
 
