@@ -351,7 +351,7 @@ export default function StepOperationsManual({
 
       {/* S1 */}
       <div>
-        <h3 className="font-bold text-gray-900 mb-2">1. Operatørinformasjon</h3>
+        <h3 className="font-display font-bold text-sora-text mb-2">1. Operatørinformasjon</h3>
         <PreviewRow label="Operatørnavn" value={applicantName} />
         <PreviewRow label="E-post" value={applicantEmail} />
         <PreviewRow label="Adresse" value={address} />
@@ -359,10 +359,8 @@ export default function StepOperationsManual({
         <PreviewRow label="Sertifikattype" value={pv('certType')} missing={!pv('certType')} />
         <PreviewRow label="Sertifikatnr." value={pv('certNumber')} missing={!pv('certNumber')} />
       </div>
-
-      {/* S2 */}
       <div>
-        <h3 className="font-bold text-gray-900 mb-2">2. Luftfartøy</h3>
+        <h3 className="font-display font-bold text-sora-text mb-2">2. Luftfartøy</h3>
         <PreviewRow label="Modell" value={selectedDrone?.name || derivedInputs.droneName} />
         <PreviewRow label="Produsent" value={selectedDrone?.manufacturer || '—'} />
         <PreviewRow label="MTOM" value={`${derivedInputs.mtom} kg`} />
@@ -371,10 +369,8 @@ export default function StepOperationsManual({
         <PreviewRow label="Klasse" value={selectedDrone?.categoryClass || '—'} />
         <PreviewRow label="Utstyr" value={equipList} />
       </div>
-
-      {/* S3 */}
       <div>
-        <h3 className="font-bold text-gray-900 mb-2">3. Operasjonsområde</h3>
+        <h3 className="font-display font-bold text-sora-text mb-2">3. Operasjonsområde</h3>
         <PreviewRow label="Lokasjon" value={address} />
         <PreviewRow label="Kommune" value={municipality} />
         <PreviewRow label="Takeoff" value={takeoffCoords} />
@@ -384,20 +380,16 @@ export default function StepOperationsManual({
         {pv('opTimeframe') && <PreviewRow label="Tidsrom" value={pv('opTimeframe')} />}
         {pv('opRestrictions') && <PreviewRow label="Restriksjoner" value={pv('opRestrictions')} />}
       </div>
-
-      {/* S4 */}
       <div>
-        <h3 className="font-bold text-gray-900 mb-2">4. Risikovurdering</h3>
+        <h3 className="font-display font-bold text-sora-text mb-2">4. Risikovurdering</h3>
         <PreviewRow label="Intrinsic GRC" value={String(results.intrinsicGrc)} />
         <PreviewRow label="Final GRC" value={String(results.finalGrc)} />
         <PreviewRow label="ARC" value={results.residualArc} />
         <PreviewRow label="SAIL" value={results.sailRoman} />
         <PreviewRow label="Scenario" value={scenario || 'Ingen'} />
       </div>
-
-      {/* S5 - ERP */}
       <div>
-        <h3 className="font-bold text-gray-900 mb-2">5. Nødprosedyrer (ERP)</h3>
+        <h3 className="font-display font-bold text-sora-text mb-2">5. Nødprosedyrer (ERP)</h3>
         <div className="space-y-2">
           <PreviewRow label="Teknisk feil" value={pv('erpTechFail')} missing={!pv('erpTechFail')} />
           {isBVLOS && <PreviewRow label="Komm.tap" value={pv('erpCommLoss')} missing={!pv('erpCommLoss')} />}
@@ -407,49 +399,39 @@ export default function StepOperationsManual({
           {pv('erpLanding') && <PreviewRow label="Nødlanding" value={pv('erpLanding')} />}
         </div>
       </div>
-
-      {/* S6 - Prosedyrer */}
       <div>
-        <h3 className="font-bold text-gray-900 mb-2">6. Operasjonelle prosedyrer</h3>
+        <h3 className="font-display font-bold text-sora-text mb-2">6. Operasjonelle prosedyrer</h3>
         <div className="space-y-2">
           <PreviewRow label="Pre-flight" value={pv('preflight')} missing={!pv('preflight')} />
           {pv('inflight') && <PreviewRow label="Under flygning" value={pv('inflight')} />}
           {pv('postflight') && <PreviewRow label="Post-flight" value={pv('postflight')} />}
         </div>
       </div>
-
-      {/* S7 - Vedlikehold */}
       <div>
-        <h3 className="font-bold text-gray-900 mb-2">7. Vedlikehold</h3>
+        <h3 className="font-display font-bold text-sora-text mb-2">7. Vedlikehold</h3>
         {pv('maintInterval') && <PreviewRow label="Intervall" value={pv('maintInterval')} />}
         {pv('maintResponsible') && <PreviewRow label="Ansvarlig" value={pv('maintResponsible')} />}
         {pv('maintLog') && <PreviewRow label="Logg" value={pv('maintLog')} />}
         {pv('maintLastService') && <PreviewRow label="Siste service" value={pv('maintLastService')} />}
       </div>
-
-      {/* S8 - Kompetanse */}
       <div>
-        <h3 className="font-bold text-gray-900 mb-2">8. Kompetanse og opplæring</h3>
+        <h3 className="font-display font-bold text-sora-text mb-2">8. Kompetanse og opplæring</h3>
         <PreviewRow label="Pilot" value={pv('pilotName')} missing={!pv('pilotName')} />
         {pv('compCert') && <PreviewRow label="Sertifikat" value={pv('compCert')} />}
         {pv('compLastCourse') && <PreviewRow label="Siste kurs" value={pv('compLastCourse')} />}
         {pv('compExtra') && <PreviewRow label="Tillegg" value={pv('compExtra')} />}
       </div>
-
-      {/* Signature */}
-      <div className="border-t border-gray-200 pt-4 mt-6">
-        <p className="text-xs text-gray-500 italic mb-4">
+      <div className="border-t border-sora-border pt-4 mt-6">
+        <p className="text-xs text-sora-text-dim italic mb-4 font-sora">
           Jeg bekrefter at denne operasjonsmanualen er korrekt og at operasjonen vil gjennomføres i henhold til gjeldende regelverk (EU 2019/947 implementert i norsk rett).
         </p>
         <div className="space-y-1">
           <PreviewRow label="Navn" value={applicantName} />
           <PreviewRow label="Dato" value={today} />
-          <p className="text-sm text-gray-600 mt-2">Signatur: ___________________________</p>
+          <p className="text-sm text-sora-text-muted mt-2 font-sora">Signatur: ___________________________</p>
         </div>
       </div>
-
-      {/* Footer */}
-      <div className="text-center text-[10px] text-gray-400 border-t border-gray-100 pt-3 mt-4">
+      <div className="text-center text-[10px] text-sora-text-dim border-t border-sora-border pt-3 mt-4 font-sora">
         Haiko AS — haiko.no — Generert {today}
       </div>
     </div>
