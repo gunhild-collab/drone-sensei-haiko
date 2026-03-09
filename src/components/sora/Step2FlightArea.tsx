@@ -52,6 +52,8 @@ interface Props {
   flightAreaData: FlightAreaData | null;
   maxAltitude: number;
   onUpdate: (data: FlightAreaData) => void;
+  onMunicipalitySelect?: (name: string, data: { name: string; address: string; lat: number; lon: number }) => void;
+  initialCoords?: { lat: number; lon: number } | null;
 }
 
 const DENSITY_COLORS: Record<PopulationDensityClass, string> = {
