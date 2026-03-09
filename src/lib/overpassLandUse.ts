@@ -13,10 +13,6 @@ export interface LandUseResult {
   queryFailed: boolean;
 }
 
-function toOverpassPoly(latlngs: L.LatLng[]): string {
-  return latlngs.map(ll => `${ll.lat} ${ll.lng}`).join(' ');
-}
-
 export function expandPolygonByGrb(latlngs: L.LatLng[], grbMeters: number): L.LatLng[] {
   const center = L.polygon(latlngs).getBounds().getCenter();
   return latlngs.map(ll => {
@@ -28,44 +24,40 @@ export function expandPolygonByGrb(latlngs: L.LatLng[], grbMeters: number): L.La
 }
 
 /**
- * Classify population density using a single Overpass query with three named sets:
- * urban, gathering, rural — then use `out count` for each.
+ * Query Overpass API using bbox from polygon bounds.
+ * Uses the exact query format specified in requirements.
  */
 export async function queryLandUseInPolygon(grbPolygon: L.LatLng[]): Promise<LandUseResult> {
-  const polyStr = toOverpassPoly(grbPolygon);
+  const bounds = L.polygon(grbPolygon).getBounds();
+  const south = bounds.getSouth().toFixed(6);
+  const west = bounds.getWest().toFixed(6);
+  const north = bounds.getNorth().toFixed(6);
+  const east = bounds.getEast().toFixed(6);
+  const bbox = `${south},${west},${north},${east}`;
   const startTime = Date.now();
 
-  // Single combined query with three categories
-  const query = `
-[out:json][timeout:15];
+  const query = `[out:json][timeout:10];
 (
-  way["landuse"~"^(residential|commercial|retail|industrial)$"](poly:"${polyStr}");
-  way["building"~"^(apartments|residential|commercial|retail|office|public|civic)$"](poly:"${polyStr}");
-  node["place"~"^(city|town|village|suburb|city_centre|town_centre|neighbourhood)$"](poly:"${polyStr}");
-  way["amenity"~"^(school|hospital|university|marketplace)$"](poly:"${polyStr}");
-)->.urban;
-
-(
-  way["leisure"~"^(stadium|park|recreation_ground)$"](poly:"${polyStr}");
-  node["leisure"="stadium"](poly:"${polyStr}");
-)->.gathering;
-
-(
-  way["landuse"~"^(farmland|forest|meadow|grass|orchard|vineyard)$"](poly:"${polyStr}");
-  way["natural"~"^(water|wood|scrub|grassland|beach)$"](poly:"${polyStr}");
-)->.rural;
-
-.urban out count;
-.gathering out count;
-.rural out count;
-`;
+  way["landuse"~"residential|commercial|retail|industrial"](${bbox});
+  node["place"~"city|town|village|suburb|quarter"](${bbox});
+  way["amenity"~"school|hospital|stadium"](${bbox});
+  node["leisure"="stadium"](${bbox});
+  way["landuse"~"farmland|forest|meadow|nature_reserve"](${bbox});
+  way["natural"~"water|wetland|wood"](${bbox});
+);
+out count;`;
 
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
+
     const res = await fetch('https://overpass-api.de/api/interpreter', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: 'data=' + encodeURIComponent(query),
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
 
     if (!res.ok) {
       console.warn('Overpass API error:', res.status);
@@ -73,21 +65,65 @@ export async function queryLandUseInPolygon(grbPolygon: L.LatLng[]): Promise<Lan
     }
 
     const data = await res.json();
-    
-    // Parse the three count results
-    // Overpass returns elements array with count objects
+    const totalCount = parseInt(data.elements?.[0]?.tags?.total || '0', 10);
+    const qt = Date.now() - startTime;
+
+    // The single `out count` gives total count but no breakdown.
+    // We need individual counts — run a second pass to classify.
+    // Instead, run separate tagged queries for classification.
+    return await classifyWithDetailedQuery(bbox, qt, startTime);
+  } catch (err) {
+    console.warn('Overpass API fetch failed:', err);
+    return failedResult(Date.now() - startTime);
+  }
+}
+
+async function classifyWithDetailedQuery(bbox: string, _initialTime: number, startTime: number): Promise<LandUseResult> {
+  // Detailed query that returns tags we can classify
+  const query = `[out:json][timeout:10];
+(
+  way["landuse"~"residential|commercial|retail|industrial"](${bbox});
+  node["place"~"city|town|village|suburb|quarter"](${bbox});
+  way["amenity"~"school|hospital|stadium"](${bbox});
+  node["leisure"="stadium"](${bbox});
+)->.urban;
+(
+  node["leisure"="stadium"](${bbox});
+  way["amenity"="stadium"](${bbox});
+)->.gathering;
+(
+  way["landuse"~"farmland|forest|meadow|nature_reserve"](${bbox});
+  way["natural"~"water|wetland|wood"](${bbox});
+)->.rural;
+.urban out count;
+.gathering out count;
+.rural out count;`;
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
+
+    const res = await fetch('https://overpass-api.de/api/interpreter', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'data=' + encodeURIComponent(query),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) return failedResult(Date.now() - startTime);
+
+    const data = await res.json();
     const counts = data.elements || [];
     const urbanCount = parseInt(counts[0]?.tags?.total || '0', 10);
     const gatheringCount = parseInt(counts[1]?.tags?.total || '0', 10);
     const ruralCount = parseInt(counts[2]?.tags?.total || '0', 10);
 
-    const totalCount = urbanCount + gatheringCount + ruralCount;
     const tags: string[] = [];
     if (urbanCount > 0) tags.push(`urban=${urbanCount}`);
     if (gatheringCount > 0) tags.push(`gathering=${gatheringCount}`);
     if (ruralCount > 0) tags.push(`rural=${ruralCount}`);
 
-    // Classify using priority order (highest risk wins)
     const detectedClass = classifyDensity(urbanCount, gatheringCount, ruralCount);
 
     return {
@@ -97,11 +133,11 @@ export async function queryLandUseInPolygon(grbPolygon: L.LatLng[]): Promise<Lan
       ruralCount,
       rawTags: tags,
       queryTime: Date.now() - startTime,
-      elementCount: totalCount,
+      elementCount: urbanCount + gatheringCount + ruralCount,
       queryFailed: false,
     };
   } catch (err) {
-    console.warn('Overpass API fetch failed:', err);
+    console.warn('Overpass detailed query failed:', err);
     return failedResult(Date.now() - startTime);
   }
 }
@@ -111,19 +147,10 @@ function classifyDensity(
   gatheringCount: number,
   ruralCount: number,
 ): PopulationDensityClass | null {
-  // Check for gathering/stadium first (highest risk)
   if (gatheringCount > 0) return 'gathering';
-
-  // Urban/residential/commercial present
   if (urbanCount > 3) return 'populated';
-
-  // Some features but mostly open
   if (urbanCount > 0) return 'sparsely';
-
-  // Open land, farmland, forest, water
   if (ruralCount > 0) return 'controlled';
-
-  // No data found — return null to trigger manual classification
   return null;
 }
 

@@ -471,10 +471,10 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
         <p className="text-sora-text-muted text-sm">Søk etter takeoff-adressen, deretter tegn flygeområdet på kartet.</p>
       </div>
 
-      {/* Address autocomplete search */}
-      <div ref={addressContainerRef} className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sora-text-dim z-10" />
-        {addressLoading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sora-text-dim animate-spin z-10" />}
+      {/* Address autocomplete search — positioned above map */}
+      <div ref={addressContainerRef} className="relative" style={{ zIndex: 1000 }}>
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sora-text-dim" strokeWidth={1.5} />
+        {addressLoading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sora-text-dim animate-spin" />}
         <input
           type="text"
           value={addressQuery}
@@ -484,7 +484,7 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
           className="w-full pl-10 pr-10 py-3 rounded-lg bg-sora-surface border border-sora-border text-sora-text text-sm placeholder:text-sora-text-dim focus:outline-none focus:ring-2 focus:ring-sora-purple transition-colors"
         />
         {addressOpen && addressResults.length > 0 && (
-          <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-sora-surface border border-sora-border rounded-lg max-h-72 overflow-y-auto shadow-xl">
+          <div className="absolute top-full left-0 right-0 mt-1 bg-sora-surface border border-sora-border rounded-lg max-h-72 overflow-y-auto shadow-xl" style={{ zIndex: 999 }}>
             {addressResults.map(r => (
               <button
                 key={r.place_id}
@@ -492,7 +492,7 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
                 className="w-full text-left px-4 py-3 text-sm text-sora-text hover:bg-sora-surface-hover transition-colors border-b border-sora-border last:border-b-0"
               >
                 <div className="flex items-start gap-2">
-                  <MapPin className="w-4 h-4 text-sora-purple shrink-0 mt-0.5" />
+                  <MapPin className="w-4 h-4 text-sora-purple shrink-0 mt-0.5" strokeWidth={1.5} />
                   <span className="leading-tight">{r.display_name}</span>
                 </div>
               </button>
@@ -532,7 +532,23 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
       )}
 
       {/* Map */}
-      <div ref={mapContainerRef} className="w-full h-[450px] rounded-xl border border-sora-border overflow-hidden" />
+      <div ref={mapContainerRef} className="w-full h-[450px] rounded-xl border border-sora-border" style={{ position: 'relative', zIndex: 1 }} />
+
+      {/* Density status bar — always visible after polygon */}
+      {localData?.polygon && (
+        <div className="bg-sora-light border-l-[3px] border-sora-purple rounded-lg px-4 py-2.5 text-[13px] font-sora text-sora-text flex items-center gap-2">
+          <Info className="w-4 h-4 text-sora-purple shrink-0" strokeWidth={1.5} />
+          {queryingLandUse ? (
+            <span className="flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin text-sora-purple" /> Henter befolkningstetthet fra Overpass API...</span>
+          ) : localData.landUseResult && !localData.landUseResult.queryFailed && localData.landUseResult.detectedClass ? (
+            <span>Befolkningstetthet: <strong>{DENSITY_LABELS[localData.populationDensityClass]}</strong> (hentet fra Overpass){localData.densityOverridden && ' — manuelt overstyrt'}</span>
+          ) : manualRequired || (localData.landUseResult?.queryFailed) ? (
+            <span className="text-sora-danger">Befolkningstetthet: Ikke detektert — velg manuelt nedenfor</span>
+          ) : (
+            <span>Befolkningstetthet: <strong>{DENSITY_LABELS[localData.populationDensityClass]}</strong></span>
+          )}
+        </div>
+      )}
 
       {/* VLOS/BVLOS/EVLOS selector — required after polygon is drawn */}
       {localData?.polygon && (
@@ -577,17 +593,17 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
         </div>
       )}
 
-      {manualRequired && !localData?.densityOverridden && (
-        <div className="bg-yellow-500/15 border border-yellow-500/40 rounded-lg px-4 py-3">
-          <p className="text-yellow-400 text-sm font-semibold flex items-center gap-2 mb-2">
-            <AlertTriangle className="w-4 h-4" /> Kunne ikke hente befolkningsdata automatisk. Velg tetthetsklasse manuelt:
+      {(manualRequired || (localData?.landUseResult?.queryFailed)) && !localData?.densityOverridden && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+          <p className="text-amber-700 text-sm font-semibold flex items-center gap-2 mb-2">
+            <AlertTriangle className="w-4 h-4" strokeWidth={1.5} /> Kunne ikke hente befolkningsdata automatisk. Velg tetthetsklasse manuelt:
           </p>
           <div className="flex flex-wrap gap-2">
             {(Object.keys(DENSITY_LABELS) as PopulationDensityClass[]).map(cls => (
               <button
                 key={cls}
                 onClick={() => handleDensityOverride(cls)}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm bg-sora-surface border border-sora-border text-sora-text-muted hover:bg-sora-surface-hover transition-colors"
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm bg-white border border-sora-border text-sora-text hover:bg-sora-light transition-colors"
               >
                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: DENSITY_COLORS[cls] }} />
                 {DENSITY_LABELS[cls]}
