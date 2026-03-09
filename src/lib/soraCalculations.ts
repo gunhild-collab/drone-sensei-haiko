@@ -205,7 +205,23 @@ export const OSO_GROUPS = [
   { name: 'Sikker operasjon (OSO 13–16)', osos: [13, 14, 15, 16] },
 ];
 
-export function getGroupRobustness(sail: number): { name: string; level: string }[] {
+// Legacy alias
+export function sailToRoman(sail: number): string {
+  const map: Record<number, string> = { 1: 'I', 2: 'II', 3: 'III', 4: 'IV', 5: 'V', 6: 'VI' };
+  return map[sail] || String(sail);
+}
+
+// Legacy alias for old ARC calculation
+export function calculateInitialArc(airspaceClass: string): ArcLevel {
+  const map: Record<string, ArcLevel> = {
+    uncontrolled_low: 'ARC-a',
+    uncontrolled_high: 'ARC-b',
+    class_e: 'ARC-c',
+    controlled: 'ARC-d',
+  };
+  return map[airspaceClass] || 'ARC-a';
+}
+
   if (sail <= 2) return OSO_GROUPS.map(g => ({ name: g.name, level: 'Lav' }));
   if (sail <= 4) return OSO_GROUPS.map(g => ({ name: g.name, level: 'Middels' }));
   return OSO_GROUPS.map(g => ({ name: g.name, level: 'Høy' }));

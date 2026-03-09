@@ -39,6 +39,7 @@ const defaultInputs: SoraInputs = {
   populationDensity: 'sparsely',
   m1: 0,
   m2: 0,
+  nearAirport: false,
   airspaceClass: 'uncontrolled_low',
   hasTransponder: false,
   hasAirspaceObservers: false,
