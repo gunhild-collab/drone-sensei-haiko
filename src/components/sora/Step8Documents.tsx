@@ -185,7 +185,7 @@ export default function Step8Documents({ scenario }: Props) {
                   <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded bg-sora-surface-hover text-sora-text-dim">
                     {doc.format}
                   </span>
-                  <Download className="w-4 h-4 text-sora-text-dim group-hover:text-sora-purple transition-colors" />
+                  <Download className="w-5 h-5 text-sora-text-dim group-hover:text-sora-purple transition-colors" strokeWidth={1.5} />
                 </div>
               </a>
             ))}
