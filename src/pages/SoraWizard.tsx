@@ -128,8 +128,22 @@ export default function SoraWizard() {
     );
   }, [results.sailRoman, derivedInputs, selectedDrone]);
 
+  // Create compatible PdraScenario object for child components
+  const bestScenario: PdraScenario | null = useMemo(() => {
+    if (!bestScenarioId) return null;
+    const found = PDRA_SCENARIOS.find(s => s.id === bestScenarioId);
+    if (found) return found;
+    return {
+      id: bestScenarioId,
+      name: bestScenarioId,
+      description: `Matched scenario: ${bestScenarioId}`,
+      conditions: { operationType: [derivedInputs.operationType] as any, populationDensity: [derivedInputs.populationDensity] },
+      sailLevel: results.sailRoman,
+    };
+  }, [bestScenarioId, derivedInputs, results.sailRoman]);
+
   // Determine if OSO step should be shown
-  const osoRequired = !bestScenarioId || results.sail >= 3;
+  const osoRequired = !bestScenario || results.sail >= 3;
 
   const handleMunicipalitySelect = useCallback((name: string, data: MunicipalityData) => {
     setMunicipality(name);
