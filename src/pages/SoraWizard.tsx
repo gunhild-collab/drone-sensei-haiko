@@ -19,14 +19,13 @@ import LiveSummary from "@/components/sora/LiveSummary";
 import ContactHaiko from "@/components/sora/ContactHaiko";
 
 const STEPS = [
-  { label: 'Kommune', short: '1' },
-  { label: 'Flygeområde', short: '2' },
-  { label: 'Drone', short: '3' },
-  { label: 'Mitigrasjoner', short: '4' },
-  { label: 'Scenario', short: '5' },
-  { label: 'OSO', short: '6' },
-  { label: 'Forklaring', short: '7' },
-  { label: 'Dokumenter', short: '8' },
+  { label: 'Adresse & Kart', short: '1' },
+  { label: 'Drone', short: '2' },
+  { label: 'Mitigrasjoner', short: '3' },
+  { label: 'Scenario', short: '4' },
+  { label: 'OSO', short: '5' },
+  { label: 'Forklaring', short: '6' },
+  { label: 'Dokumenter', short: '7' },
 ];
 
 const defaultInputs: SoraInputs = {
