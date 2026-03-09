@@ -53,9 +53,9 @@ function LockedField({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <label className="block text-xs font-medium text-sora-text-muted mb-1">{label}</label>
-      <div className="bg-sora-purple/10 border border-sora-purple/30 rounded-lg px-3 py-2.5 text-sm text-sora-text flex items-center justify-between">
+      <div className="bg-sora-light border-l-2 border-sora-purple rounded-lg px-3 py-2.5 text-sm text-sora-text flex items-center justify-between">
         <span>{value || '—'}</span>
-        <span className="text-[10px] bg-sora-purple/20 text-sora-purple px-2 py-0.5 rounded-full font-medium whitespace-nowrap ml-2">Hentet automatisk</span>
+        <span className="text-[10px] bg-sora-purple/15 text-sora-purple px-2 py-0.5 rounded-full font-medium whitespace-nowrap ml-2">Hentet automatisk</span>
       </div>
     </div>
   );
