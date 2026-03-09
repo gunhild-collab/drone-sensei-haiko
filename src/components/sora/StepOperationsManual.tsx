@@ -52,10 +52,10 @@ function getRequiredFields(opType: string) {
 function LockedField({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-sora-text-muted mb-1">{label}</label>
-      <div className="bg-sora-light border-l-2 border-sora-purple rounded-lg px-3 py-2.5 text-sm text-sora-text flex items-center justify-between">
+      <label className="haiko-label block mb-1">{label}</label>
+      <div className="bg-sora-light border-l-2 border-sora-purple rounded-lg px-3 py-2.5 text-sm text-sora-text font-sora flex items-center justify-between">
         <span>{value || '—'}</span>
-        <span className="text-[10px] bg-sora-purple/15 text-sora-purple px-2 py-0.5 rounded-full font-medium whitespace-nowrap ml-2">Hentet automatisk</span>
+        <span className="text-[11px] bg-sora-light text-sora-purple px-2 py-0.5 rounded-full font-medium font-sora whitespace-nowrap ml-2">Hentet automatisk</span>
       </div>
     </div>
   );
@@ -64,8 +64,8 @@ function LockedField({ label, value }: { label: string; value: string }) {
 function FormField({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-sora-text-muted mb-1">
-        {label}{required && <span className="text-red-400 ml-0.5">*</span>}
+      <label className="haiko-label block mb-1">
+        {label}{required && <span className="text-sora-pink ml-0.5">*</span>}
       </label>
       {children}
     </div>
@@ -75,15 +75,15 @@ function FormField({ label, required, children }: { label: string; required?: bo
 function SectionCard({ title, index, complete, children }: { title: string; index: number; complete: boolean; children: React.ReactNode }) {
   const [open, setOpen] = useState(true);
   return (
-    <div className="bg-sora-surface border border-sora-border rounded-xl overflow-hidden">
+    <div className="haiko-card overflow-hidden">
       <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between px-5 py-3.5 text-left hover:bg-sora-surface-hover transition-colors">
         <div className="flex items-center gap-3">
-          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${complete ? 'bg-green-500/20 text-green-400' : 'bg-sora-purple/20 text-sora-purple'}`}>
-            {complete ? <Check className="w-3.5 h-3.5" /> : index}
+          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${complete ? 'bg-gradient-to-br from-sora-pink to-sora-purple text-white' : 'bg-sora-light text-sora-purple'}`}>
+            {complete ? <Check className="w-3.5 h-3.5" strokeWidth={2} /> : index}
           </div>
-          <span className="font-semibold text-sm text-sora-text">{title}</span>
+          <span className="font-display font-bold text-[15px] text-sora-text">{title}</span>
         </div>
-        {open ? <ChevronUp className="w-4 h-4 text-sora-text-dim" /> : <ChevronDown className="w-4 h-4 text-sora-text-dim" />}
+        {open ? <ChevronUp className="w-5 h-5 text-sora-purple" strokeWidth={1.5} /> : <ChevronDown className="w-5 h-5 text-sora-purple" strokeWidth={1.5} />}
       </button>
       {open && <div className="px-5 pb-5 space-y-3 border-t border-sora-border pt-4">{children}</div>}
     </div>
@@ -92,12 +92,12 @@ function SectionCard({ title, index, complete, children }: { title: string; inde
 
 function PreviewRow({ label, value, missing }: { label: string; value: string; missing?: boolean }) {
   return (
-    <div className="flex gap-2 text-sm">
-      <span className="font-medium text-gray-500 min-w-[180px]">{label}:</span>
+    <div className="flex gap-2 text-sm font-sora">
+      <span className="font-medium text-sora-text-dim min-w-[180px]">{label}:</span>
       {missing ? (
-        <span className="text-red-400 border-b border-red-400 border-dashed italic">Ikke utfylt</span>
+        <span className="text-sora-pink border-b border-sora-pink border-dashed italic">Ikke utfylt</span>
       ) : (
-        <span className="text-gray-900">{value}</span>
+        <span className="text-sora-text">{value}</span>
       )}
     </div>
   );
@@ -141,8 +141,8 @@ export default function StepOperationsManual({
   const sec5Done = t('preflight').trim().length > 0;
   const sec7Done = t('pilotName').trim().length > 0;
 
-  const inputCls = "w-full bg-sora-bg border border-sora-border rounded-lg px-3 py-2.5 text-sm text-sora-text placeholder:text-sora-text-dim/50 focus:outline-none focus:ring-1 focus:ring-sora-purple focus:border-sora-purple";
-  const textareaCls = `${inputCls} resize-y min-h-[80px]`;
+  const inputCls = "haiko-input w-full";
+  const textareaCls = "haiko-input w-full resize-y min-h-[80px]";
 
   const handleGenerate = () => {
     setGenerating(true);
@@ -178,11 +178,11 @@ export default function StepOperationsManual({
           { label: 'Kompetanse', done: sec7Done },
         ].map((s, i) => (
           <div key={i} className="flex items-center gap-1">
-            <div className={`w-5 h-5 rounded-full flex items-center justify-center ${s.done ? 'bg-green-500/20 text-green-400' : 'bg-sora-surface text-sora-text-dim'}`}>
-              {s.done ? <Check className="w-3 h-3" /> : <span className="text-[9px]">{i + 1}</span>}
+            <div className={`w-5 h-5 rounded-full flex items-center justify-center ${s.done ? 'bg-gradient-to-br from-sora-pink to-sora-purple text-white' : 'bg-sora-light text-sora-text-dim'}`}>
+              {s.done ? <Check className="w-3 h-3" strokeWidth={2} /> : <span className="text-[9px]">{i + 1}</span>}
             </div>
-            <span className={`text-[11px] ${s.done ? 'text-green-400' : 'text-sora-text-dim'}`}>{s.label}</span>
-            {i < 6 && <div className={`w-3 h-px ${s.done ? 'bg-green-500/30' : 'bg-sora-border'}`} />}
+            <span className={`text-[11px] font-sora ${s.done ? 'text-sora-purple font-semibold' : 'text-sora-text-dim'}`}>{s.label}</span>
+            {i < 6 && <div className={`w-3 h-px ${s.done ? 'bg-gradient-to-r from-sora-pink to-sora-purple' : 'bg-sora-border'}`} />}
           </div>
         ))}
       </div>
@@ -308,27 +308,19 @@ export default function StepOperationsManual({
 
       {/* Generate button */}
       <div className="pt-2">
-        <button
-          onClick={handleGenerate}
-          disabled={!allFilled || generating}
-          className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-gradient-to-r from-sora-pink to-sora-purple text-white font-semibold text-base hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-        >
-          {generating ? <><Loader2 className="w-5 h-5 animate-spin" /> Genererer dokument...</> : <><Printer className="w-5 h-5" /> Generer operasjonsmanual</>}
+        <button onClick={handleGenerate} disabled={!allFilled || generating} className="haiko-btn-primary w-full py-4 text-base">
+          {generating ? <><Loader2 className="w-5 h-5 animate-spin" /> Genererer dokument...</> : <><Printer className="w-5 h-5" strokeWidth={1.5} /> Generer operasjonsmanual</>}
         </button>
         {!allFilled && (
-          <p className="text-xs text-sora-text-dim text-center mt-2">{remaining} av {requiredFields.length} obligatoriske felt gjenstår</p>
+          <p className="text-xs text-sora-text-dim text-center mt-2 font-sora">{remaining} av {requiredFields.length} obligatoriske felt gjenstår</p>
         )}
         {generated && (
-          <p className="text-xs text-sora-success text-center mt-2">Operasjonsmanualen er klar. Du kan nå gå videre til søknad.</p>
+          <p className="text-xs text-sora-success text-center mt-2 font-sora">Operasjonsmanualen er klar. Du kan nå gå videre til søknad.</p>
         )}
       </div>
 
-      {/* Mobile preview toggle */}
-      <button
-        onClick={() => setShowPreviewMobile(!showPreviewMobile)}
-        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-sora-surface text-sora-text-muted text-sm hover:bg-sora-surface-hover lg:hidden"
-      >
-        <Eye className="w-4 h-4" /> {showPreviewMobile ? 'Skjul forhåndsvisning' : 'Se forhåndsvisning'}
+      <button onClick={() => setShowPreviewMobile(!showPreviewMobile)} className="haiko-btn-secondary w-full text-sm lg:hidden">
+        <Eye className="w-4 h-4" strokeWidth={1.5} /> {showPreviewMobile ? 'Skjul forhåndsvisning' : 'Se forhåndsvisning'}
       </button>
     </div>
   );
@@ -336,21 +328,21 @@ export default function StepOperationsManual({
   // ---- PREVIEW ----
   const pv = (key: string) => t(key).trim();
   const previewContent = (
-    <div id="operations-manual-print" className="bg-white rounded-xl p-6 text-gray-900 text-sm space-y-6 print:rounded-none print:p-0 print:shadow-none">
+    <div id="operations-manual-print" className="haiko-card p-6 text-sora-text text-sm space-y-6 font-sora print:rounded-none print:p-0 print:shadow-none print:border-none">
+      <div className="print-gradient-line" />
       {/* Header */}
-      <div className="flex items-start justify-between border-b border-gray-200 pb-4">
+      <div className="flex items-start justify-between border-b border-sora-border pb-4">
         <div>
-          <p className="text-xl font-bold text-gray-900">OPERASJONSMANUAL</p>
-          <p className="text-gray-600 mt-1">{applicantName || '[Operatørnavn]'}</p>
+          <p className="text-xl font-display font-bold text-sora-text">OPERASJONSMANUAL</p>
+          <p className="text-sora-text-muted mt-1 font-sora">{applicantName || '[Operatørnavn]'}</p>
         </div>
-        <div className="text-right text-xs text-gray-400">
-          <p className="font-bold text-sora-purple text-sm">Haiko</p>
+        <div className="text-right text-xs text-sora-text-dim font-sora">
+          <p className="font-display font-bold text-sora-purple text-sm">haiko</p>
           <p>{today}</p>
         </div>
       </div>
 
-      {/* Cover info */}
-      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-500 border-b border-gray-100 pb-3">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-sora-text-dim border-b border-sora-border pb-3 font-sora">
         <span>Drone: {selectedDrone?.name || derivedInputs.droneName || '—'}</span>
         <span>Scenario: {scenario || '—'}</span>
         <span>SAIL: {results.sailRoman || '—'}</span>
@@ -359,7 +351,7 @@ export default function StepOperationsManual({
 
       {/* S1 */}
       <div>
-        <h3 className="font-bold text-gray-900 mb-2">1. Operatørinformasjon</h3>
+        <h3 className="font-display font-bold text-sora-text mb-2">1. Operatørinformasjon</h3>
         <PreviewRow label="Operatørnavn" value={applicantName} />
         <PreviewRow label="E-post" value={applicantEmail} />
         <PreviewRow label="Adresse" value={address} />
@@ -367,10 +359,8 @@ export default function StepOperationsManual({
         <PreviewRow label="Sertifikattype" value={pv('certType')} missing={!pv('certType')} />
         <PreviewRow label="Sertifikatnr." value={pv('certNumber')} missing={!pv('certNumber')} />
       </div>
-
-      {/* S2 */}
       <div>
-        <h3 className="font-bold text-gray-900 mb-2">2. Luftfartøy</h3>
+        <h3 className="font-display font-bold text-sora-text mb-2">2. Luftfartøy</h3>
         <PreviewRow label="Modell" value={selectedDrone?.name || derivedInputs.droneName} />
         <PreviewRow label="Produsent" value={selectedDrone?.manufacturer || '—'} />
         <PreviewRow label="MTOM" value={`${derivedInputs.mtom} kg`} />
@@ -379,10 +369,8 @@ export default function StepOperationsManual({
         <PreviewRow label="Klasse" value={selectedDrone?.categoryClass || '—'} />
         <PreviewRow label="Utstyr" value={equipList} />
       </div>
-
-      {/* S3 */}
       <div>
-        <h3 className="font-bold text-gray-900 mb-2">3. Operasjonsområde</h3>
+        <h3 className="font-display font-bold text-sora-text mb-2">3. Operasjonsområde</h3>
         <PreviewRow label="Lokasjon" value={address} />
         <PreviewRow label="Kommune" value={municipality} />
         <PreviewRow label="Takeoff" value={takeoffCoords} />
@@ -392,20 +380,16 @@ export default function StepOperationsManual({
         {pv('opTimeframe') && <PreviewRow label="Tidsrom" value={pv('opTimeframe')} />}
         {pv('opRestrictions') && <PreviewRow label="Restriksjoner" value={pv('opRestrictions')} />}
       </div>
-
-      {/* S4 */}
       <div>
-        <h3 className="font-bold text-gray-900 mb-2">4. Risikovurdering</h3>
+        <h3 className="font-display font-bold text-sora-text mb-2">4. Risikovurdering</h3>
         <PreviewRow label="Intrinsic GRC" value={String(results.intrinsicGrc)} />
         <PreviewRow label="Final GRC" value={String(results.finalGrc)} />
         <PreviewRow label="ARC" value={results.residualArc} />
         <PreviewRow label="SAIL" value={results.sailRoman} />
         <PreviewRow label="Scenario" value={scenario || 'Ingen'} />
       </div>
-
-      {/* S5 - ERP */}
       <div>
-        <h3 className="font-bold text-gray-900 mb-2">5. Nødprosedyrer (ERP)</h3>
+        <h3 className="font-display font-bold text-sora-text mb-2">5. Nødprosedyrer (ERP)</h3>
         <div className="space-y-2">
           <PreviewRow label="Teknisk feil" value={pv('erpTechFail')} missing={!pv('erpTechFail')} />
           {isBVLOS && <PreviewRow label="Komm.tap" value={pv('erpCommLoss')} missing={!pv('erpCommLoss')} />}
@@ -415,49 +399,39 @@ export default function StepOperationsManual({
           {pv('erpLanding') && <PreviewRow label="Nødlanding" value={pv('erpLanding')} />}
         </div>
       </div>
-
-      {/* S6 - Prosedyrer */}
       <div>
-        <h3 className="font-bold text-gray-900 mb-2">6. Operasjonelle prosedyrer</h3>
+        <h3 className="font-display font-bold text-sora-text mb-2">6. Operasjonelle prosedyrer</h3>
         <div className="space-y-2">
           <PreviewRow label="Pre-flight" value={pv('preflight')} missing={!pv('preflight')} />
           {pv('inflight') && <PreviewRow label="Under flygning" value={pv('inflight')} />}
           {pv('postflight') && <PreviewRow label="Post-flight" value={pv('postflight')} />}
         </div>
       </div>
-
-      {/* S7 - Vedlikehold */}
       <div>
-        <h3 className="font-bold text-gray-900 mb-2">7. Vedlikehold</h3>
+        <h3 className="font-display font-bold text-sora-text mb-2">7. Vedlikehold</h3>
         {pv('maintInterval') && <PreviewRow label="Intervall" value={pv('maintInterval')} />}
         {pv('maintResponsible') && <PreviewRow label="Ansvarlig" value={pv('maintResponsible')} />}
         {pv('maintLog') && <PreviewRow label="Logg" value={pv('maintLog')} />}
         {pv('maintLastService') && <PreviewRow label="Siste service" value={pv('maintLastService')} />}
       </div>
-
-      {/* S8 - Kompetanse */}
       <div>
-        <h3 className="font-bold text-gray-900 mb-2">8. Kompetanse og opplæring</h3>
+        <h3 className="font-display font-bold text-sora-text mb-2">8. Kompetanse og opplæring</h3>
         <PreviewRow label="Pilot" value={pv('pilotName')} missing={!pv('pilotName')} />
         {pv('compCert') && <PreviewRow label="Sertifikat" value={pv('compCert')} />}
         {pv('compLastCourse') && <PreviewRow label="Siste kurs" value={pv('compLastCourse')} />}
         {pv('compExtra') && <PreviewRow label="Tillegg" value={pv('compExtra')} />}
       </div>
-
-      {/* Signature */}
-      <div className="border-t border-gray-200 pt-4 mt-6">
-        <p className="text-xs text-gray-500 italic mb-4">
+      <div className="border-t border-sora-border pt-4 mt-6">
+        <p className="text-xs text-sora-text-dim italic mb-4 font-sora">
           Jeg bekrefter at denne operasjonsmanualen er korrekt og at operasjonen vil gjennomføres i henhold til gjeldende regelverk (EU 2019/947 implementert i norsk rett).
         </p>
         <div className="space-y-1">
           <PreviewRow label="Navn" value={applicantName} />
           <PreviewRow label="Dato" value={today} />
-          <p className="text-sm text-gray-600 mt-2">Signatur: ___________________________</p>
+          <p className="text-sm text-sora-text-muted mt-2 font-sora">Signatur: ___________________________</p>
         </div>
       </div>
-
-      {/* Footer */}
-      <div className="text-center text-[10px] text-gray-400 border-t border-gray-100 pt-3 mt-4">
+      <div className="text-center text-[10px] text-sora-text-dim border-t border-sora-border pt-3 mt-4 font-sora">
         Haiko AS — haiko.no — Generert {today}
       </div>
     </div>
@@ -466,10 +440,10 @@ export default function StepOperationsManual({
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-sora-text mb-2">Operasjonsmanual</h1>
-        <div className="bg-sora-surface border border-sora-border rounded-xl p-4 flex gap-3 items-start print:hidden">
-          <Info className="w-5 h-5 text-sora-purple mt-0.5 shrink-0" />
-          <p className="text-sm text-sora-text-muted">
+        <h1 className="text-[28px] font-display font-bold text-sora-text mb-2">Operasjonsmanual</h1>
+        <div className="haiko-info flex gap-3 items-start print:hidden">
+          <Info className="w-5 h-5 text-sora-purple mt-0.5 shrink-0" strokeWidth={1.5} />
+          <p className="text-[13px] text-sora-text-muted font-sora">
             Fyll inn feltene under for å generere operasjonsmanualen. Felt med lilla bakgrunn er hentet automatisk fra tidligere steg.
           </p>
         </div>

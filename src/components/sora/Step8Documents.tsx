@@ -134,16 +134,16 @@ export default function Step8Documents({ scenario }: Props) {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-bold text-sora-text mb-1">Dokumenter og innsending</h2>
-        <p className="text-sora-text-muted text-sm">
-          Basert på scenario <span className="text-sora-purple font-semibold">{scenario || 'SORA'}</span> — her er dokumentene du trenger.
+        <h2 className="text-[28px] font-display font-bold text-sora-text mb-1">Dokumenter og innsending</h2>
+        <p className="text-sora-text-muted text-[15px] font-sora">
+          Basert på scenario <span className="haiko-badge text-[11px] ml-1">{scenario || 'SORA'}</span> — her er dokumentene du trenger.
         </p>
       </div>
 
       {/* SECTION 1 — Submission */}
       <section className="space-y-3">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-sora-text-dim">Søknad og innsending</h3>
-        <div className="bg-sora-surface border border-sora-border rounded-xl p-5">
+        <h3 className="haiko-label">Søknad og innsending</h3>
+        <div className="haiko-card p-5">
           <p className="text-sora-text font-semibold text-sm">{submission.title}</p>
           <p className="text-sora-text-muted text-xs mt-1">{submission.description}</p>
           <div className="flex flex-wrap gap-2 mt-4">
@@ -166,30 +166,26 @@ export default function Step8Documents({ scenario }: Props) {
       {/* SECTION 2 — Templates */}
       {templates.length > 0 && (
         <section className="space-y-3">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-sora-text-dim">Last ned dokumentmaler</h3>
+          <h3 className="haiko-label">Last ned dokumentmaler</h3>
           <div className="space-y-3">
             {templates.map((doc) => (
-              <a
-                key={doc.url}
-                href={doc.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-between bg-sora-surface border border-sora-border rounded-xl p-4 hover:border-sora-purple/40 transition-colors group"
+              <a key={doc.url} href={doc.url} target="_blank" rel="noopener noreferrer"
+                className="flex items-center justify-between haiko-card p-4 hover:border-sora-purple/40 transition-colors group"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-lg bg-sora-purple/20 text-sora-purple flex items-center justify-center shrink-0">
-                    {doc.format === 'Link' ? <ExternalLink className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
+                  <div className="w-10 h-10 rounded-lg bg-sora-light text-sora-purple flex items-center justify-center shrink-0">
+                    {doc.format === 'Link' ? <ExternalLink className="w-5 h-5" strokeWidth={1.5} /> : <FileText className="w-5 h-5" strokeWidth={1.5} />}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sora-text font-medium text-sm truncate">{doc.title}</p>
-                    {doc.description && <p className="text-sora-text-dim text-xs mt-0.5">{doc.description}</p>}
+                  <p className="text-sora-text font-display font-bold text-sm truncate">{doc.title}</p>
+                    {doc.description && <p className="text-sora-text-dim text-xs mt-0.5 font-sora">{doc.description}</p>}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0 ml-4">
                   <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded bg-sora-surface-hover text-sora-text-dim">
                     {doc.format}
                   </span>
-                  <Download className="w-4 h-4 text-sora-text-dim group-hover:text-sora-purple transition-colors" />
+                  <Download className="w-5 h-5 text-sora-text-dim group-hover:text-sora-purple transition-colors" strokeWidth={1.5} />
                 </div>
               </a>
             ))}
@@ -200,9 +196,9 @@ export default function Step8Documents({ scenario }: Props) {
       {/* SECTION 3 — Contact */}
       {showContact && (
         <section className="space-y-3">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-sora-text-dim">Trenger du hjelp?</h3>
-          <div className="bg-sora-surface border-2 border-sora-purple/40 rounded-xl p-5">
-            <p className="text-sora-text font-semibold text-sm">Haiko hjelper deg med søknadsprosessen</p>
+          <h3 className="haiko-label">Trenger du hjelp?</h3>
+          <div className="haiko-card border-2 border-sora-purple/40 p-5">
+            <p className="text-sora-text font-display font-bold text-sm">Haiko hjelper deg med søknadsprosessen</p>
             <p className="text-sora-text-muted text-xs mt-1">
               Vi har erfaring med SORA, PDRA og operasjonsmanualer for norske kommuner og beredskapstjenester.
             </p>

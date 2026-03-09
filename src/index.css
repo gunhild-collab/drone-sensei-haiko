@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Montserrat:wght@400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,29 +6,29 @@
 
 @layer base {
   :root {
-    --background: 220 20% 97%;
-    --foreground: 220 30% 10%;
+    --background: 0 0% 98%;
+    --foreground: 268 100% 17%;
     --card: 0 0% 100%;
-    --card-foreground: 220 30% 10%;
+    --card-foreground: 268 100% 17%;
     --popover: 0 0% 100%;
-    --popover-foreground: 220 30% 10%;
-    --primary: 220 70% 45%;
+    --popover-foreground: 268 100% 17%;
+    --primary: 246 92% 66%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 15% 92%;
-    --secondary-foreground: 220 30% 15%;
-    --muted: 220 15% 94%;
-    --muted-foreground: 220 10% 45%;
-    --accent: 165 60% 40%;
+    --secondary: 248 100% 98%;
+    --secondary-foreground: 268 100% 17%;
+    --muted: 249 62% 94%;
+    --muted-foreground: 247 28% 67%;
+    --accent: 325 100% 70%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    --border: 220 15% 88%;
-    --input: 220 15% 88%;
-    --ring: 220 70% 45%;
+    --border: 249 62% 94%;
+    --input: 249 62% 94%;
+    --ring: 246 92% 66%;
     --radius: 0.75rem;
 
-    --chart-1: 220 70% 45%;
-    --chart-2: 165 60% 40%;
+    --chart-1: 246 92% 66%;
+    --chart-2: 325 100% 70%;
     --chart-3: 35 90% 55%;
     --chart-4: 280 60% 55%;
     --chart-5: 0 72% 51%;
@@ -36,16 +36,16 @@
     --level-1: 0 72% 51%;
     --level-2: 35 90% 55%;
     --level-3: 45 90% 50%;
-    --level-4: 165 60% 40%;
+    --level-4: 142 71% 45%;
 
-    --sidebar-background: 220 30% 10%;
-    --sidebar-foreground: 220 15% 85%;
-    --sidebar-primary: 220 70% 55%;
+    --sidebar-background: 268 100% 17%;
+    --sidebar-foreground: 248 100% 98%;
+    --sidebar-primary: 246 92% 66%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 25% 18%;
-    --sidebar-accent-foreground: 220 15% 85%;
-    --sidebar-border: 220 25% 18%;
-    --sidebar-ring: 220 70% 55%;
+    --sidebar-accent: 252 30% 30%;
+    --sidebar-accent-foreground: 248 100% 98%;
+    --sidebar-border: 252 30% 30%;
+    --sidebar-ring: 246 92% 66%;
 
     /* Haiko palette */
     --sora-bg: 0 0% 98%;
@@ -61,38 +61,37 @@
     --sora-success: 142 71% 45%;
     --sora-warning: 48 96% 53%;
     --sora-danger: 0 84% 60%;
-    --sora-gradient: linear-gradient(135deg, #ff66c4 0%, #6858f8 100%);
     --sora-light: 248 100% 98%;
   }
 
   .dark {
-    --background: 220 25% 8%;
-    --foreground: 220 15% 92%;
-    --card: 220 25% 12%;
-    --card-foreground: 220 15% 92%;
-    --popover: 220 25% 12%;
-    --popover-foreground: 220 15% 92%;
-    --primary: 220 70% 55%;
+    --background: 268 100% 17%;
+    --foreground: 248 100% 98%;
+    --card: 252 30% 30%;
+    --card-foreground: 248 100% 98%;
+    --popover: 252 30% 30%;
+    --popover-foreground: 248 100% 98%;
+    --primary: 246 92% 66%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 20% 18%;
-    --secondary-foreground: 220 15% 85%;
-    --muted: 220 20% 16%;
-    --muted-foreground: 220 10% 55%;
-    --accent: 165 60% 45%;
+    --secondary: 252 30% 30%;
+    --secondary-foreground: 248 100% 98%;
+    --muted: 252 30% 30%;
+    --muted-foreground: 247 28% 67%;
+    --accent: 325 100% 70%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    --border: 220 20% 18%;
-    --input: 220 20% 18%;
-    --ring: 220 70% 55%;
-    --sidebar-background: 220 30% 6%;
-    --sidebar-foreground: 220 15% 85%;
-    --sidebar-primary: 220 70% 55%;
+    --border: 252 30% 30%;
+    --input: 252 30% 30%;
+    --ring: 246 92% 66%;
+    --sidebar-background: 268 100% 10%;
+    --sidebar-foreground: 248 100% 98%;
+    --sidebar-primary: 246 92% 66%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 25% 12%;
-    --sidebar-accent-foreground: 220 15% 85%;
-    --sidebar-border: 220 25% 12%;
-    --sidebar-ring: 220 70% 55%;
+    --sidebar-accent: 268 100% 17%;
+    --sidebar-accent-foreground: 248 100% 98%;
+    --sidebar-border: 268 100% 17%;
+    --sidebar-ring: 246 92% 66%;
   }
 }
 
@@ -110,15 +109,130 @@
   }
 }
 
+/* Haiko form field styles */
+.haiko-input {
+  border: 1.5px solid #e8e5f8;
+  border-radius: 8px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  padding: 10px 14px;
+  background: white;
+  color: #1c0059;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.haiko-input::placeholder {
+  color: #9993c4;
+}
+.haiko-input:focus {
+  border-color: #6858f8;
+  box-shadow: 0 0 0 3px rgba(104, 88, 248, 0.12);
+  outline: none;
+}
+
+/* Haiko label style */
+.haiko-label {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #6858f8;
+}
+
+/* Haiko primary button */
+.haiko-btn-primary {
+  background: linear-gradient(135deg, #ff66c4, #6858f8);
+  color: white;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  border-radius: 8px;
+  padding: 12px 24px;
+  border: none;
+  box-shadow: 0 4px 14px rgba(104, 88, 248, 0.3);
+  transition: opacity 0.2s;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+}
+.haiko-btn-primary:hover {
+  opacity: 0.9;
+}
+.haiko-btn-primary:disabled {
+  background: #e8e5f8;
+  color: #9993c4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Haiko secondary button */
+.haiko-btn-secondary {
+  background: white;
+  color: #1c0059;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  border-radius: 8px;
+  padding: 11px 24px;
+  border: 1.5px solid #1c0059;
+  transition: background-color 0.2s;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+}
+.haiko-btn-secondary:hover {
+  background: #f5f4ff;
+}
+.haiko-btn-secondary:disabled {
+  background: #e8e5f8;
+  color: #9993c4;
+  cursor: not-allowed;
+  border-color: #e8e5f8;
+}
+
+/* Haiko info banner */
+.haiko-info {
+  background: #f5f4ff;
+  border-left: 3px solid #6858f8;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 13px;
+  color: #3d3663;
+}
+
+/* Haiko badge */
+.haiko-badge {
+  background: linear-gradient(135deg, #ff66c4, #6858f8);
+  color: white;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700;
+  border-radius: 6px;
+  padding: 2px 10px;
+  font-size: 12px;
+}
+
+/* Haiko card */
+.haiko-card {
+  background: #ffffff;
+  border: 1px solid #e8e5f8;
+  border-radius: 12px;
+}
+
 /* Calendar theme for SORA wizard */
 .sora-calendar .rdp-day,
 .sora-calendar [class*="day"],
 .sora-calendar button {
   color: #1c0059 !important;
+  font-family: 'Montserrat', sans-serif !important;
 }
 .sora-calendar .rdp-day_selected,
 .sora-calendar [class*="day_selected"] {
-  background-color: #6858f8 !important;
+  background: linear-gradient(135deg, #ff66c4, #6858f8) !important;
   color: #ffffff !important;
 }
 .sora-calendar .rdp-day_today {
@@ -131,15 +245,16 @@
 .sora-calendar {
   background: #ffffff !important;
   border: 1px solid #e8e5f8 !important;
-  border-radius: 0.75rem;
+  border-radius: 12px;
 }
 
 /* Print styles for operations manual */
 @media print {
   body {
     background: white !important;
-    color: black !important;
+    color: #1c0059 !important;
     font-size: 12pt !important;
+    font-family: 'Montserrat', sans-serif !important;
     margin: 2cm !important;
   }
   .print\:hidden {
@@ -153,16 +268,28 @@
   #operations-manual-print {
     background: white !important;
   }
-  /* Hide wizard chrome */
+  #operations-manual-print h3 {
+    font-family: 'Poppins', sans-serif !important;
+    font-weight: 700 !important;
+  }
   nav, header, [class*="border-b"], [class*="fixed bottom"], [class*="ContactHaiko"] {
     display: none !important;
+  }
+  .print-gradient-line {
+    display: block !important;
+    height: 3px;
+    background: linear-gradient(135deg, #ff66c4, #6858f8);
+    margin-bottom: 24px;
   }
   @page {
     margin: 2cm;
     @bottom-center {
       content: "Haiko AS — haiko.no";
       font-size: 8pt;
-      color: #999;
+      color: #9993c4;
     }
   }
+}
+.print-gradient-line {
+  display: none;
 }
