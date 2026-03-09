@@ -115,15 +115,20 @@ export default function SoraWizard() {
 
   const results = useMemo(() => calculateAll(derivedInputs), [derivedInputs]);
 
-  // Scenario matching
-  const matchedScenarios = useMemo(() =>
-    matchPdraScenarios(derivedInputs.mtom, derivedInputs.characteristicDimension, derivedInputs.operationType, derivedInputs.maxAltitude, derivedInputs.populationDensity),
-    [derivedInputs]
-  );
-  const bestScenario: PdraScenario | null = matchedScenarios[0] || null;
+  // Scenario matching using new exact SORA 2.5 logic
+  const bestScenarioId = useMemo(() => {
+    if (!results.sailRoman || !derivedInputs.operationType) return null;
+    return matchScenario(
+      results.sailRoman,
+      derivedInputs.operationType,
+      derivedInputs.mtom,
+      selectedDrone?.categoryClass || '',
+      derivedInputs.populationDensity,
+    );
+  }, [results.sailRoman, derivedInputs, selectedDrone]);
 
   // Determine if OSO step should be shown
-  const osoRequired = !bestScenario || results.sail >= 3;
+  const osoRequired = !bestScenarioId || results.sail >= 3;
 
   const handleMunicipalitySelect = useCallback((name: string, data: MunicipalityData) => {
     setMunicipality(name);
