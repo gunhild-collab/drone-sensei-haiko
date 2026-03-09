@@ -440,10 +440,10 @@ export default function StepOperationsManual({
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-sora-text mb-2">Operasjonsmanual</h1>
-        <div className="bg-sora-surface border border-sora-border rounded-xl p-4 flex gap-3 items-start print:hidden">
-          <Info className="w-5 h-5 text-sora-purple mt-0.5 shrink-0" />
-          <p className="text-sm text-sora-text-muted">
+        <h1 className="text-[28px] font-display font-bold text-sora-text mb-2">Operasjonsmanual</h1>
+        <div className="haiko-info flex gap-3 items-start print:hidden">
+          <Info className="w-5 h-5 text-sora-purple mt-0.5 shrink-0" strokeWidth={1.5} />
+          <p className="text-[13px] text-sora-text-muted font-sora">
             Fyll inn feltene under for å generere operasjonsmanualen. Felt med lilla bakgrunn er hentet automatisk fra tidligere steg.
           </p>
         </div>
