@@ -713,19 +713,11 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
             <MetricCard label="Maks høyde" value={`${maxAltitude} m AGL`} />
           </div>
 
-          {/* Detected tags detail */}
-          {localData.landUseResult && localData.landUseResult.rawTags.length > 0 && (
-            <div className="bg-sora-surface border border-sora-border rounded-lg p-3">
-              <p className="text-xs text-sora-text-dim mb-1">Detekterte OSM-data i bakkerisikobufferen:</p>
-              <div className="flex flex-wrap gap-1">
-                {localData.landUseResult.rawTags.map((tag, i) => (
-                  <span key={i} className="text-xs bg-sora-bg px-2 py-0.5 rounded text-sora-text-muted border border-sora-border">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* EASA verification link */}
+          <div className="bg-sora-surface border border-sora-border rounded-lg p-3 flex items-center gap-2">
+            <Info className="w-4 h-4 text-sora-purple shrink-0" />
+            <a href="https://experience.arcgis.com/experience/b00a6ce43d1943959d21bc957de265f4" target="_blank" rel="noopener noreferrer" className="text-sora-purple hover:underline text-xs">Verifiser befolkningstetthet mot EASA-kart ↗</a>
+          </div>
         </div>
       )}
     </div>
