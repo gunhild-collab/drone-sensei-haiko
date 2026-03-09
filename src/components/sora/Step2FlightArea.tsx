@@ -105,7 +105,7 @@ function offsetPolygon(latlngs: L.LatLng[], meters: number): L.LatLng[] {
   });
 }
 
-export default function Step2FlightArea({ municipality, municipalityDensity, drone, flightAreaData, maxAltitude, onUpdate }: Props) {
+export default function Step2FlightArea({ municipality, municipalityDensity, drone, flightAreaData, maxAltitude, onUpdate, onMunicipalitySelect, initialCoords }: Props) {
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const drawnItemsRef = useRef<L.FeatureGroup>(new L.FeatureGroup());
@@ -119,9 +119,82 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
   const [queryingLandUse, setQueryingLandUse] = useState(false);
   const [overrideOpen, setOverrideOpen] = useState(false);
   const [manualRequired, setManualRequired] = useState(false);
+
+  // Address autocomplete state
   const [addressQuery, setAddressQuery] = useState('');
   const [addressLoading, setAddressLoading] = useState(false);
-  const [addressError, setAddressError] = useState('');
+  const [addressResults, setAddressResults] = useState<NominatimResult[]>([]);
+  const [addressOpen, setAddressOpen] = useState(false);
+  const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
+  const addressDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const addressContainerRef = useRef<HTMLDivElement>(null);
+
+  // Close address dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (addressContainerRef.current && !addressContainerRef.current.contains(e.target as Node)) setAddressOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  // Debounced Nominatim search
+  useEffect(() => {
+    if (addressDebounceRef.current) clearTimeout(addressDebounceRef.current);
+    if (addressQuery.trim().length < 2 || selectedAddress) { setAddressResults([]); return; }
+
+    addressDebounceRef.current = setTimeout(async () => {
+      setAddressLoading(true);
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addressQuery)}&countrycodes=no&format=json&addressdetails=1&limit=5`,
+          { headers: { 'Accept-Language': 'no', 'User-Agent': 'SORA-DMA-Haiko/1.0' } }
+        );
+        const data: NominatimResult[] = await res.json();
+        setAddressResults(data);
+        setAddressOpen(data.length > 0);
+      } catch {
+        setAddressResults([]);
+      } finally {
+        setAddressLoading(false);
+      }
+    }, 300);
+
+    return () => { if (addressDebounceRef.current) clearTimeout(addressDebounceRef.current); };
+  }, [addressQuery, selectedAddress]);
+
+  const handleAddressSelect = useCallback((result: NominatimResult) => {
+    const lat = parseFloat(result.lat);
+    const lon = parseFloat(result.lon);
+    const municName = extractMunicipality(result.address);
+
+    setSelectedAddress(result.display_name);
+    setAddressQuery(result.display_name);
+    setAddressOpen(false);
+
+    // Notify parent about municipality
+    if (onMunicipalitySelect) {
+      onMunicipalitySelect(municName, {
+        name: municName,
+        address: result.display_name,
+        lat,
+        lon,
+      });
+    }
+
+    // Fly map to location and place takeoff pin
+    if (mapRef.current) {
+      const latlng = L.latLng(lat, lon);
+      mapRef.current.setView(latlng, 15);
+
+      if (takeoffMarkerRef.current) mapRef.current.removeLayer(takeoffMarkerRef.current);
+      const marker = L.marker(latlng, {
+        icon: L.divIcon({ className: '', html: '<div style="background:#7c3aed;width:14px;height:14px;border-radius:50%;border:2px solid white;box-shadow:0 0 6px rgba(124,58,237,0.5);"></div>', iconSize: [14, 14], iconAnchor: [7, 7] })
+      }).addTo(mapRef.current);
+      takeoffMarkerRef.current = marker;
+      updateFlightData();
+    }
+  }, [onMunicipalitySelect]);
 
   const charDim = drone?.characteristicDimension ?? 1;
   const grbDistance = charDim * 2;
