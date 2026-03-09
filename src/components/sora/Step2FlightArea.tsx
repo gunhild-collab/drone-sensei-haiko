@@ -645,10 +645,10 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
                   Befolkningstetthet i flygeområdet: {DENSITY_LABELS[localData.populationDensityClass]}
                 </p>
                 <p className="text-sora-text-dim text-xs">
-                  {queryingLandUse ? (
-                    <span className="flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Analyserer arealbruk via Overpass API...</span>
-                  ) : localData.landUseResult ? (
-                    <>Klassifisert fra OSM-data ({localData.landUseResult.rawTags.slice(0, 4).join(', ')}{localData.landUseResult.rawTags.length > 4 ? '...' : ''}) · {localData.landUseResult.elementCount} elementer · {localData.landUseResult.queryTime}ms</>
+                  {queryingDensity ? (
+                    <span className="flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Henter data fra WorldPop...</span>
+                  ) : localData.worldPopResult?.density != null ? (
+                    <>ca. {Math.round(localData.worldPopResult.density)} p/km² · WorldPop 2020 · {localData.worldPopResult.queryTime}ms</>
                   ) : (
                     'Tegn polygon for å analysere'
                   )}
