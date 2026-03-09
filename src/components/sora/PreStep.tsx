@@ -17,8 +17,8 @@ interface Props {
 }
 
 export default function PreStep({
-  applicantName, applicantEmail, flightDate, timeFrom, timeTo,
-  onChangeName, onChangeEmail, onChangeFlightDate, onChangeTimeFrom, onChangeTimeTo,
+  applicantName, applicantEmail, flightDate,
+  onChangeName, onChangeEmail, onChangeFlightDate,
   onContinue,
 }: Props) {
   const canContinue = applicantName.trim() && applicantEmail.trim();
