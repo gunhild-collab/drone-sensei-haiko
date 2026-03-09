@@ -464,68 +464,50 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
     }
   };
 
-  const handleAddressSearch = useCallback(async () => {
-    if (!addressQuery.trim() || !mapRef.current) return;
-    setAddressLoading(true);
-    setAddressError('');
-    try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addressQuery + ', Norge')}&limit=1`);
-      const data = await res.json();
-      if (data.length === 0) {
-        setAddressError('Fant ingen resultater. Prøv en annen adresse.');
-        return;
-      }
-      const { lat, lon } = data[0];
-      const latlng = L.latLng(parseFloat(lat), parseFloat(lon));
-      mapRef.current.setView(latlng, 16);
-
-      // Place takeoff marker at searched address
-      if (takeoffMarkerRef.current) mapRef.current.removeLayer(takeoffMarkerRef.current);
-      const marker = L.marker(latlng, {
-        icon: L.divIcon({ className: '', html: '<div style="background:#7c3aed;width:14px;height:14px;border-radius:50%;border:2px solid white;box-shadow:0 0 6px rgba(124,58,237,0.5);"></div>', iconSize: [14, 14], iconAnchor: [7, 7] })
-      }).addTo(mapRef.current);
-      takeoffMarkerRef.current = marker;
-      updateFlightData();
-    } catch {
-      setAddressError('Kunne ikke søke etter adressen. Prøv igjen.');
-    } finally {
-      setAddressLoading(false);
-    }
-  }, [addressQuery]);
-
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-2xl font-bold text-sora-text mb-1">Tegn flygeområde</h2>
-        <p className="text-sora-text-muted text-sm">Skriv inn adressen for takeoff, tegn deretter flygeområdet på kartet.</p>
+        <h2 className="text-2xl font-bold text-sora-text mb-1">Adresse og flygeområde</h2>
+        <p className="text-sora-text-muted text-sm">Søk etter takeoff-adressen, deretter tegn flygeområdet på kartet.</p>
       </div>
 
-      {/* Address search */}
-      <div className="space-y-2">
-        <label className="text-sm text-sora-text-muted font-medium">Takeoff-adresse</label>
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sora-text-dim" />
-            <input
-              type="text"
-              value={addressQuery}
-              onChange={e => setAddressQuery(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleAddressSearch()}
-              placeholder="F.eks. Kongens gate 1, Trondheim"
-              className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-sora-surface border border-sora-border text-sora-text text-sm placeholder:text-sora-text-dim focus:outline-none focus:border-sora-purple transition-colors"
-            />
+      {/* Address autocomplete search */}
+      <div ref={addressContainerRef} className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sora-text-dim z-10" />
+        {addressLoading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sora-text-dim animate-spin z-10" />}
+        <input
+          type="text"
+          value={addressQuery}
+          onChange={e => { setAddressQuery(e.target.value); setSelectedAddress(null); setAddressOpen(true); }}
+          onFocus={() => addressResults.length > 0 && !selectedAddress && setAddressOpen(true)}
+          placeholder="Søk etter adresse eller sted..."
+          className="w-full pl-10 pr-10 py-3 rounded-lg bg-sora-surface border border-sora-border text-sora-text text-sm placeholder:text-sora-text-dim focus:outline-none focus:ring-2 focus:ring-sora-purple transition-colors"
+        />
+        {addressOpen && addressResults.length > 0 && (
+          <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-sora-surface border border-sora-border rounded-lg max-h-72 overflow-y-auto shadow-xl">
+            {addressResults.map(r => (
+              <button
+                key={r.place_id}
+                onClick={() => handleAddressSelect(r)}
+                className="w-full text-left px-4 py-3 text-sm text-sora-text hover:bg-sora-surface-hover transition-colors border-b border-sora-border last:border-b-0"
+              >
+                <div className="flex items-start gap-2">
+                  <MapPin className="w-4 h-4 text-sora-purple shrink-0 mt-0.5" />
+                  <span className="leading-tight">{r.display_name}</span>
+                </div>
+              </button>
+            ))}
           </div>
-          <button
-            onClick={handleAddressSearch}
-            disabled={addressLoading || !addressQuery.trim()}
-            className="px-5 py-2.5 rounded-lg bg-sora-purple text-sora-text text-sm font-medium hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-          >
-            {addressLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-            Søk
-          </button>
-        </div>
-        {addressError && <p className="text-red-400 text-xs">{addressError}</p>}
+        )}
       </div>
+
+      {/* Selected address display */}
+      {selectedAddress && (
+        <div className="flex items-center gap-2 text-sora-purple text-sm font-medium bg-sora-surface border border-sora-border rounded-lg px-4 py-2.5">
+          <MapPin className="w-4 h-4 shrink-0" />
+          <span>Takeoff: {selectedAddress}</span>
+        </div>
+      )}
 
       {/* Pin buttons */}
       <div className="flex gap-3">
