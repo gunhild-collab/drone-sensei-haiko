@@ -598,17 +598,23 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
         </div>
       )}
 
-      {(manualRequired || (localData?.landUseResult?.queryFailed)) && !localData?.densityOverridden && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
-          <p className="text-amber-700 text-sm font-semibold flex items-center gap-2 mb-2">
-            <AlertTriangle className="w-4 h-4" strokeWidth={1.5} /> Kunne ikke hente befolkningsdata automatisk. Velg tetthetsklasse manuelt:
+      {manualRequired && !localData?.densityOverridden && (
+        <div className="bg-sora-surface border border-sora-border rounded-lg px-4 py-3">
+          <p className="text-sora-text text-sm font-semibold flex items-center gap-2 mb-2">
+            <AlertTriangle className="w-4 h-4 text-sora-warning" strokeWidth={1.5} />
+            {highDensityValue
+              ? `Høy tetthet detektert (${Math.round(highDensityValue)} p/km²). Er dette en permanent bosetting eller et arrangement med folkemasse?`
+              : 'Kunne ikke hente befolkningsdata automatisk. Velg tetthetsklasse manuelt:'}
           </p>
           <div className="flex flex-wrap gap-2">
-            {(Object.keys(DENSITY_LABELS) as PopulationDensityClass[]).map(cls => (
+            {(highDensityValue
+              ? (['populated', 'gathering'] as PopulationDensityClass[])
+              : (Object.keys(DENSITY_LABELS) as PopulationDensityClass[])
+            ).map(cls => (
               <button
                 key={cls}
                 onClick={() => handleDensityOverride(cls)}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm bg-white border border-sora-border text-sora-text hover:bg-sora-light transition-colors"
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm bg-sora-surface border border-sora-border text-sora-text hover:bg-sora-surface-hover transition-colors"
               >
                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: DENSITY_COLORS[cls] }} />
                 {DENSITY_LABELS[cls]}
