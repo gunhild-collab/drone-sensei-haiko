@@ -308,30 +308,28 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
     }
     area = Math.abs(area) * 6378137 * 6378137 / 2 * Math.PI / 180 / 1e6;
 
-    // Draw buffers immediately
-    drawBuffers(latlngs, map);
-
     const initialData: FlightAreaData = {
       polygon: latlngs,
       takeoffPoint: takeoffMarkerRef.current?.getLatLng() || null,
       landingPoint: landingMarkerRef.current?.getLatLng() || null,
       areaKm2: Math.round(area * 1000) / 1000,
       diagonalM: Math.round(diagonalMeters),
-      operationType: localData?.operationType || null, // User must select manually
+      operationType: localData?.operationType || null,
       grbMeters: Math.round(grbDistance * 10) / 10,
       cvMeters: Math.round(cvDistance),
       populationDensityClass: 'sparsely',
       airspaceClass: 'uncontrolled_low',
       flightDescription: `Flygeområde i ${municipality}, ${area.toFixed(3)} km²`,
-      landUseResult: null,
+      worldPopResult: null,
       densityOverridden: false,
     };
     setLocalData(initialData);
     setManualRequired(false);
+    setHighDensityValue(null);
     onUpdate(initialData);
 
-    // Query Overpass
-    await runLandUseQuery(latlngs, initialData);
+    // Query WorldPop
+    await runDensityQuery(latlngs, initialData);
   }, [municipality, drone, grbDistance, cvDistance, onUpdate, localData?.operationType]);
 
   const runLandUseQuery = useCallback(async (latlngs: L.LatLng[], baseData?: FlightAreaData) => {
