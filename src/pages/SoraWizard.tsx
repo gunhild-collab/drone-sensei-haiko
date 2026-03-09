@@ -319,7 +319,7 @@ export default function SoraWizard() {
                   matchedScenario={bestScenario}
                   scenarioFormData={scenarioFormData}
                 />
-              )
+              )}
             </motion.div>
           </AnimatePresence>
         </div>
