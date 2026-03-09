@@ -3,9 +3,9 @@ import { format, parseISO } from "date-fns";
 import { Link } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { SoraInputs, calculateAll } from "@/lib/soraCalculations";
+import { SoraInputs, calculateAll, matchScenario } from "@/lib/soraCalculations";
 import { DroneSpec } from "@/data/droneDatabase";
-import { matchPdraScenarios, PdraScenario } from "@/data/pdraScenarios";
+import { PDRA_SCENARIOS, PdraScenario } from "@/data/pdraScenarios";
 import PreStep from "@/components/sora/PreStep";
 import Step1Municipality, { MunicipalityData } from "@/components/sora/Step1Municipality";
 import Step2FlightArea, { FlightAreaData } from "@/components/sora/Step2FlightArea";
@@ -39,6 +39,7 @@ const defaultInputs: SoraInputs = {
   populationDensity: 'sparsely',
   m1: 0,
   m2: 0,
+  nearAirport: false,
   airspaceClass: 'uncontrolled_low',
   hasTransponder: false,
   hasAirspaceObservers: false,
@@ -115,12 +116,31 @@ export default function SoraWizard() {
 
   const results = useMemo(() => calculateAll(derivedInputs), [derivedInputs]);
 
-  // Scenario matching
-  const matchedScenarios = useMemo(() =>
-    matchPdraScenarios(derivedInputs.mtom, derivedInputs.characteristicDimension, derivedInputs.operationType, derivedInputs.maxAltitude, derivedInputs.populationDensity),
-    [derivedInputs]
-  );
-  const bestScenario: PdraScenario | null = matchedScenarios[0] || null;
+  // Scenario matching using new exact SORA 2.5 logic
+  const bestScenarioId = useMemo(() => {
+    if (!results.sailRoman || !derivedInputs.operationType) return null;
+    return matchScenario(
+      results.sailRoman,
+      derivedInputs.operationType,
+      derivedInputs.mtom,
+      selectedDrone?.categoryClass || '',
+      derivedInputs.populationDensity,
+    );
+  }, [results.sailRoman, derivedInputs, selectedDrone]);
+
+  // Create compatible PdraScenario object for child components
+  const bestScenario: PdraScenario | null = useMemo(() => {
+    if (!bestScenarioId) return null;
+    const found = PDRA_SCENARIOS.find(s => s.id === bestScenarioId);
+    if (found) return found;
+    return {
+      id: bestScenarioId,
+      name: bestScenarioId,
+      description: `Matched scenario: ${bestScenarioId}`,
+      conditions: { operationType: [derivedInputs.operationType] as any, populationDensity: [derivedInputs.populationDensity] },
+      sailLevel: results.sailRoman,
+    };
+  }, [bestScenarioId, derivedInputs, results.sailRoman]);
 
   // Determine if OSO step should be shown
   const osoRequired = !bestScenario || results.sail >= 3;
@@ -144,7 +164,7 @@ export default function SoraWizard() {
   const handleFlightAreaUpdate = useCallback((data: FlightAreaData) => {
     setFlightAreaData(data);
     updateInputs({
-      operationType: data.operationType,
+      operationType: data.operationType || 'VLOS',
       populationDensity: data.populationDensityClass,
       airspaceClass: data.airspaceClass,
     });

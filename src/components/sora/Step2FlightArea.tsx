@@ -13,7 +13,7 @@ export interface FlightAreaData {
   landingPoint: L.LatLng | null;
   areaKm2: number;
   diagonalM: number;
-  operationType: 'VLOS' | 'BVLOS';
+  operationType: 'VLOS' | 'EVLOS' | 'BVLOS' | null;
   grbMeters: number;
   cvMeters: number;
   populationDensityClass: PopulationDensityClass;
@@ -197,15 +197,11 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
   }, [drone, maxAltitude]);
 
   const processPolygon = useCallback(async (latlngs: L.LatLng[], map: L.Map) => {
-    // BUG 1 FIX: Calculate diagonal using Leaflet's distanceTo (returns meters)
     const polygon = L.polygon(latlngs);
     const bounds = polygon.getBounds();
     const ne = bounds.getNorthEast();
     const sw = bounds.getSouthWest();
-    const diagonalMeters = ne.distanceTo(sw); // Leaflet built-in, meters
-
-    // VLOS/BVLOS: diagonal > 500m = BVLOS, regardless of drone capability
-    const operationType: 'VLOS' | 'BVLOS' = diagonalMeters > 500 ? 'BVLOS' : 'VLOS';
+    const diagonalMeters = ne.distanceTo(sw);
 
     // Calculate area
     let area = 0;
@@ -215,7 +211,7 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
     }
     area = Math.abs(area) * 6378137 * 6378137 / 2 * Math.PI / 180 / 1e6;
 
-    // BUG 3 FIX: Draw buffers immediately
+    // Draw buffers immediately
     drawBuffers(latlngs, map);
 
     const initialData: FlightAreaData = {
@@ -224,12 +220,12 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
       landingPoint: landingMarkerRef.current?.getLatLng() || null,
       areaKm2: Math.round(area * 1000) / 1000,
       diagonalM: Math.round(diagonalMeters),
-      operationType,
+      operationType: localData?.operationType || null, // User must select manually
       grbMeters: Math.round(grbDistance * 10) / 10,
       cvMeters: Math.round(cvDistance),
-      populationDensityClass: 'sparsely', // placeholder until Overpass returns
+      populationDensityClass: 'sparsely',
       airspaceClass: 'uncontrolled_low',
-      flightDescription: `Flygeområde i ${municipality}, ${area.toFixed(3)} km², ${operationType}`,
+      flightDescription: `Flygeområde i ${municipality}, ${area.toFixed(3)} km²`,
       landUseResult: null,
       densityOverridden: false,
     };
@@ -237,9 +233,9 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
     setManualRequired(false);
     onUpdate(initialData);
 
-    // BUG 2 FIX: Query Overpass with improved count-based queries
+    // Query Overpass
     await runLandUseQuery(latlngs, initialData);
-  }, [municipality, drone, grbDistance, cvDistance, onUpdate]);
+  }, [municipality, drone, grbDistance, cvDistance, onUpdate, localData?.operationType]);
 
   const runLandUseQuery = useCallback(async (latlngs: L.LatLng[], baseData?: FlightAreaData) => {
     setQueryingLandUse(true);
@@ -342,6 +338,17 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
       setLocalData(updated);
       onUpdate(updated);
     }
+  };
+
+  const handleOperationTypeSelect = (type: 'VLOS' | 'EVLOS' | 'BVLOS') => {
+    if (!localData) return;
+    const updated: FlightAreaData = {
+      ...localData,
+      operationType: type,
+      flightDescription: `Flygeområde i ${municipality}, ${localData.areaKm2} km², ${type}`,
+    };
+    setLocalData(updated);
+    onUpdate(updated);
   };
 
   const handleDensityOverride = (newClass: PopulationDensityClass) => {
@@ -449,7 +456,49 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
       {/* Map */}
       <div ref={mapContainerRef} className="w-full h-[450px] rounded-xl border border-sora-border overflow-hidden" />
 
-      {/* Manual classification warning */}
+      {/* VLOS/BVLOS/EVLOS selector — required after polygon is drawn */}
+      {localData?.polygon && (
+        <div className="bg-sora-surface border border-sora-border rounded-xl p-4 space-y-3">
+          <p className="text-sora-text font-semibold text-sm">Kan piloten se dronen med egne øyne under hele flyvningen?</p>
+          <div className="flex gap-3">
+            {([
+              { type: 'VLOS' as const, label: 'Ja, VLOS', desc: 'Visuell kontakt hele tiden' },
+              { type: 'BVLOS' as const, label: 'Nei, BVLOS', desc: 'Utenfor synsrekkevidde' },
+              { type: 'EVLOS' as const, label: 'Delvis, EVLOS', desc: 'Utvidet visuell kontakt' },
+            ]).map(opt => (
+              <button
+                key={opt.type}
+                onClick={() => handleOperationTypeSelect(opt.type)}
+                className={`flex-1 rounded-lg p-3 text-left border-2 transition-all ${
+                  localData.operationType === opt.type
+                    ? 'border-sora-purple bg-sora-purple/10'
+                    : 'border-sora-border hover:border-sora-text-dim'
+                }`}
+              >
+                <p className={`text-sm font-bold ${localData.operationType === opt.type ? 'text-sora-purple' : 'text-sora-text'}`}>{opt.label}</p>
+                <p className="text-xs text-sora-text-dim mt-0.5">{opt.desc}</p>
+              </button>
+            ))}
+          </div>
+          {!localData.operationType && (
+            <p className="text-sora-warning text-xs flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3" /> Du må velge operasjonstype for å beregne GRC og SAIL.
+            </p>
+          )}
+          <p className="text-sora-text-dim text-xs">
+            I henhold til EU 2019/947 og SORA 2.5 er VLOS/BVLOS bestemt av pilotens evne til å opprettholde visuell kontakt — ikke av polygonstørrelse.
+          </p>
+        </div>
+      )}
+
+      {/* Airspace note */}
+      {localData?.polygon && (
+        <div className="bg-sora-surface/50 border border-sora-border rounded-lg px-4 py-2.5 text-xs text-sora-text-dim flex items-start gap-2">
+          <Info className="w-4 h-4 text-sora-purple shrink-0 mt-0.5" />
+          <span>Luftrom er basert på forenklet klassifisering. Sjekk alltid <a href="https://ninox.no" target="_blank" rel="noopener noreferrer" className="text-sora-purple hover:underline">Ninox</a> eller <a href="https://luftrom.info" target="_blank" rel="noopener noreferrer" className="text-sora-purple hover:underline">HmSWX</a> for faktisk luftromsklasse.</span>
+        </div>
+      )}
+
       {manualRequired && !localData?.densityOverridden && (
         <div className="bg-yellow-500/15 border border-yellow-500/40 rounded-lg px-4 py-3">
           <p className="text-yellow-400 text-sm font-semibold flex items-center gap-2 mb-2">
