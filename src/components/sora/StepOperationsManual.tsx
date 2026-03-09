@@ -75,15 +75,15 @@ function FormField({ label, required, children }: { label: string; required?: bo
 function SectionCard({ title, index, complete, children }: { title: string; index: number; complete: boolean; children: React.ReactNode }) {
   const [open, setOpen] = useState(true);
   return (
-    <div className="bg-sora-surface border border-sora-border rounded-xl overflow-hidden">
+    <div className="haiko-card overflow-hidden">
       <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between px-5 py-3.5 text-left hover:bg-sora-surface-hover transition-colors">
         <div className="flex items-center gap-3">
-          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${complete ? 'bg-green-500/20 text-green-400' : 'bg-sora-purple/20 text-sora-purple'}`}>
-            {complete ? <Check className="w-3.5 h-3.5" /> : index}
+          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${complete ? 'bg-gradient-to-br from-sora-pink to-sora-purple text-white' : 'bg-sora-light text-sora-purple'}`}>
+            {complete ? <Check className="w-3.5 h-3.5" strokeWidth={2} /> : index}
           </div>
-          <span className="font-semibold text-sm text-sora-text">{title}</span>
+          <span className="font-display font-bold text-[15px] text-sora-text">{title}</span>
         </div>
-        {open ? <ChevronUp className="w-4 h-4 text-sora-text-dim" /> : <ChevronDown className="w-4 h-4 text-sora-text-dim" />}
+        {open ? <ChevronUp className="w-5 h-5 text-sora-purple" strokeWidth={1.5} /> : <ChevronDown className="w-5 h-5 text-sora-purple" strokeWidth={1.5} />}
       </button>
       {open && <div className="px-5 pb-5 space-y-3 border-t border-sora-border pt-4">{children}</div>}
     </div>
