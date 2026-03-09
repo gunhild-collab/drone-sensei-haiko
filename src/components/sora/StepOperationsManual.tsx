@@ -127,6 +127,15 @@ export default function StepOperationsManual({
   const isPDRA = scenario?.startsWith('PDRA');
   const isOpen = scenario?.startsWith('A');
 
+  const getAddress = () => flightAreaData?.flightDescription ? flightAreaData.flightDescription : municipality;
+  const getTakeoffCoords = () => {
+    const tp = flightAreaData?.takeoffPoint;
+    if (!tp) return '—';
+    const lat = typeof tp.lat === 'function' ? tp.lat : (tp as any)[0];
+    const lng = typeof tp.lng === 'function' ? tp.lng : (tp as any)[1];
+    return `${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}`;
+  };
+
   return (
     <div className="space-y-6">
       <div>
