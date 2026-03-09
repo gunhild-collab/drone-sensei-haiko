@@ -309,15 +309,7 @@ export default function SoraWizard() {
               )}
               {step === 6 && (
                 <Step8Documents
-                  inputs={derivedInputs}
-                  results={results}
-                  osoTexts={osoTexts}
-                  applicantName={applicantName}
-                  applicantEmail={applicantEmail}
-                  municipality={municipality}
-                  flightAreaDescription={flightAreaData?.flightDescription || ''}
-                  matchedScenario={bestScenario}
-                  scenarioFormData={scenarioFormData}
+                  scenario={bestScenarioId}
                 />
               )}
             </motion.div>
