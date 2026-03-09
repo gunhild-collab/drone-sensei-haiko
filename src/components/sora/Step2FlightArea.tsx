@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { MapPin, AlertTriangle, Loader2, ChevronDown, Info } from "lucide-react";
+import { MapPin, AlertTriangle, Loader2, ChevronDown, Info, Search } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet-draw";
