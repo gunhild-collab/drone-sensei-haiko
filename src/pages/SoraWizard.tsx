@@ -263,7 +263,7 @@ export default function SoraWizard() {
               {step === 1 && (
                 <Step2FlightArea
                   municipality={municipality || 'Trondheim'}
-                  municipalityDensity={municipalityData?.densityPerKm2 || 30}
+                  municipalityDensity={0}
                   drone={selectedDrone}
                   flightAreaData={flightAreaData}
                   maxAltitude={derivedInputs.maxAltitude}
