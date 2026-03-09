@@ -1,34 +1,45 @@
-import { useState } from "react";
-import { ArrowRight, CalendarIcon, Clock } from "lucide-react";
+import { useState, useMemo } from "react";
+import { ArrowRight, CalendarIcon, Search, Plane, Check } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DroneSpec, DRONE_DATABASE } from "@/data/droneDatabase";
 import HaikoLogo from "./HaikoLogo";
 
 interface Props {
   applicantName: string;
   applicantEmail: string;
   flightDate: string;
+  selectedDrone: DroneSpec | null;
   onChangeName: (v: string) => void;
   onChangeEmail: (v: string) => void;
   onChangeFlightDate: (v: string) => void;
+  onSelectDrone: (drone: DroneSpec) => void;
   onContinue: () => void;
 }
 
 export default function PreStep({
-  applicantName, applicantEmail, flightDate,
-  onChangeName, onChangeEmail, onChangeFlightDate,
+  applicantName, applicantEmail, flightDate, selectedDrone,
+  onChangeName, onChangeEmail, onChangeFlightDate, onSelectDrone,
   onContinue,
 }: Props) {
-  const canContinue = applicantName.trim() && applicantEmail.trim();
+  const canContinue = applicantName.trim() && applicantEmail.trim() && selectedDrone !== null;
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [droneSearch, setDroneSearch] = useState('');
+  const [droneDropdownOpen, setDroneDropdownOpen] = useState(false);
   const selectedDate = flightDate ? new Date(flightDate) : undefined;
 
   const handleDateSelect = (date: Date | undefined) => {
     if (date) onChangeFlightDate(format(date, 'yyyy-MM-dd'));
     setCalendarOpen(false);
   };
+
+  const filteredDrones = useMemo(() => {
+    if (!droneSearch) return DRONE_DATABASE;
+    const q = droneSearch.toLowerCase();
+    return DRONE_DATABASE.filter(d => d.name.toLowerCase().includes(q) || d.manufacturer.toLowerCase().includes(q));
+  }, [droneSearch]);
 
   return (
     <div className="min-h-screen bg-sora-bg flex items-center justify-center px-4 font-sora">
@@ -54,6 +65,58 @@ export default function PreStep({
             <input type="email" className="haiko-input w-full" placeholder="din@epost.no" value={applicantEmail} onChange={e => onChangeEmail(e.target.value)} />
           </div>
 
+          {/* Drone selection */}
+          <div>
+            <label className="haiko-label block mb-2">Hvilken drone skal du bruke? *</label>
+            <div className="relative">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sora-text-dim" strokeWidth={1.5} />
+                <input
+                  type="text"
+                  className="haiko-input w-full pl-10"
+                  placeholder="Søk etter drone..."
+                  value={droneSearch}
+                  onChange={e => { setDroneSearch(e.target.value); setDroneDropdownOpen(true); }}
+                  onFocus={() => setDroneDropdownOpen(true)}
+                />
+              </div>
+              {droneDropdownOpen && (
+                <div className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto bg-white border border-sora-border rounded-lg shadow-lg">
+                  {filteredDrones.map(d => (
+                    <button
+                      key={d.id}
+                      onClick={() => { onSelectDrone(d); setDroneSearch(d.name); setDroneDropdownOpen(false); }}
+                      className={cn(
+                        "w-full flex items-center justify-between px-4 py-3 text-left hover:bg-sora-light transition-colors text-sm",
+                        selectedDrone?.id === d.id && "bg-sora-light"
+                      )}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Plane className="w-4 h-4 text-sora-purple shrink-0" strokeWidth={1.5} />
+                        <div className="min-w-0">
+                          <p className="text-sora-text font-medium truncate">{d.name}</p>
+                          <p className="text-sora-text-dim text-xs">{d.mtom} kg · {d.categoryClass} · {d.easaCategory}</p>
+                        </div>
+                      </div>
+                      {selectedDrone?.id === d.id && <Check className="w-4 h-4 text-sora-purple shrink-0" strokeWidth={1.5} />}
+                    </button>
+                  ))}
+                  {filteredDrones.length === 0 && (
+                    <p className="px-4 py-3 text-sora-text-dim text-sm">Ingen droner funnet</p>
+                  )}
+                </div>
+              )}
+            </div>
+            {selectedDrone && (
+              <div className="mt-2 p-3 bg-sora-light border-l-2 border-sora-purple rounded-lg">
+                <p className="text-sora-text font-medium text-sm">{selectedDrone.name}</p>
+                <p className="text-sora-text-dim text-xs mt-0.5">
+                  {selectedDrone.mtom} kg · {selectedDrone.characteristicDimension} m · {selectedDrone.categoryClass} · {selectedDrone.maxSpeed} m/s
+                </p>
+              </div>
+            )}
+          </div>
+
           <div>
             <label className="haiko-label block mb-2">Dato for flyging</label>
             <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
@@ -71,7 +134,6 @@ export default function PreStep({
               </PopoverContent>
             </Popover>
           </div>
-
 
           <button onClick={onContinue} disabled={!canContinue} className="haiko-btn-primary w-full mt-2">
             Start veiviseren <ArrowRight className="w-4 h-4" strokeWidth={1.5} />
