@@ -10,19 +10,15 @@ interface Props {
   applicantName: string;
   applicantEmail: string;
   flightDate: string;
-  timeFrom: string;
-  timeTo: string;
   onChangeName: (v: string) => void;
   onChangeEmail: (v: string) => void;
   onChangeFlightDate: (v: string) => void;
-  onChangeTimeFrom: (v: string) => void;
-  onChangeTimeTo: (v: string) => void;
   onContinue: () => void;
 }
 
 export default function PreStep({
-  applicantName, applicantEmail, flightDate, timeFrom, timeTo,
-  onChangeName, onChangeEmail, onChangeFlightDate, onChangeTimeFrom, onChangeTimeTo,
+  applicantName, applicantEmail, flightDate,
+  onChangeName, onChangeEmail, onChangeFlightDate,
   onContinue,
 }: Props) {
   const canContinue = applicantName.trim() && applicantEmail.trim();
@@ -76,22 +72,6 @@ export default function PreStep({
             </Popover>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="haiko-label block mb-2">Klokkeslett fra</label>
-              <div className="relative">
-                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-sora-purple pointer-events-none" strokeWidth={1.5} />
-                <input type="time" step="60" className="haiko-input w-full pl-10" value={timeFrom} onChange={e => onChangeTimeFrom(e.target.value)} />
-              </div>
-            </div>
-            <div>
-              <label className="haiko-label block mb-2">Klokkeslett til</label>
-              <div className="relative">
-                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-sora-purple pointer-events-none" strokeWidth={1.5} />
-                <input type="time" step="60" className="haiko-input w-full pl-10" value={timeTo} onChange={e => onChangeTimeTo(e.target.value)} />
-              </div>
-            </div>
-          </div>
 
           <button onClick={onContinue} disabled={!canContinue} className="haiko-btn-primary w-full mt-2">
             Start veiviseren <ArrowRight className="w-4 h-4" strokeWidth={1.5} />

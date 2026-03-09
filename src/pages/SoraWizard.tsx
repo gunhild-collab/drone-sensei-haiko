@@ -148,9 +148,7 @@ export default function SoraWizard() {
     return (
       <PreStep
         applicantName={applicantName} applicantEmail={applicantEmail} flightDate={flightDate}
-        timeFrom={timeFrom} timeTo={timeTo}
         onChangeName={setApplicantName} onChangeEmail={setApplicantEmail} onChangeFlightDate={setFlightDate}
-        onChangeTimeFrom={setTimeFrom} onChangeTimeTo={setTimeTo}
         onContinue={() => setStarted(true)}
       />
     );
