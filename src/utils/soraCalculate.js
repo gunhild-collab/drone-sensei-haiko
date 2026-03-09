@@ -289,7 +289,7 @@ const testCases = [
       m2Parachute: false,
       c_class: "none"
     },
-    // Forventet: droneClass=S, speedClass=slow, intrinsicGRC=3, finalGRC=2, ARC-b, SAIL=II, PDRA-S01 eller A2
+    // Forventet: droneClass=S, speedClass=slow, intrinsicGRC=3, finalGRC=2, ARC-b, SAIL=II, PDRA-S01 (populated, ≤30m) eller SORA
   },
   {
     label: "DJI Matrice 350 — sparsomt, BVLOS, 100m",
