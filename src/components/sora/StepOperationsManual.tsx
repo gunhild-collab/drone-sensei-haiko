@@ -286,7 +286,7 @@ export default function StepOperationsManual({
           <input className={inputCls} placeholder="Digitalt i operasjonslogg på SharePoint / Google Drive" value={t('maintLog')} onChange={e => set('maintLog', e.target.value)} />
         </FormField>
         <FormField label="Siste gjennomførte service">
-          <input type="date" className={inputCls} style={{ colorScheme: 'dark' }} value={t('maintLastService')} onChange={e => set('maintLastService', e.target.value)} />
+          <input type="date" className={inputCls} value={t('maintLastService')} onChange={e => set('maintLastService', e.target.value)} />
         </FormField>
       </SectionCard>
 
