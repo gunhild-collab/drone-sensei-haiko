@@ -40,7 +40,7 @@ export interface FlightAreaData {
   populationDensityClass: PopulationDensityClass;
   airspaceClass: 'uncontrolled_low' | 'uncontrolled_high' | 'class_e' | 'controlled';
   flightDescription: string;
-  landUseResult: LandUseResult | null;
+  worldPopResult: WorldPopResult | null;
   densityOverridden: boolean;
 }
 
