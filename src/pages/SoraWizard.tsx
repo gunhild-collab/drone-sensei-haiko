@@ -343,7 +343,7 @@ export default function SoraWizard() {
           <button
             onClick={() => setStep(Math.max(0, step - 1))}
             disabled={step === 0}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-sora-surface text-sora-text-muted hover:bg-sora-surface-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-sm"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-white border border-sora-text text-sora-text hover:bg-sora-light disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-sm"
           >
             <ArrowLeft className="w-4 h-4" /> Forrige
           </button>
@@ -351,7 +351,7 @@ export default function SoraWizard() {
           <button
             onClick={() => setStep(Math.min(STEPS.length - 1, step + 1))}
             disabled={step === STEPS.length - 1}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-sora-purple text-sora-text hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-sm"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-sora-pink to-sora-purple text-white hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-sm"
           >
             Neste <ArrowRight className="w-4 h-4" />
           </button>
