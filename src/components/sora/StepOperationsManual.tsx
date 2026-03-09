@@ -159,14 +159,14 @@ export default function StepOperationsManual({
         <Section title="2. Operatørinformasjon">
           <Row label="Operatørnavn" value={applicantName} />
           <Row label="E-post" value={applicantEmail} />
-          <Row label="Operasjonsadresse" value={flightAreaData ? flightAreaData.flightDescription :ightDescription : municipality} />
+          <Row label="Operasjonsadresse" value={getAddress()} />
           <EditableField fieldKey="regNumber" placeholder="Fyll inn droneregistreringsnummer" value={t('regNumber')} onChange={onManualTextChange} />
           <EditableField fieldKey="pilotCert" placeholder="Fyll inn pilotsertifikat (type og nummer)" value={t('pilotCert')} onChange={onManualTextChange} />
         </Section>
 
         {/* 3. Luftfartøy */}
         <Section title="3. Luftfartøy">
-          <Row label="Dronemodell" value={selectedDrone?.name || derivedInputs.droneName} />
+          <Row label="Dronemodell" value={selectedDrone?.name ?? derivedInputs.droneName} />
           <Row label="Produsent" value={selectedDrone?.manufacturer} />
           <Row label="MTOM" value={`${derivedInputs.mtom} kg`} />
           <Row label="Karakteristisk dimensjon" value={`${derivedInputs.characteristicDimension} m`} />
@@ -180,12 +180,12 @@ export default function StepOperationsManual({
 
         {/* 4. Operasjonsområde */}
         <Section title="4. Operasjonsområde">
-          <Row label="Lokasjon" valu ? flightAreaData.flightDescription :lightDescription| '—'} />
+          <Row label="Lokasjon" value={getAddress()} />
           <Row label="Kommune" value={municipality} />
-          <Row label="Koordinater takeoff" value={flightAreaData?.takeoffPoint ? `${flightAreaData.takeoffPoint[0].toFixed(5)}, ${flightAreaData.takeoffPoint[1].toFixed(5)}` : '—'} />
+          <Row label="Koordinater takeoff" value={getTakeoffCoords()} />
           <Row label="Flygehøyde (maks)" value={`${derivedInputs.maxAltitude} m AGL`} />
           <Row label="Operasjonstype" value={derivedInputs.operationType} />
-          <Row label="Befolkningstetthet" value={popLabels[derivedInputs.populationDensity] || derivedInputs.populationDensity} />
+          <Row label="Befolkningstetthet" value={popLabels[derivedInputs.populationDensity] ?? derivedInputs.populationDensity} />
         </Section>
 
         {/* 5. Risikovurdering */}
