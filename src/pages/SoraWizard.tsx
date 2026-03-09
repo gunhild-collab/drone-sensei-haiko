@@ -230,9 +230,9 @@ export default function SoraWizard() {
           {STEPS.map((s, i) => (
             <button key={i} onClick={() => setStep(i)} className="flex items-center gap-1 flex-1">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                i === step ? 'bg-sora-purple text-sora-text scale-110' :
-                i < step ? 'bg-sora-purple/30 text-sora-purple' :
-                'bg-sora-surface text-sora-text-dim'
+                i === step ? 'bg-gradient-to-r from-sora-pink to-sora-purple text-white scale-110' :
+                i < step ? 'bg-sora-purple text-white' :
+                'bg-sora-light text-sora-text-dim'
               }`}>
                 {i < step ? <Check className="w-4 h-4" /> : s.short}
               </div>
@@ -343,7 +343,7 @@ export default function SoraWizard() {
           <button
             onClick={() => setStep(Math.max(0, step - 1))}
             disabled={step === 0}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-sora-surface text-sora-text-muted hover:bg-sora-surface-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-sm"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-white border border-sora-text text-sora-text hover:bg-sora-light disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-sm"
           >
             <ArrowLeft className="w-4 h-4" /> Forrige
           </button>
@@ -351,7 +351,7 @@ export default function SoraWizard() {
           <button
             onClick={() => setStep(Math.min(STEPS.length - 1, step + 1))}
             disabled={step === STEPS.length - 1}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-sora-purple text-sora-text hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-sm"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-sora-pink to-sora-purple text-white hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-sm"
           >
             Neste <ArrowRight className="w-4 h-4" />
           </button>

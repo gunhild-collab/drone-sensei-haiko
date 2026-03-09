@@ -53,9 +53,9 @@ function LockedField({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <label className="block text-xs font-medium text-sora-text-muted mb-1">{label}</label>
-      <div className="bg-sora-purple/10 border border-sora-purple/30 rounded-lg px-3 py-2.5 text-sm text-sora-text flex items-center justify-between">
+      <div className="bg-sora-light border-l-2 border-sora-purple rounded-lg px-3 py-2.5 text-sm text-sora-text flex items-center justify-between">
         <span>{value || '—'}</span>
-        <span className="text-[10px] bg-sora-purple/20 text-sora-purple px-2 py-0.5 rounded-full font-medium whitespace-nowrap ml-2">Hentet automatisk</span>
+        <span className="text-[10px] bg-sora-purple/15 text-sora-purple px-2 py-0.5 rounded-full font-medium whitespace-nowrap ml-2">Hentet automatisk</span>
       </div>
     </div>
   );
@@ -286,7 +286,7 @@ export default function StepOperationsManual({
           <input className={inputCls} placeholder="Digitalt i operasjonslogg på SharePoint / Google Drive" value={t('maintLog')} onChange={e => set('maintLog', e.target.value)} />
         </FormField>
         <FormField label="Siste gjennomførte service">
-          <input type="date" className={inputCls} style={{ colorScheme: 'dark' }} value={t('maintLastService')} onChange={e => set('maintLastService', e.target.value)} />
+          <input type="date" className={inputCls} value={t('maintLastService')} onChange={e => set('maintLastService', e.target.value)} />
         </FormField>
       </SectionCard>
 
@@ -299,7 +299,7 @@ export default function StepOperationsManual({
           <input className={inputCls} placeholder="A2-sertifikat, NO-A2-2024-00123" value={t('compCert')} onChange={e => set('compCert', e.target.value)} />
         </FormField>
         <FormField label="Dato siste repetisjonskurs">
-          <input type="date" className={inputCls} style={{ colorScheme: 'dark' }} value={t('compLastCourse')} onChange={e => set('compLastCourse', e.target.value)} />
+          <input type="date" className={inputCls} value={t('compLastCourse')} onChange={e => set('compLastCourse', e.target.value)} />
         </FormField>
         <FormField label="Tilleggsopplæring">
           <input className={inputCls} placeholder="BVLOS-kurs juni 2024, termisk kamera-kurs mars 2024" value={t('compExtra')} onChange={e => set('compExtra', e.target.value)} />
@@ -311,7 +311,7 @@ export default function StepOperationsManual({
         <button
           onClick={handleGenerate}
           disabled={!allFilled || generating}
-          className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-sora-purple text-sora-text font-semibold text-base hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+          className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-gradient-to-r from-sora-pink to-sora-purple text-white font-semibold text-base hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
         >
           {generating ? <><Loader2 className="w-5 h-5 animate-spin" /> Genererer dokument...</> : <><Printer className="w-5 h-5" /> Generer operasjonsmanual</>}
         </button>
@@ -319,7 +319,7 @@ export default function StepOperationsManual({
           <p className="text-xs text-sora-text-dim text-center mt-2">{remaining} av {requiredFields.length} obligatoriske felt gjenstår</p>
         )}
         {generated && (
-          <p className="text-xs text-green-400 text-center mt-2">Operasjonsmanualen er klar. Du kan nå gå videre til søknad.</p>
+          <p className="text-xs text-sora-success text-center mt-2">Operasjonsmanualen er klar. Du kan nå gå videre til søknad.</p>
         )}
       </div>
 

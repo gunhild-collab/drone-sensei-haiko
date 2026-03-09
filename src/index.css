@@ -47,20 +47,22 @@
     --sidebar-border: 220 25% 18%;
     --sidebar-ring: 220 70% 55%;
 
-    /* SORA DMA tokens */
-    --sora-bg: 240 33% 5%;
-    --sora-surface: 240 25% 11%;
-    --sora-surface-hover: 240 22% 15%;
-    --sora-border: 240 20% 18%;
-    --sora-purple: 263 70% 58%;
-    --sora-purple-glow: 263 70% 58%;
-    --sora-pink: 330 81% 60%;
-    --sora-text: 0 0% 100%;
-    --sora-text-muted: 220 10% 55%;
-    --sora-text-dim: 220 10% 38%;
+    /* Haiko palette */
+    --sora-bg: 0 0% 98%;
+    --sora-surface: 0 0% 100%;
+    --sora-surface-hover: 248 100% 98%;
+    --sora-border: 249 62% 94%;
+    --sora-purple: 246 92% 66%;
+    --sora-purple-glow: 246 92% 66%;
+    --sora-pink: 325 100% 70%;
+    --sora-text: 268 100% 17%;
+    --sora-text-muted: 252 30% 30%;
+    --sora-text-dim: 247 28% 67%;
     --sora-success: 142 71% 45%;
     --sora-warning: 48 96% 53%;
     --sora-danger: 0 84% 60%;
+    --sora-gradient: linear-gradient(135deg, #ff66c4 0%, #6858f8 100%);
+    --sora-light: 248 100% 98%;
   }
 
   .dark {
@@ -108,27 +110,27 @@
   }
 }
 
-/* Calendar dark theme for SORA wizard */
+/* Calendar theme for SORA wizard */
 .sora-calendar .rdp-day,
 .sora-calendar [class*="day"],
 .sora-calendar button {
-  color: #f3f4f6 !important;
+  color: #1c0059 !important;
 }
 .sora-calendar .rdp-day_selected,
 .sora-calendar [class*="day_selected"] {
-  background-color: #7c3aed !important;
+  background-color: #6858f8 !important;
   color: #ffffff !important;
 }
 .sora-calendar .rdp-day_today {
-  color: #a78bfa !important;
+  color: #ff66c4 !important;
   font-weight: 700;
 }
 .sora-calendar .rdp-day_outside {
-  color: #4b5563 !important;
+  color: #9993c4 !important;
 }
 .sora-calendar {
-  background: #13131e !important;
-  border: 1px solid #2e2e40 !important;
+  background: #ffffff !important;
+  border: 1px solid #e8e5f8 !important;
   border-radius: 0.75rem;
 }
 

@@ -88,6 +88,7 @@ export default {
           success: "hsl(var(--sora-success))",
           warning: "hsl(var(--sora-warning))",
           danger: "hsl(var(--sora-danger))",
+          light: "hsl(var(--sora-light))",
         },
       },
       borderRadius: {
