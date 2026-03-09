@@ -1,178 +1,234 @@
-import { useState } from "react";
-import { Download, FileText, Table, AlertTriangle, CheckCircle, Loader2 } from "lucide-react";
-import { SoraInputs, SoraResults } from "@/lib/soraCalculations";
-import { generateSoknadsskjemaNO, generateSoknadsskjemaEN, generateComplianceMatrix } from "@/lib/soraDocumentGenerators";
-import { generateOperationsManual } from "@/lib/operationsManualGenerator";
-import { PdraScenario } from "@/data/pdraScenarios";
-import { ScenarioFormData } from "./Step5ScenarioForm";
+import { ExternalLink, Download, FileText, Mail, Globe } from "lucide-react";
 
 interface Props {
-  inputs: SoraInputs;
-  results: SoraResults;
-  osoTexts: Record<number, string>;
-  applicantName: string;
-  applicantEmail: string;
-  municipality: string;
-  flightAreaDescription: string;
-  matchedScenario: PdraScenario | null;
-  scenarioFormData: ScenarioFormData;
+  scenario: string | null;
 }
 
-export default function Step8Documents({ inputs, results, osoTexts, applicantName, applicantEmail, municipality, flightAreaDescription, matchedScenario, scenarioFormData }: Props) {
-  const [downloading, setDownloading] = useState<string | null>(null);
-  const [downloaded, setDownloaded] = useState<Set<string>>(new Set());
+interface SubmissionPath {
+  title: string;
+  description: string;
+  links: { label: string; url: string }[];
+}
 
-  const sailRoman = results.sailRoman;
-  const isSora = !matchedScenario || results.sail >= 3;
-  const isPdra = matchedScenario?.id.startsWith('PDRA');
+interface DocTemplate {
+  title: string;
+  description?: string;
+  format: string;
+  url: string;
+}
 
-  const conops = {
-    operatorName: applicantName,
-    maxSpeed: String(inputs.mtom > 2 ? 23 : 16),
-    propulsion: 'elektrisk' as const,
-    hasRemoteId: inputs.hasTransponder ? 'ja' : 'nei',
-    flightGeography: flightAreaDescription,
-    contingencyBuffer: scenarioFormData.contingencyBuffer || '50',
-    grbMeters: scenarioFormData.grbMeters || '30',
-    operationDuration: '',
-    terrain: scenarioFormData.terrain || '',
-    nearestAirport: scenarioFormData.nearestAirport || '',
-    restrictions: scenarioFormData.restrictions || '',
+function getSubmissionPath(scenario: string | null): SubmissionPath {
+  if (!scenario) return getSubmissionPath('SORA-III-IV');
+
+  if (scenario === 'STS-01' || scenario === 'STS-02') {
+    return {
+      title: 'Deklarasjon NF-1172 — Deklarasjon av standardscenario',
+      description: 'Ingen søknad nødvendig. Du sender inn en deklarasjon via Luftfartstilsynets skjemaside.',
+      links: [
+        { label: 'Gå til NF-1172 →', url: 'https://www.luftfartstilsynet.no/skjema/droner/nf-1172-deklarasjon-av-standardscenario-sts/' },
+        { label: 'Engelsk versjon →', url: 'https://www.luftfartstilsynet.no/en/forms/dronerpas/nf-1172-declaration-of-a-standard-scenario-sts/' },
+      ],
+    };
+  }
+
+  if (scenario === 'A1' || scenario === 'A2' || scenario === 'A3') {
+    return {
+      title: 'Ingen søknad nødvendig for åpen kategori',
+      description: 'Sørg for at dronen er registrert på flydrone.no og at piloten har riktig kompetansebevis.',
+      links: [
+        { label: 'Gå til flydrone.no →', url: 'https://www.flydrone.no' },
+      ],
+    };
+  }
+
+  // PDRA and SORA
+  return {
+    title: 'Søknad NF-1145 — Søknad om operasjonstillatelse i spesifikk kategori',
+    description: 'Sendes inn digitalt via Altinn. Krev innlogging med BankID som daglig leder.',
+    links: [
+      { label: 'Start søknad i Altinn →', url: 'https://lt.apps.altinn.no/lt/operating-permit/' },
+      { label: 'Les mer om søknadsprosessen →', url: 'https://www.luftfartstilsynet.no/skjema/droner/nf-1145-soknad-om-operasjonstillatelse-i-spesifikk-kategori/' },
+    ],
   };
+}
 
-  const handleDownload = async (docType: string, generator: () => Promise<void>) => {
-    setDownloading(docType);
-    try {
-      await generator();
-      setDownloaded(prev => new Set(prev).add(docType));
-    } catch (err) {
-      console.error('Download error:', err);
-    } finally {
-      setDownloading(null);
-    }
-  };
+const CHECKLIST: DocTemplate = {
+  title: 'Sjekkliste for operasjonsmanual og SORA',
+  format: 'PDF',
+  url: 'https://www.luftfartstilsynet.no/globalassets/dokumenter/dronedokumenter/sjekklister/spesifikk-sjekkliste-operatorer-oktober2022.pdf',
+};
+const OPS_MANUAL_AMC: DocTemplate = {
+  title: 'Operasjonsmanual mal (AMC)',
+  format: 'PDF',
+  url: 'https://www.luftfartstilsynet.no/globalassets/dokumenter/dronedokumenter/nytt-eu-regelverk/operations-manual-template---amc.pdf',
+};
+const CONOPS: DocTemplate = {
+  title: 'ConOps mal',
+  format: 'PDF',
+  url: 'https://www.luftfartstilsynet.no/globalassets/dokumenter/dronedokumenter/nytt-eu-regelverk/conops-amc.pdf',
+};
 
-  const documents = [
-    {
-      id: 'soknad-no',
-      name: 'Søknadsskjema (norsk)',
-      desc: 'Offisielt SORA 2.5 søknadsskjema på norsk',
-      icon: <FileText className="w-5 h-5" />,
-      format: '.docx',
-      show: true,
-      generate: () => generateSoknadsskjemaNO(inputs, results, conops, osoTexts),
-    },
-    {
-      id: 'soknad-en',
-      name: 'Application form (English)',
-      desc: 'SORA 2.5 application form in English',
-      icon: <FileText className="w-5 h-5" />,
-      format: '.docx',
-      show: true,
-      generate: () => generateSoknadsskjemaEN(inputs, results, conops, osoTexts),
-    },
-    {
-      id: 'compliance',
-      name: 'Compliance Matrix',
-      desc: 'OSO compliance matrise med alle mitigeringer',
-      icon: <Table className="w-5 h-5" />,
-      format: '.docx',
-      show: isSora || isPdra,
-      generate: () => generateComplianceMatrix(inputs, results, conops, osoTexts),
-    },
-    {
-      id: 'operations-manual',
-      name: 'Operasjonsmanual',
-      desc: `Tilpasset SAIL ${sailRoman} — ${results.sail <= 2 ? '~8 sider' : results.sail <= 4 ? '~20 sider' : '~40 sider'}`,
-      icon: <FileText className="w-5 h-5" />,
-      format: '.docx',
-      show: true,
-      generate: () => generateOperationsManual({
-        applicantName, applicantEmail, municipality, droneName: inputs.droneName,
-        mtom: inputs.mtom, charDim: inputs.characteristicDimension, maxSpeed: parseFloat(conops.maxSpeed),
-        operationType: inputs.operationType, dayNight: inputs.dayNight, maxAltitude: inputs.maxAltitude,
-        populationDensity: inputs.populationDensity, results, osoTexts, flightAreaDescription,
-      }),
-    },
+function getTemplates(scenario: string | null): DocTemplate[] {
+  if (!scenario) return getTemplates('SORA-III-IV');
+
+  if (scenario === 'STS-01' || scenario === 'STS-02') {
+    return [
+      { title: 'Operasjonsmanual mal (STS)', description: 'Offisiell mal fra EASA Appendix 5. Last ned, fyll inn og legg ved deklarasjonen.', format: 'DOCX', url: 'https://www.easa.europa.eu/en/document-library/easy-access-rules/easy-access-rules-unmanned-aircraft-systems-regulations-eu' },
+      CHECKLIST,
+    ];
+  }
+
+  if (scenario === 'A1' || scenario === 'A2' || scenario === 'A3') return [];
+
+  if (scenario === 'PDRA-G01') {
+    return [
+      { title: 'Samsvarsmatrise PDRA-G01', description: 'Fyll ut og legg ved NF-1145 søknaden.', format: 'DOCX', url: 'https://www.luftfartstilsynet.no/globalassets/dokumenter/dronedokumenter/nytt-eu-regelverk/pdra/pdra-g01-samsvarsmatrise.docx' },
+      OPS_MANUAL_AMC, CONOPS, CHECKLIST,
+    ];
+  }
+  if (scenario === 'PDRA-G02') {
+    return [
+      { title: 'Samsvarsmatrise PDRA-G02', format: 'DOCX', url: 'https://www.luftfartstilsynet.no/globalassets/dokumenter/dronedokumenter/nytt-eu-regelverk/pdra/pdra-g02-samsvarsmatrise-26.03.2024.docx' },
+      OPS_MANUAL_AMC, CONOPS, CHECKLIST,
+    ];
+  }
+  if (scenario === 'PDRA-G03') {
+    return [
+      { title: 'Samsvarsmatrise PDRA-G03', format: 'DOCX', url: 'https://www.luftfartstilsynet.no/globalassets/dokumenter/dronedokumenter/nytt-eu-regelverk/pdra/pdra-g03-samsvarsmatrise.docx' },
+      OPS_MANUAL_AMC, CONOPS, CHECKLIST,
+    ];
+  }
+  if (scenario === 'PDRA-S01') {
+    return [
+      { title: 'Samsvarsmatrise PDRA-S01 (norsk)', format: 'DOCX', url: 'https://www.luftfartstilsynet.no/globalassets/dokumenter/dronedokumenter/nytt-eu-regelverk/pdra/pdra-s01-samsvarsmatrise.docx' },
+      { title: 'Samsvarsmatrise PDRA-S01 (EASA engelsk)', format: 'DOCX', url: 'https://www.easa.europa.eu/en/downloads/138412/en' },
+      { title: 'Eksempel operasjonsmanual PDRA-S01', format: 'DOCX', url: 'https://www.easa.europa.eu/en/downloads/139674/en' },
+      CONOPS, CHECKLIST,
+    ];
+  }
+  if (scenario === 'PDRA-S02') {
+    return [
+      { title: 'Samsvarsmatrise PDRA-S02 (EASA engelsk)', description: 'Ingen norsk versjon tilgjengelig.', format: 'DOCX', url: 'https://www.easa.europa.eu/en/downloads/138413/en' },
+      OPS_MANUAL_AMC, CONOPS, CHECKLIST,
+    ];
+  }
+
+  // SORA-III-IV / SORA-V-VI
+  return [
+    { title: 'SORA Template', description: 'Anbefalt risikovurderingsmal fra Luftfartstilsynet.', format: 'DOCX', url: 'https://www.luftfartstilsynet.no/globalassets/dokumenter/dronedokumenter/operasjonsmanualer/sora-template.docx' },
+    CONOPS, OPS_MANUAL_AMC, CHECKLIST,
+    { title: 'AltMoC til SORA Step 9', format: 'PDF', url: 'https://www.luftfartstilsynet.no/globalassets/dokumenter/dronedokumenter/caa-norway---altmoc-to-sora-step-9.pdf' },
+    { title: 'SORA interaktiv veileder', description: 'Luftfartstilsynets interaktive SORA-guide (nettbasert).', format: 'Link', url: 'https://training.caa.no/SORA-veileder/index.html#/lessons/bFGKtHGa0IwrhP7DeQy_vC5Vf5N_SNq6' },
   ];
+}
+
+function isOpenCategory(scenario: string | null) {
+  return scenario === 'A1' || scenario === 'A2' || scenario === 'A3';
+}
+
+export default function Step8Documents({ scenario }: Props) {
+  const submission = getSubmissionPath(scenario);
+  const templates = getTemplates(scenario);
+  const showContact = !isOpenCategory(scenario);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-bold text-sora-text mb-1">Dokumentnedlasting</h2>
-        <p className="text-sora-text-muted text-sm">Last ned alle relevante dokumenter for din søknad.</p>
+        <h2 className="text-2xl font-bold text-sora-text mb-1">Dokumenter og innsending</h2>
+        <p className="text-sora-text-muted text-sm">
+          Basert på scenario <span className="text-sora-purple font-semibold">{scenario || 'SORA'}</span> — her er dokumentene du trenger.
+        </p>
       </div>
 
-      {/* Disclaimer */}
-      <div className="bg-sora-warning/10 border border-sora-warning/30 rounded-xl p-4 flex items-start gap-3">
-        <AlertTriangle className="w-5 h-5 text-sora-warning shrink-0 mt-0.5" />
-        <div>
-          <p className="text-sora-warning font-semibold text-sm">Viktig</p>
-          <p className="text-sora-text-muted text-xs mt-1">
-            Disse dokumentene er generert som arbeidsverktøy og må kvalitetssikres av ansvarlig operatør og eventuell regulatorisk rådgiver før innsending til Luftfartstilsynet.
-          </p>
+      {/* SECTION 1 — Submission */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-sora-text-dim">Søknad og innsending</h3>
+        <div className="bg-sora-surface border border-sora-border rounded-xl p-5">
+          <p className="text-sora-text font-semibold text-sm">{submission.title}</p>
+          <p className="text-sora-text-muted text-xs mt-1">{submission.description}</p>
+          <div className="flex flex-wrap gap-2 mt-4">
+            {submission.links.map((link) => (
+              <a
+                key={link.url}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-sora-purple text-sora-text text-sm font-medium hover:opacity-90 transition-all"
+              >
+                <ExternalLink className="w-4 h-4" />
+                {link.label}
+              </a>
+            ))}
+          </div>
         </div>
-      </div>
+      </section>
 
-      {/* Summary card */}
-      <div className="bg-sora-surface border border-sora-border rounded-xl p-5 grid grid-cols-2 md:grid-cols-4 gap-4">
-        <SummaryItem label="Søker" value={applicantName} />
-        <SummaryItem label="Kommune" value={municipality} />
-        <SummaryItem label="Drone" value={inputs.droneName} />
-        <SummaryItem label="SAIL" value={sailRoman} highlight />
-        <SummaryItem label="GRC" value={String(results.finalGrc)} />
-        <SummaryItem label="ARC" value={results.residualArc} />
-        <SummaryItem label="Scenario" value={matchedScenario?.id || 'Full SORA'} />
-        <SummaryItem label="Type" value={inputs.operationType} />
-      </div>
+      {/* SECTION 2 — Templates */}
+      {templates.length > 0 && (
+        <section className="space-y-3">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-sora-text-dim">Last ned dokumentmaler</h3>
+          <div className="space-y-3">
+            {templates.map((doc) => (
+              <a
+                key={doc.url}
+                href={doc.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between bg-sora-surface border border-sora-border rounded-xl p-4 hover:border-sora-purple/40 transition-colors group"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-lg bg-sora-purple/20 text-sora-purple flex items-center justify-center shrink-0">
+                    {doc.format === 'Link' ? <ExternalLink className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sora-text font-medium text-sm truncate">{doc.title}</p>
+                    {doc.description && <p className="text-sora-text-dim text-xs mt-0.5">{doc.description}</p>}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 ml-4">
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded bg-sora-surface-hover text-sora-text-dim">
+                    {doc.format}
+                  </span>
+                  <Download className="w-4 h-4 text-sora-text-dim group-hover:text-sora-purple transition-colors" />
+                </div>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
 
-      {/* Document cards */}
-      <div className="space-y-3">
-        {documents.filter(d => d.show).map(doc => (
-          <div key={doc.id} className="bg-sora-surface border border-sora-border rounded-xl p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${downloaded.has(doc.id) ? 'bg-sora-success/20 text-sora-success' : 'bg-sora-purple/20 text-sora-purple'}`}>
-                {downloaded.has(doc.id) ? <CheckCircle className="w-5 h-5" /> : doc.icon}
+      {/* SECTION 3 — Contact */}
+      {showContact && (
+        <section className="space-y-3">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-sora-text-dim">Trenger du hjelp?</h3>
+          <div className="bg-sora-surface border-2 border-sora-purple/40 rounded-xl p-5">
+            <p className="text-sora-text font-semibold text-sm">Haiko hjelper deg med søknadsprosessen</p>
+            <p className="text-sora-text-muted text-xs mt-1">
+              Vi har erfaring med SORA, PDRA og operasjonsmanualer for norske kommuner og beredskapstjenester.
+            </p>
+            <div className="flex flex-col gap-2 mt-4 text-sm">
+              <div className="flex items-center gap-2 text-sora-text-muted">
+                <Mail className="w-4 h-4 text-sora-purple" />
+                <span>gunhild@haiko.no</span>
               </div>
-              <div>
-                <p className="text-sora-text font-medium text-sm">{doc.name}</p>
-                <p className="text-sora-text-dim text-xs">{doc.desc}</p>
+              <div className="flex items-center gap-2 text-sora-text-muted">
+                <Mail className="w-4 h-4 text-sora-purple" />
+                <span>simen@haiko.no</span>
+              </div>
+              <div className="flex items-center gap-2 text-sora-text-muted">
+                <Globe className="w-4 h-4 text-sora-purple" />
+                <span>haiko.no</span>
               </div>
             </div>
-            <button
-              onClick={() => handleDownload(doc.id, doc.generate)}
-              disabled={downloading === doc.id}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-sora-purple text-sora-text text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-all"
+            <a
+              href="mailto:gunhild@haiko.no"
+              className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-sora-purple text-sora-text text-sm font-medium hover:opacity-90 transition-all"
             >
-              {downloading === doc.id ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> Laster...</>
-              ) : (
-                <><Download className="w-4 h-4" /> {doc.format}</>
-              )}
-            </button>
+              Ta kontakt
+            </a>
           </div>
-        ))}
-      </div>
-
-      {/* Submit info */}
-      <div className="bg-sora-surface border border-sora-border rounded-xl p-5">
-        <h3 className="text-sora-text font-semibold text-sm mb-2">Innsending</h3>
-        <p className="text-sora-text-muted text-sm">
-          Send komplett søknad med alle vedlegg til: <span className="text-sora-purple font-medium">postmottak@caa.no</span>
-        </p>
-        <p className="text-sora-text-dim text-xs mt-2">
-          Behandlingstid: ca. 8–12 uker for SORA-søknader. STS-erklæringer behandles raskere.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function SummaryItem({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
-  return (
-    <div>
-      <p className="text-sora-text-dim text-xs">{label}</p>
-      <p className={`font-semibold text-sm ${highlight ? 'text-sora-purple' : 'text-sora-text'}`}>{value || '—'}</p>
+        </section>
+      )}
     </div>
   );
 }
