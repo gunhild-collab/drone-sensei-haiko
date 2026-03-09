@@ -5,7 +5,7 @@ import "leaflet/dist/leaflet.css";
 import "leaflet-draw";
 import "leaflet-draw/dist/leaflet.draw.css";
 import { DroneSpec } from "@/data/droneDatabase";
-import { queryLandUseInPolygon, expandPolygonByGrb, PopulationDensityClass, LandUseResult } from "@/lib/overpassLandUse";
+import { queryWorldPopDensity, expandPolygonByGrb, PopulationDensityClass, WorldPopResult } from "@/lib/worldPopDensity";
 
 interface NominatimResult {
   place_id: number;
