@@ -100,7 +100,7 @@ export default function PreStep({
                 <input
                   type="time"
                   step="60"
-                  style={{ colorScheme: 'dark' }}
+                  style={{ colorScheme: 'light' }}
                   className={cn(inputClass, "pl-10")}
                   value={timeFrom}
                   onChange={e => onChangeTimeFrom(e.target.value)}
