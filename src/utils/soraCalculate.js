@@ -250,7 +250,7 @@ export default function soraCalculate(inputs) {
       scenario = "SORA-V-VI";
       warnings.push("SAIL V–VI: Krever sannsynligvis LUC eller spesiell behandling av Luftfartstilsynet.");
     } else {
-      scenario = "SORA";
+      scenario = "SORA-III-IV";
     }
   }
 
