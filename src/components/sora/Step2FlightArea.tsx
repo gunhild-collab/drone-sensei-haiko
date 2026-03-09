@@ -536,17 +536,22 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
 
       {/* Density status bar — always visible after polygon */}
       {localData?.polygon && (
-        <div className="bg-sora-light border-l-[3px] border-sora-purple rounded-lg px-4 py-2.5 text-[13px] font-sora text-sora-text flex items-center gap-2">
-          <Info className="w-4 h-4 text-sora-purple shrink-0" strokeWidth={1.5} />
-          {queryingLandUse ? (
-            <span className="flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin text-sora-purple" /> Henter befolkningstetthet fra Overpass API...</span>
-          ) : localData.landUseResult && !localData.landUseResult.queryFailed && localData.landUseResult.detectedClass ? (
-            <span>Befolkningstetthet: <strong>{DENSITY_LABELS[localData.populationDensityClass]}</strong> (hentet fra Overpass){localData.densityOverridden && ' — manuelt overstyrt'}</span>
-          ) : manualRequired || (localData.landUseResult?.queryFailed) ? (
-            <span className="text-sora-danger">Befolkningstetthet: Ikke detektert — velg manuelt nedenfor</span>
-          ) : (
-            <span>Befolkningstetthet: <strong>{DENSITY_LABELS[localData.populationDensityClass]}</strong></span>
-          )}
+        <div className="bg-sora-light border-l-[3px] border-sora-purple rounded-lg px-4 py-2.5 text-[13px] font-sora text-sora-text space-y-1">
+          <div className="flex items-center gap-2">
+            <Info className="w-4 h-4 text-sora-purple shrink-0" strokeWidth={1.5} />
+            {queryingDensity ? (
+              <span className="flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin text-sora-purple" /> Henter befolkningstetthet fra WorldPop...</span>
+            ) : localData.worldPopResult && !localData.worldPopResult.queryFailed && localData.worldPopResult.detectedClass ? (
+              <span>Befolkningstetthet: ca. <strong>{Math.round(localData.worldPopResult.density!)} p/km²</strong> → <strong>{DENSITY_LABELS[localData.populationDensityClass]}</strong> (WorldPop 2020){localData.densityOverridden && ' — manuelt overstyrt'}</span>
+            ) : manualRequired ? (
+              <span className="text-sora-danger">{highDensityValue ? `Høy tetthet detektert (${Math.round(highDensityValue)} p/km²). Velg kategori nedenfor.` : 'Kunne ikke hente data automatisk — velg manuelt nedenfor'}</span>
+            ) : (
+              <span>Befolkningstetthet: <strong>{DENSITY_LABELS[localData.populationDensityClass]}</strong></span>
+            )}
+          </div>
+          <div className="ml-6">
+            <a href="https://experience.arcgis.com/experience/b00a6ce43d1943959d21bc957de265f4" target="_blank" rel="noopener noreferrer" className="text-sora-purple hover:underline text-xs">Verifiser mot EASA-kart ↗</a>
+          </div>
         </div>
       )}
 
