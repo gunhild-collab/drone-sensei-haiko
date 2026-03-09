@@ -178,11 +178,11 @@ export default function StepOperationsManual({
           { label: 'Kompetanse', done: sec7Done },
         ].map((s, i) => (
           <div key={i} className="flex items-center gap-1">
-            <div className={`w-5 h-5 rounded-full flex items-center justify-center ${s.done ? 'bg-green-500/20 text-green-400' : 'bg-sora-surface text-sora-text-dim'}`}>
-              {s.done ? <Check className="w-3 h-3" /> : <span className="text-[9px]">{i + 1}</span>}
+            <div className={`w-5 h-5 rounded-full flex items-center justify-center ${s.done ? 'bg-gradient-to-br from-sora-pink to-sora-purple text-white' : 'bg-sora-light text-sora-text-dim'}`}>
+              {s.done ? <Check className="w-3 h-3" strokeWidth={2} /> : <span className="text-[9px]">{i + 1}</span>}
             </div>
-            <span className={`text-[11px] ${s.done ? 'text-green-400' : 'text-sora-text-dim'}`}>{s.label}</span>
-            {i < 6 && <div className={`w-3 h-px ${s.done ? 'bg-green-500/30' : 'bg-sora-border'}`} />}
+            <span className={`text-[11px] font-sora ${s.done ? 'text-sora-purple font-semibold' : 'text-sora-text-dim'}`}>{s.label}</span>
+            {i < 6 && <div className={`w-3 h-px ${s.done ? 'bg-gradient-to-r from-sora-pink to-sora-purple' : 'bg-sora-border'}`} />}
           </div>
         ))}
       </div>
