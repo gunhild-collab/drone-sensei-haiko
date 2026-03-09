@@ -13,6 +13,7 @@ import Step3Drone from "@/components/sora/Step3Drone";
 import Step4Mitigations, { MitigationState } from "@/components/sora/Step4Mitigations";
 import Step5ScenarioForm, { ScenarioFormData } from "@/components/sora/Step5ScenarioForm";
 import Step6OSO from "@/components/sora/Step6OSO";
+import StepOperationsManual from "@/components/sora/StepOperationsManual";
 import Step7Explanation from "@/components/sora/Step7Explanation";
 import Step8Documents from "@/components/sora/Step8Documents";
 import LiveSummary from "@/components/sora/LiveSummary";
@@ -24,8 +25,9 @@ const STEPS = [
   { label: 'Mitigrasjoner', short: '3' },
   { label: 'Scenario', short: '4' },
   { label: 'OSO', short: '5' },
-  { label: 'Forklaring', short: '6' },
-  { label: 'Dokumenter', short: '7' },
+  { label: 'Manual', short: '6' },
+  { label: 'Forklaring', short: '7' },
+  { label: 'Dokumenter', short: '8' },
 ];
 
 const defaultInputs: SoraInputs = {
@@ -81,6 +83,8 @@ export default function SoraWizard() {
   const [step, setStep] = useState(0);
   const [inputs, setInputs] = useState<SoraInputs>(defaultInputs);
   const [osoTexts, setOsoTexts] = useState<Record<number, string>>({});
+  const [manualTexts, setManualTexts] = useState<Record<string, string>>({});
+  const updateManualText = useCallback((key: string, value: string) => setManualTexts(prev => ({ ...prev, [key]: value })), []);
   const [mitigations, setMitigations] = useState<MitigationState>(defaultMitigations);
   const [scenarioFormData, setScenarioFormData] = useState<ScenarioFormData>(defaultScenarioForm);
 
@@ -302,12 +306,27 @@ export default function SoraWizard() {
                 />
               )}
               {step === 5 && (
+                <StepOperationsManual
+                  applicantName={applicantName}
+                  applicantEmail={applicantEmail}
+                  flightDate={flightDate}
+                  municipality={municipality}
+                  selectedDrone={selectedDrone}
+                  results={results}
+                  flightAreaData={flightAreaData}
+                  derivedInputs={derivedInputs}
+                  scenario={bestScenarioId}
+                  manualTexts={manualTexts}
+                  onManualTextChange={updateManualText}
+                />
+              )}
+              {step === 6 && (
                 <Step7Explanation
                   sailLevel={results.sail}
                   matchedScenario={bestScenario}
                 />
               )}
-              {step === 6 && (
+              {step === 7 && (
                 <Step8Documents
                   scenario={bestScenarioId}
                 />
@@ -340,7 +359,7 @@ export default function SoraWizard() {
       </div>
 
       {/* Contact Haiko */}
-      <ContactHaiko prominent={step === 4 || step === 6} />
+      <ContactHaiko prominent={step === 4 || step === 7} />
     </div>
   );
 }
