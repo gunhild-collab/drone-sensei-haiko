@@ -83,6 +83,8 @@ export default function SoraWizard() {
   const [step, setStep] = useState(0);
   const [inputs, setInputs] = useState<SoraInputs>(defaultInputs);
   const [osoTexts, setOsoTexts] = useState<Record<number, string>>({});
+  const [manualTexts, setManualTexts] = useState<Record<string, string>>({});
+  const updateManualText = useCallback((key: string, value: string) => setManualTexts(prev => ({ ...prev, [key]: value })), []);
   const [mitigations, setMitigations] = useState<MitigationState>(defaultMitigations);
   const [scenarioFormData, setScenarioFormData] = useState<ScenarioFormData>(defaultScenarioForm);
 
