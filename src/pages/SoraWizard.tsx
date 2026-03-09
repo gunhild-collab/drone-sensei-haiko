@@ -25,8 +25,9 @@ const STEPS = [
   { label: 'Mitigrasjoner', short: '3' },
   { label: 'Scenario', short: '4' },
   { label: 'OSO', short: '5' },
-  { label: 'Forklaring', short: '6' },
-  { label: 'Dokumenter', short: '7' },
+  { label: 'Manual', short: '6' },
+  { label: 'Forklaring', short: '7' },
+  { label: 'Dokumenter', short: '8' },
 ];
 
 const defaultInputs: SoraInputs = {
