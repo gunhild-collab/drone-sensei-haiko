@@ -532,7 +532,23 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
       )}
 
       {/* Map */}
-      <div ref={mapContainerRef} className="w-full h-[450px] rounded-xl border border-sora-border overflow-hidden" />
+      <div ref={mapContainerRef} className="w-full h-[450px] rounded-xl border border-sora-border" style={{ position: 'relative', zIndex: 1 }} />
+
+      {/* Density status bar — always visible after polygon */}
+      {localData?.polygon && (
+        <div className="bg-sora-light border-l-[3px] border-sora-purple rounded-lg px-4 py-2.5 text-[13px] font-sora text-sora-text flex items-center gap-2">
+          <Info className="w-4 h-4 text-sora-purple shrink-0" strokeWidth={1.5} />
+          {queryingLandUse ? (
+            <span className="flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin text-sora-purple" /> Henter befolkningstetthet fra Overpass API...</span>
+          ) : localData.landUseResult && !localData.landUseResult.queryFailed && localData.landUseResult.detectedClass ? (
+            <span>Befolkningstetthet: <strong>{DENSITY_LABELS[localData.populationDensityClass]}</strong> (hentet fra Overpass){localData.densityOverridden && ' — manuelt overstyrt'}</span>
+          ) : manualRequired || (localData.landUseResult?.queryFailed) ? (
+            <span className="text-sora-danger">Befolkningstetthet: Ikke detektert — velg manuelt nedenfor</span>
+          ) : (
+            <span>Befolkningstetthet: <strong>{DENSITY_LABELS[localData.populationDensityClass]}</strong></span>
+          )}
+        </div>
+      )}
 
       {/* VLOS/BVLOS/EVLOS selector — required after polygon is drawn */}
       {localData?.polygon && (
