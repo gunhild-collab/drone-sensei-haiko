@@ -290,7 +290,7 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
     removeBufferLayers(map);
     drawBuffers(localData.polygon, map);
     // Re-query land use with updated GRB
-    runLandUseQuery(localData.polygon);
+    runDensityQuery(localData.polygon);
   }, [drone, maxAltitude]);
 
   const processPolygon = useCallback(async (latlngs: L.LatLng[], map: L.Map) => {
