@@ -222,7 +222,7 @@ export default function Step8Documents({ scenario }: Props) {
             </div>
             <a
               href="mailto:gunhild@haiko.no"
-              className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-sora-purple text-sora-text text-sm font-medium hover:opacity-90 transition-all"
+              className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-sora-pink to-sora-purple text-white text-sm font-medium hover:opacity-90 transition-all"
             >
               Ta kontakt
             </a>
