@@ -25,9 +25,8 @@ function extractMunicipality(addr?: NominatimResult['address']): string {
   if (!addr) return '';
   return addr.municipality || addr.city || addr.town || addr.village || addr.county || '';
 }
-import "leaflet-draw/dist/leaflet.draw.css";
-import { DroneSpec } from "@/data/droneDatabase";
-import { queryLandUseInPolygon, expandPolygonByGrb, PopulationDensityClass, LandUseResult } from "@/lib/overpassLandUse";
+
+
 
 export interface FlightAreaData {
   polygon: L.LatLng[] | null;
