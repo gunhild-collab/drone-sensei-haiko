@@ -125,8 +125,8 @@ export default function StepOperationsManual({
   const takeoffCoords = (() => {
     const tp = flightAreaData?.takeoffPoint;
     if (!tp) return '—';
-    const lat = typeof tp.lat === 'function' ? tp.lat() : (tp as any).lat || (tp as any)[0];
-    const lng = typeof tp.lng === 'function' ? tp.lng() : (tp as any).lng || (tp as any)[1];
+    const lat = (tp as any).lat ?? (tp as any)[0] ?? 0;
+    const lng = (tp as any).lng ?? (tp as any)[1] ?? 0;
     return `${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}`;
   })();
 
