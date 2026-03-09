@@ -299,7 +299,7 @@ export default function StepOperationsManual({
           <input className={inputCls} placeholder="A2-sertifikat, NO-A2-2024-00123" value={t('compCert')} onChange={e => set('compCert', e.target.value)} />
         </FormField>
         <FormField label="Dato siste repetisjonskurs">
-          <input type="date" className={inputCls} style={{ colorScheme: 'dark' }} value={t('compLastCourse')} onChange={e => set('compLastCourse', e.target.value)} />
+          <input type="date" className={inputCls} value={t('compLastCourse')} onChange={e => set('compLastCourse', e.target.value)} />
         </FormField>
         <FormField label="Tilleggsopplæring">
           <input className={inputCls} placeholder="BVLOS-kurs juni 2024, termisk kamera-kurs mars 2024" value={t('compExtra')} onChange={e => set('compExtra', e.target.value)} />
