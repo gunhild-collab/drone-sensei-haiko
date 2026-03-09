@@ -110,27 +110,27 @@
   }
 }
 
-/* Calendar dark theme for SORA wizard */
+/* Calendar theme for SORA wizard */
 .sora-calendar .rdp-day,
 .sora-calendar [class*="day"],
 .sora-calendar button {
-  color: #f3f4f6 !important;
+  color: #1c0059 !important;
 }
 .sora-calendar .rdp-day_selected,
 .sora-calendar [class*="day_selected"] {
-  background-color: #7c3aed !important;
+  background-color: #6858f8 !important;
   color: #ffffff !important;
 }
 .sora-calendar .rdp-day_today {
-  color: #a78bfa !important;
+  color: #ff66c4 !important;
   font-weight: 700;
 }
 .sora-calendar .rdp-day_outside {
-  color: #4b5563 !important;
+  color: #9993c4 !important;
 }
 .sora-calendar {
-  background: #13131e !important;
-  border: 1px solid #2e2e40 !important;
+  background: #ffffff !important;
+  border: 1px solid #e8e5f8 !important;
   border-radius: 0.75rem;
 }
 
