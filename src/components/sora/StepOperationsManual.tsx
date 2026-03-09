@@ -159,7 +159,7 @@ export default function StepOperationsManual({
         <Section title="2. Operatørinformasjon">
           <Row label="Operatørnavn" value={applicantName} />
           <Row label="E-post" value={applicantEmail} />
-          <Row label="Operasjonsadresse" value={flightAreaData?.selectedAddress || municipality} />
+          <Row label="Operasjonsadresse" value={flightAreaData?.flightDescription || municipality} />
           <EditableField fieldKey="regNumber" placeholder="Fyll inn droneregistreringsnummer" value={t('regNumber')} onChange={onManualTextChange} />
           <EditableField fieldKey="pilotCert" placeholder="Fyll inn pilotsertifikat (type og nummer)" value={t('pilotCert')} onChange={onManualTextChange} />
         </Section>
