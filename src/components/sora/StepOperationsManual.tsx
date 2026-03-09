@@ -308,27 +308,19 @@ export default function StepOperationsManual({
 
       {/* Generate button */}
       <div className="pt-2">
-        <button
-          onClick={handleGenerate}
-          disabled={!allFilled || generating}
-          className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-gradient-to-r from-sora-pink to-sora-purple text-white font-semibold text-base hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-        >
-          {generating ? <><Loader2 className="w-5 h-5 animate-spin" /> Genererer dokument...</> : <><Printer className="w-5 h-5" /> Generer operasjonsmanual</>}
+        <button onClick={handleGenerate} disabled={!allFilled || generating} className="haiko-btn-primary w-full py-4 text-base">
+          {generating ? <><Loader2 className="w-5 h-5 animate-spin" /> Genererer dokument...</> : <><Printer className="w-5 h-5" strokeWidth={1.5} /> Generer operasjonsmanual</>}
         </button>
         {!allFilled && (
-          <p className="text-xs text-sora-text-dim text-center mt-2">{remaining} av {requiredFields.length} obligatoriske felt gjenstår</p>
+          <p className="text-xs text-sora-text-dim text-center mt-2 font-sora">{remaining} av {requiredFields.length} obligatoriske felt gjenstår</p>
         )}
         {generated && (
-          <p className="text-xs text-sora-success text-center mt-2">Operasjonsmanualen er klar. Du kan nå gå videre til søknad.</p>
+          <p className="text-xs text-sora-success text-center mt-2 font-sora">Operasjonsmanualen er klar. Du kan nå gå videre til søknad.</p>
         )}
       </div>
 
-      {/* Mobile preview toggle */}
-      <button
-        onClick={() => setShowPreviewMobile(!showPreviewMobile)}
-        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-sora-surface text-sora-text-muted text-sm hover:bg-sora-surface-hover lg:hidden"
-      >
-        <Eye className="w-4 h-4" /> {showPreviewMobile ? 'Skjul forhåndsvisning' : 'Se forhåndsvisning'}
+      <button onClick={() => setShowPreviewMobile(!showPreviewMobile)} className="haiko-btn-secondary w-full text-sm lg:hidden">
+        <Eye className="w-4 h-4" strokeWidth={1.5} /> {showPreviewMobile ? 'Skjul forhåndsvisning' : 'Se forhåndsvisning'}
       </button>
     </div>
   );
