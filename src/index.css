@@ -131,3 +131,36 @@
   border: 1px solid #2e2e40 !important;
   border-radius: 0.75rem;
 }
+
+/* Print styles for operations manual */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 12pt !important;
+    margin: 2cm !important;
+  }
+  .print\:hidden {
+    display: none !important;
+  }
+  .manual-section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin-bottom: 1rem;
+  }
+  #operations-manual-print {
+    background: white !important;
+  }
+  /* Hide wizard chrome */
+  nav, header, [class*="border-b"], [class*="fixed bottom"], [class*="ContactHaiko"] {
+    display: none !important;
+  }
+  @page {
+    margin: 2cm;
+    @bottom-center {
+      content: "Haiko AS — haiko.no";
+      font-size: 8pt;
+      color: #999;
+    }
+  }
+}

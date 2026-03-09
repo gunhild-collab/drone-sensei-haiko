@@ -359,7 +359,7 @@ export default function SoraWizard() {
       </div>
 
       {/* Contact Haiko */}
-      <ContactHaiko prominent={step === 4 || step === 6} />
+      <ContactHaiko prominent={step === 4 || step === 7} />
     </div>
   );
 }
