@@ -177,8 +177,8 @@ export default function Step8Documents({ scenario }: Props) {
                     {doc.format === 'Link' ? <ExternalLink className="w-5 h-5" strokeWidth={1.5} /> : <FileText className="w-5 h-5" strokeWidth={1.5} />}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sora-text font-medium text-sm truncate">{doc.title}</p>
-                    {doc.description && <p className="text-sora-text-dim text-xs mt-0.5">{doc.description}</p>}
+                  <p className="text-sora-text font-display font-bold text-sm truncate">{doc.title}</p>
+                    {doc.description && <p className="text-sora-text-dim text-xs mt-0.5 font-sora">{doc.description}</p>}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0 ml-4">
