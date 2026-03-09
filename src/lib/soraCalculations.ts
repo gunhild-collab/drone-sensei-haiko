@@ -222,6 +222,7 @@ export function calculateInitialArc(airspaceClass: string): ArcLevel {
   return map[airspaceClass] || 'ARC-a';
 }
 
+export function getGroupRobustness(sail: number): { name: string; level: string }[] {
   if (sail <= 2) return OSO_GROUPS.map(g => ({ name: g.name, level: 'Lav' }));
   if (sail <= 4) return OSO_GROUPS.map(g => ({ name: g.name, level: 'Middels' }));
   return OSO_GROUPS.map(g => ({ name: g.name, level: 'Høy' }));
