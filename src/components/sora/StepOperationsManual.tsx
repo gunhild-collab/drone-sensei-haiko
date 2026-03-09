@@ -64,8 +64,8 @@ function LockedField({ label, value }: { label: string; value: string }) {
 function FormField({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-sora-text-muted mb-1">
-        {label}{required && <span className="text-red-400 ml-0.5">*</span>}
+      <label className="haiko-label block mb-1">
+        {label}{required && <span className="text-sora-pink ml-0.5">*</span>}
       </label>
       {children}
     </div>
