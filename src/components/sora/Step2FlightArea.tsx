@@ -116,9 +116,10 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
   const takeoffMarkerRef = useRef<L.Marker | null>(null);
   const landingMarkerRef = useRef<L.Marker | null>(null);
   const [localData, setLocalData] = useState<FlightAreaData | null>(flightAreaData);
-  const [queryingLandUse, setQueryingLandUse] = useState(false);
+  const [queryingDensity, setQueryingDensity] = useState(false);
   const [overrideOpen, setOverrideOpen] = useState(false);
   const [manualRequired, setManualRequired] = useState(false);
+  const [highDensityValue, setHighDensityValue] = useState<number | null>(null);
 
   // Address autocomplete state
   const [addressQuery, setAddressQuery] = useState('');
