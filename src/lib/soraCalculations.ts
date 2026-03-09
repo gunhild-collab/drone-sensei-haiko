@@ -17,10 +17,12 @@ export interface SoraInputs {
   // GRC mitigations
   m1: 0 | -1 | -2;
   m2: 0 | -1;
-  // ARC
+  // ARC — new fields
   nearAirport: boolean;
   hasTransponder: boolean;
   hasAirspaceObservers: boolean;
+  // Legacy compatibility — still used by some older step components
+  airspaceClass?: 'uncontrolled_low' | 'uncontrolled_high' | 'class_e' | 'controlled';
 }
 
 export interface SoraResults {
