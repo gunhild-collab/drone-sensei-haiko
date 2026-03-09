@@ -1,53 +1,26 @@
-import { useState, useMemo } from "react";
-import { Search, MapPin, Users, Ruler, Mountain } from "lucide-react";
-import { kommuner as KOMMUNER_LIST } from "@/data/kommuner";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Search, MapPin, Loader2 } from "lucide-react";
 
 export interface MunicipalityData {
   name: string;
-  population: number;
-  areaKm2: number;
-  densityPerKm2: number;
-  densityClass: 'controlled' | 'sparsely' | 'populated' | 'gathering';
+  address: string;
+  lat: number;
+  lon: number;
 }
 
-function classifyDensity(density: number): MunicipalityData['densityClass'] {
-  if (density < 20) return 'controlled';
-  if (density < 100) return 'sparsely';
-  if (density < 500) return 'populated';
-  return 'gathering';
+interface NominatimResult {
+  place_id: number;
+  display_name: string;
+  lat: string;
+  lon: string;
+  address?: {
+    city?: string;
+    town?: string;
+    municipality?: string;
+    village?: string;
+    county?: string;
+  };
 }
-
-function densityLabel(d: MunicipalityData['densityClass']): string {
-  return { controlled: 'Kontrollert', sparsely: 'Spredt befolket', populated: 'Befolket', gathering: 'Folkemengde' }[d];
-}
-
-// Simplified population/area data for Norwegian municipalities
-const MUNICIPALITY_STATS: Record<string, { pop: number; area: number }> = {
-  'Oslo': { pop: 709037, area: 454 },
-  'Bergen': { pop: 291189, area: 465 },
-  'Trondheim': { pop: 212660, area: 342 },
-  'Stavanger': { pop: 144699, area: 68 },
-  'Kristiansand': { pop: 115752, area: 560 },
-  'Tromsø': { pop: 78545, area: 2558 },
-  'Drammen': { pop: 104472, area: 304 },
-  'Bodø': { pop: 53324, area: 1392 },
-  'Fredrikstad': { pop: 83734, area: 290 },
-  'Sandnes': { pop: 83829, area: 304 },
-  'Ålesund': { pop: 67689, area: 647 },
-  'Bærum': { pop: 130000, area: 189 },
-  'Asker': { pop: 96320, area: 287 },
-  'Lillestrøm': { pop: 89780, area: 177 },
-  'Tønsberg': { pop: 58218, area: 328 },
-  'Haugesund': { pop: 37900, area: 73 },
-  'Molde': { pop: 32588, area: 364 },
-  'Arendal': { pop: 46104, area: 271 },
-  'Gjøvik': { pop: 30800, area: 670 },
-  'Harstad': { pop: 24940, area: 446 },
-  'Narvik': { pop: 21610, area: 3476 },
-  'Alta': { pop: 21200, area: 3849 },
-  'Hammerfest': { pop: 11500, area: 2647 },
-  'Kirkenes': { pop: 3500, area: 100 },
-};
 
 interface Props {
   municipality: string;
@@ -55,91 +28,126 @@ interface Props {
   onSelect: (name: string, data: MunicipalityData) => void;
 }
 
+async function searchAddress(query: string): Promise<NominatimResult[]> {
+  const res = await fetch(
+    `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&countrycodes=no&format=json&addressdetails=1&limit=5`,
+    { headers: { 'Accept-Language': 'no', 'User-Agent': 'SORA-DMA-Haiko/1.0' } }
+  );
+  return await res.json();
+}
+
+function extractMunicipality(addr?: NominatimResult['address']): string {
+  if (!addr) return '';
+  return addr.municipality || addr.city || addr.town || addr.village || addr.county || '';
+}
+
 export default function Step1Municipality({ municipality, municipalityData, onSelect }: Props) {
-  const [search, setSearch] = useState('');
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<NominatimResult[]>([]);
+  const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const KOMMUNER = useMemo(() => KOMMUNER_LIST.map((name, i) => ({ code: String(i + 1).padStart(4, '0'), name })), []);
+  // Debounced search
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (query.trim().length < 2) { setResults([]); return; }
 
-  const filtered = useMemo(() => {
-    if (!search) return KOMMUNER.slice(0, 30);
-    const q = search.toLowerCase();
-    return KOMMUNER.filter(k => k.name.toLowerCase().includes(q)).slice(0, 30);
-  }, [search, KOMMUNER]);
+    debounceRef.current = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const data = await searchAddress(query);
+        setResults(data);
+        setOpen(data.length > 0);
+      } catch {
+        setResults([]);
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
 
-  const handleSelect = (name: string) => {
-    const stats = MUNICIPALITY_STATS[name] || { pop: Math.floor(Math.random() * 20000) + 2000, area: Math.floor(Math.random() * 1000) + 100 };
-    const density = stats.pop / stats.area;
-    const data: MunicipalityData = {
-      name,
-      population: stats.pop,
-      areaKm2: stats.area,
-      densityPerKm2: Math.round(density * 10) / 10,
-      densityClass: classifyDensity(density),
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [query]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
     };
-    onSelect(name, data);
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleSelect = useCallback((result: NominatimResult) => {
+    const municName = extractMunicipality(result.address);
+    const data: MunicipalityData = {
+      name: municName,
+      address: result.display_name,
+      lat: parseFloat(result.lat),
+      lon: parseFloat(result.lon),
+    };
+    onSelect(municName, data);
+    setQuery(result.display_name);
     setOpen(false);
-    setSearch('');
-  };
+  }, [onSelect]);
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-sora-text mb-1">Velg kommune</h2>
-        <p className="text-sora-text-muted text-sm">Velg kommunen der flygingen skal gjennomføres.</p>
+        <h2 className="text-2xl font-bold text-sora-text mb-1">Velg takeoff-lokasjon</h2>
+        <p className="text-sora-text-muted text-sm">Søk etter adressen eller stedet der dronen skal ta av.</p>
       </div>
 
-      {/* Search */}
-      <div className="relative">
+      {/* Address search */}
+      <div ref={containerRef} className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sora-text-dim" />
+        {loading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sora-text-dim animate-spin" />}
         <input
           type="text"
-          className="w-full bg-sora-surface border border-sora-border rounded-lg pl-10 pr-4 py-3 text-sora-text placeholder:text-sora-text-dim focus:outline-none focus:ring-2 focus:ring-sora-purple transition-colors"
-          placeholder="Søk etter kommune..."
-          value={search || municipality}
-          onChange={e => { setSearch(e.target.value); setOpen(true); }}
-          onFocus={() => setOpen(true)}
+          className="w-full bg-sora-surface border border-sora-border rounded-lg pl-10 pr-10 py-3 text-sora-text placeholder:text-sora-text-dim focus:outline-none focus:ring-2 focus:ring-sora-purple transition-colors"
+          placeholder="Søk etter adresse eller sted..."
+          value={query}
+          onChange={e => { setQuery(e.target.value); setOpen(true); }}
+          onFocus={() => results.length > 0 && setOpen(true)}
         />
-        {open && (
-          <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-sora-surface border border-sora-border rounded-lg max-h-64 overflow-y-auto shadow-xl">
-            {filtered.map(k => (
+        {open && results.length > 0 && (
+          <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-sora-surface border border-sora-border rounded-lg max-h-72 overflow-y-auto shadow-xl">
+            {results.map(r => (
               <button
-                key={k.code}
-                onClick={() => handleSelect(k.name)}
-                className="w-full text-left px-4 py-2.5 text-sm text-sora-text hover:bg-sora-surface-hover transition-colors"
+                key={r.place_id}
+                onClick={() => handleSelect(r)}
+                className="w-full text-left px-4 py-3 text-sm text-sora-text hover:bg-sora-surface-hover transition-colors border-b border-sora-border last:border-b-0"
               >
-                <span className="text-sora-text-dim text-xs mr-2">{k.code}</span>
-                {k.name}
+                <div className="flex items-start gap-2">
+                  <MapPin className="w-4 h-4 text-sora-purple shrink-0 mt-0.5" />
+                  <span className="leading-tight">{r.display_name}</span>
+                </div>
               </button>
             ))}
           </div>
         )}
       </div>
 
-      {/* Info panel */}
+      {/* Selected address display */}
       {municipalityData && (
-        <div className="bg-sora-surface border border-sora-border rounded-xl p-5 space-y-4">
-          <div className="flex items-center gap-2 text-sora-purple font-semibold">
+        <div className="bg-sora-surface border border-sora-border rounded-xl p-5 space-y-3">
+          <div className="flex items-center gap-2 text-sora-purple font-semibold text-sm">
             <MapPin className="w-4 h-4" />
-            {municipalityData.name}
+            Takeoff: {municipalityData.address}
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <InfoCard icon={<Users className="w-4 h-4" />} label="Befolkning" value={municipalityData.population.toLocaleString('nb-NO')} />
-            <InfoCard icon={<Ruler className="w-4 h-4" />} label="Areal" value={`${municipalityData.areaKm2.toLocaleString('nb-NO')} km²`} />
-            <InfoCard icon={<Mountain className="w-4 h-4" />} label="Tetthet" value={`${municipalityData.densityPerKm2} / km²`} />
-            <InfoCard icon={<MapPin className="w-4 h-4" />} label="Tetthetsklasse" value={densityLabel(municipalityData.densityClass)} highlight />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-sora-bg rounded-lg p-3">
+              <p className="text-sora-text-dim text-xs mb-1">Kommune</p>
+              <p className="text-sora-text font-semibold text-sm">{municipalityData.name || '—'}</p>
+            </div>
+            <div className="bg-sora-bg rounded-lg p-3">
+              <p className="text-sora-text-dim text-xs mb-1">Koordinater</p>
+              <p className="text-sora-text font-semibold text-sm">{municipalityData.lat.toFixed(5)}, {municipalityData.lon.toFixed(5)}</p>
+            </div>
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function InfoCard({ icon, label, value, highlight }: { icon: React.ReactNode; label: string; value: string; highlight?: boolean }) {
-  return (
-    <div className="bg-sora-bg rounded-lg p-3">
-      <div className="flex items-center gap-1.5 text-sora-text-dim text-xs mb-1">{icon}{label}</div>
-      <p className={`font-semibold text-sm ${highlight ? 'text-sora-purple' : 'text-sora-text'}`}>{value}</p>
     </div>
   );
 }
