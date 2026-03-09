@@ -10,13 +10,9 @@ interface Props {
   applicantName: string;
   applicantEmail: string;
   flightDate: string;
-  timeFrom: string;
-  timeTo: string;
   onChangeName: (v: string) => void;
   onChangeEmail: (v: string) => void;
   onChangeFlightDate: (v: string) => void;
-  onChangeTimeFrom: (v: string) => void;
-  onChangeTimeTo: (v: string) => void;
   onContinue: () => void;
 }
 
