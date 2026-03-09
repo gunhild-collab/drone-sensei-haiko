@@ -96,6 +96,9 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
   const [queryingLandUse, setQueryingLandUse] = useState(false);
   const [overrideOpen, setOverrideOpen] = useState(false);
   const [manualRequired, setManualRequired] = useState(false);
+  const [addressQuery, setAddressQuery] = useState('');
+  const [addressLoading, setAddressLoading] = useState(false);
+  const [addressError, setAddressError] = useState('');
 
   const charDim = drone?.characteristicDimension ?? 1;
   const grbDistance = charDim * 2;
