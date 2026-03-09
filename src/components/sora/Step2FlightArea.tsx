@@ -340,6 +340,17 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
     }
   };
 
+  const handleOperationTypeSelect = (type: 'VLOS' | 'EVLOS' | 'BVLOS') => {
+    if (!localData) return;
+    const updated: FlightAreaData = {
+      ...localData,
+      operationType: type,
+      flightDescription: `Flygeområde i ${municipality}, ${localData.areaKm2} km², ${type}`,
+    };
+    setLocalData(updated);
+    onUpdate(updated);
+  };
+
   const handleDensityOverride = (newClass: PopulationDensityClass) => {
     if (!localData) return;
     const updated: FlightAreaData = {
