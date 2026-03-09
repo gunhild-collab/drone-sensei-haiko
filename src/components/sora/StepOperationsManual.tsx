@@ -319,7 +319,7 @@ export default function StepOperationsManual({
           <p className="text-xs text-sora-text-dim text-center mt-2">{remaining} av {requiredFields.length} obligatoriske felt gjenstår</p>
         )}
         {generated && (
-          <p className="text-xs text-green-400 text-center mt-2">Operasjonsmanualen er klar. Du kan nå gå videre til søknad.</p>
+          <p className="text-xs text-sora-success text-center mt-2">Operasjonsmanualen er klar. Du kan nå gå videre til søknad.</p>
         )}
       </div>
 
