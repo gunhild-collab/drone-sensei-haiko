@@ -344,6 +344,23 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
     }
   };
 
+  const handleDensityOverride = (newClass: PopulationDensityClass) => {
+    if (!localData) return;
+    const updated: FlightAreaData = {
+      ...localData,
+      populationDensityClass: newClass,
+      densityOverridden: true,
+    };
+    setLocalData(updated);
+    onUpdate(updated);
+    setOverrideOpen(false);
+    setManualRequired(false);
+
+    if (mapRef.current && localData.polygon) {
+      drawDensityOverlay(localData.polygon, newClass, mapRef.current);
+    }
+  };
+
   const handleAddressSearch = useCallback(async () => {
     if (!addressQuery.trim() || !mapRef.current) return;
     setAddressLoading(true);
