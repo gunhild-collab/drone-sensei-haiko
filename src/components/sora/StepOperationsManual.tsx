@@ -311,7 +311,7 @@ export default function StepOperationsManual({
         <button
           onClick={handleGenerate}
           disabled={!allFilled || generating}
-          className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-sora-purple text-sora-text font-semibold text-base hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+          className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-gradient-to-r from-sora-pink to-sora-purple text-white font-semibold text-base hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
         >
           {generating ? <><Loader2 className="w-5 h-5 animate-spin" /> Genererer dokument...</> : <><Printer className="w-5 h-5" /> Generer operasjonsmanual</>}
         </button>
