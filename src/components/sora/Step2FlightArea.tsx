@@ -471,10 +471,10 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
         <p className="text-sora-text-muted text-sm">Søk etter takeoff-adressen, deretter tegn flygeområdet på kartet.</p>
       </div>
 
-      {/* Address autocomplete search */}
-      <div ref={addressContainerRef} className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sora-text-dim z-10" />
-        {addressLoading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sora-text-dim animate-spin z-10" />}
+      {/* Address autocomplete search — positioned above map */}
+      <div ref={addressContainerRef} className="relative" style={{ zIndex: 1000 }}>
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sora-text-dim" strokeWidth={1.5} />
+        {addressLoading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sora-text-dim animate-spin" />}
         <input
           type="text"
           value={addressQuery}
@@ -484,7 +484,7 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
           className="w-full pl-10 pr-10 py-3 rounded-lg bg-sora-surface border border-sora-border text-sora-text text-sm placeholder:text-sora-text-dim focus:outline-none focus:ring-2 focus:ring-sora-purple transition-colors"
         />
         {addressOpen && addressResults.length > 0 && (
-          <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-sora-surface border border-sora-border rounded-lg max-h-72 overflow-y-auto shadow-xl">
+          <div className="absolute top-full left-0 right-0 mt-1 bg-sora-surface border border-sora-border rounded-lg max-h-72 overflow-y-auto shadow-xl" style={{ zIndex: 999 }}>
             {addressResults.map(r => (
               <button
                 key={r.place_id}
@@ -492,7 +492,7 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
                 className="w-full text-left px-4 py-3 text-sm text-sora-text hover:bg-sora-surface-hover transition-colors border-b border-sora-border last:border-b-0"
               >
                 <div className="flex items-start gap-2">
-                  <MapPin className="w-4 h-4 text-sora-purple shrink-0 mt-0.5" />
+                  <MapPin className="w-4 h-4 text-sora-purple shrink-0 mt-0.5" strokeWidth={1.5} />
                   <span className="leading-tight">{r.display_name}</span>
                 </div>
               </button>
