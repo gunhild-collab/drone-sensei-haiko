@@ -163,101 +163,95 @@ export default function soraCalculate(inputs) {
 
   // ─────────────────────────────────────────────
   // STEG 6 — Scenario-matching
-  // Rekkefølge er viktig — mest restriktive/spesifikke sjekkes sist
+  // Hardkodede guards først, deretter beslutningstabell
+  // Første match vinner.
   // ─────────────────────────────────────────────
 
   let scenario;
   let requiresAuth = true;
 
-  // ÅPEN KATEGORI — ingen tillatelse nødvendig
-  if (mtom_kg < 0.25 && altitude_m <= 120) {
-    scenario = "A1";
-    requiresAuth = false;
-  } else if (
-    mtom_kg <= 4 &&
-    operationType === "VLOS" &&
-    altitude_m <= 120 &&
-    (populationDensity === "sparse" || populationDensity === "controlled")
-  ) {
-    scenario = "A2";
-    requiresAuth = false;
-    warnings.push("A2 krever min. avstand til ubeskyttede personer. Verifiser 30m horisontal buffersone.");
-  } else if (
-    mtom_kg <= 25 &&
-    operationType === "VLOS" &&
-    populationDensity === "controlled" &&
-    altitude_m <= 120
-  ) {
-    scenario = "A3";
-    requiresAuth = false;
+  const isVLOS = operationType === "VLOS";
+  const isBVLOS = operationType === "BVLOS" || operationType === "EVLOS";
+  const isSparseOrControlled = populationDensity === "sparse" || populationDensity === "controlled";
+  const isGathering = populationDensity === "gathering";
+
+  // ── GUARD 1: BVLOS/EVLOS → aldri åpen kategori ──
+  // ── GUARD 3: altitude > 120 → aldri åpen kategori ──
+  // ── GUARD 4: EVLOS behandles som BVLOS ──
+  const canBeOpen = isVLOS && altitude_m <= 120;
+
+  // ── GUARD 2: gathering → svært begrenset ──
+  // gathering kan KUN matche PDRA-S01, STS-01, eller SORA
+
+  // ── ÅPEN KATEGORI (A1 → A2 → A3) ──
+  if (canBeOpen && !isGathering) {
+    if (mtom_kg < 0.25 && (c_class === "C0" || c_class === "C1" || c_class === "none")) {
+      scenario = "A1";
+      requiresAuth = false;
+    } else if (
+      mtom_kg <= 4 &&
+      isSparseOrControlled &&
+      (c_class === "C2" || c_class === "none")
+    ) {
+      scenario = "A2";
+      requiresAuth = false;
+      warnings.push("A2 krever min. 30m horisontal buffer til ubeskyttede personer.");
+    } else if (
+      mtom_kg <= 25 &&
+      populationDensity === "controlled"
+    ) {
+      scenario = "A3";
+      requiresAuth = false;
+      warnings.push("A3 krever kontrollert område uten ubeskyttede personer i nærheten.");
+    }
   }
 
-  // SPESIFIKK KATEGORI — STS (standardscenario, krever deklarasjon)
-  else if (
-    (c_class === "C5") &&
-    operationType === "VLOS" &&
-    altitude_m <= 120
-  ) {
+  // ── STS-01 ──
+  if (!scenario && isVLOS && altitude_m <= 120 && c_class === "C5" && !isGathering) {
     scenario = "STS-01";
-  } else if (
-    (c_class === "C6") &&
-    operationType === "BVLOS" &&
-    altitude_m <= 120 &&
-    populationDensity !== "gathering"
-  ) {
+  }
+
+  // ── STS-02 ──
+  if (!scenario && isBVLOS && altitude_m <= 120 && c_class === "C6" && isSparseOrControlled) {
     scenario = "STS-02";
   }
 
-  // SPESIFIKK KATEGORI — PDRA (forhåndsdefinerte risikovurderinger)
-  else if (
-    mtom_kg <= 1 &&
-    operationType === "VLOS" &&
-    populationDensity === "populated" &&
-    altitude_m <= 30
-  ) {
+  // ── PDRA-G03 ──
+  if (!scenario && isVLOS && mtom_kg <= 1 && populationDensity === "populated" && altitude_m <= 30) {
     scenario = "PDRA-G03";
-    warnings.push("PDRA-G03: MTOM ≤ 1kg, VLOS, befolket område. Gjelder kun inspeksjon/overvåking.");
-  } else if (
-    mtom_kg <= 4 &&
-    operationType === "VLOS" &&
-    populationDensity === "populated" &&
-    altitude_m <= 30
-  ) {
+    warnings.push("PDRA-G03: MTOM ≤ 1kg, VLOS, befolket område, maks 30m AGL.");
+  }
+
+  // ── PDRA-S01 ──
+  if (!scenario && isVLOS && mtom_kg <= 4 && populationDensity === "populated" && altitude_m <= 30) {
     scenario = "PDRA-S01";
     warnings.push("PDRA-S01: Befolket område. Krever ERP og operasjonsmanual.");
-  } else if (
-    mtom_kg <= 10 &&
-    operationType === "VLOS" &&
-    (populationDensity === "sparse" || populationDensity === "controlled") &&
-    altitude_m <= 50
-  ) {
+  }
+
+  // ── PDRA-G01 ──
+  if (!scenario && isVLOS && mtom_kg <= 10 && isSparseOrControlled && altitude_m <= 50) {
     scenario = "PDRA-G01";
-  } else if (
-    mtom_kg <= 25 &&
-    operationType === "VLOS" &&
-    (populationDensity === "sparse" || populationDensity === "controlled") &&
-    altitude_m <= 50
-  ) {
+  }
+
+  // ── PDRA-G02 ──
+  if (!scenario && isVLOS && mtom_kg <= 25 && isSparseOrControlled && altitude_m <= 50) {
     scenario = "PDRA-G02";
-  } else if (
-    mtom_kg <= 25 &&
-    operationType === "BVLOS" &&
-    (populationDensity === "controlled" || populationDensity === "sparse")
-  ) {
+  }
+
+  // ── PDRA-S02 ──
+  if (!scenario && isBVLOS && mtom_kg <= 25 && isSparseOrControlled) {
     scenario = "PDRA-S02";
     warnings.push("PDRA-S02: Ingen norsk samsvarsmatrise tilgjengelig — bruk EASA-versjon.");
   }
 
-  // SORA — full risikovurdering
-  else if (["III", "IV"].includes(sail)) {
-    scenario = "SORA-III-IV";
-  } else if (["V", "VI"].includes(sail)) {
-    scenario = "SORA-V-VI";
-    warnings.push("SAIL V–VI: Krever sannsynligvis LUC eller spesiell behandling av Luftfartstilsynet.");
-  } else {
-    // Fallback — bør ikke skje med korrekt input
-    scenario = "SORA-III-IV";
-    warnings.push("Scenario kunne ikke bestemmes entydig. Kontakt Luftfartstilsynet.");
+  // ── SORA — fallback ──
+  if (!scenario) {
+    if (["V", "VI"].includes(sail)) {
+      scenario = "SORA-V-VI";
+      warnings.push("SAIL V–VI: Krever sannsynligvis LUC eller spesiell behandling av Luftfartstilsynet.");
+    } else {
+      scenario = "SORA";
+    }
   }
 
   return {
