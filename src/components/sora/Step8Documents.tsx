@@ -166,19 +166,15 @@ export default function Step8Documents({ scenario }: Props) {
       {/* SECTION 2 — Templates */}
       {templates.length > 0 && (
         <section className="space-y-3">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-sora-text-dim">Last ned dokumentmaler</h3>
+          <h3 className="haiko-label">Last ned dokumentmaler</h3>
           <div className="space-y-3">
             {templates.map((doc) => (
-              <a
-                key={doc.url}
-                href={doc.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-between bg-sora-surface border border-sora-border rounded-xl p-4 hover:border-sora-purple/40 transition-colors group"
+              <a key={doc.url} href={doc.url} target="_blank" rel="noopener noreferrer"
+                className="flex items-center justify-between haiko-card p-4 hover:border-sora-purple/40 transition-colors group"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-lg bg-sora-purple/20 text-sora-purple flex items-center justify-center shrink-0">
-                    {doc.format === 'Link' ? <ExternalLink className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
+                  <div className="w-10 h-10 rounded-lg bg-sora-light text-sora-purple flex items-center justify-center shrink-0">
+                    {doc.format === 'Link' ? <ExternalLink className="w-5 h-5" strokeWidth={1.5} /> : <FileText className="w-5 h-5" strokeWidth={1.5} />}
                   </div>
                   <div className="min-w-0">
                     <p className="text-sora-text font-medium text-sm truncate">{doc.title}</p>
