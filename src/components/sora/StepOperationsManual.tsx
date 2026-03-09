@@ -159,7 +159,7 @@ export default function StepOperationsManual({
         <Section title="2. Operatørinformasjon">
           <Row label="Operatørnavn" value={applicantName} />
           <Row label="E-post" value={applicantEmail} />
-          <Row label="Operasjonsadresse" value={flightAreaData ? flightAreaData.flightDescription : municipality} />
+          <Row label="Operasjonsadresse" value={flightAreaData ? flightAreaData.flightDescription :ightDescription : municipality} />
           <EditableField fieldKey="regNumber" placeholder="Fyll inn droneregistreringsnummer" value={t('regNumber')} onChange={onManualTextChange} />
           <EditableField fieldKey="pilotCert" placeholder="Fyll inn pilotsertifikat (type og nummer)" value={t('pilotCert')} onChange={onManualTextChange} />
         </Section>
@@ -180,7 +180,7 @@ export default function StepOperationsManual({
 
         {/* 4. Operasjonsområde */}
         <Section title="4. Operasjonsområde">
-          <Row label="Lokasjon" value={flightAreaDatafl?.flightDescription| '—'} />
+          <Row label="Lokasjon" valu ? flightAreaData.flightDescription :lightDescription| '—'} />
           <Row label="Kommune" value={municipality} />
           <Row label="Koordinater takeoff" value={flightAreaData?.takeoffPoint ? `${flightAreaData.takeoffPoint[0].toFixed(5)}, ${flightAreaData.takeoffPoint[1].toFixed(5)}` : '—'} />
           <Row label="Flygehøyde (maks)" value={`${derivedInputs.maxAltitude} m AGL`} />
