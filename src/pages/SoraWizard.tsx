@@ -251,13 +251,6 @@ export default function SoraWizard() {
               transition={{ duration: 0.2 }}
             >
               {step === 0 && (
-                <Step1Municipality
-                  municipality={municipality}
-                  municipalityData={municipalityData}
-                  onSelect={handleMunicipalitySelect}
-                />
-              )}
-              {step === 1 && (
                 <Step2FlightArea
                   municipality={municipality || 'Trondheim'}
                   municipalityDensity={0}
@@ -265,22 +258,24 @@ export default function SoraWizard() {
                   flightAreaData={flightAreaData}
                   maxAltitude={derivedInputs.maxAltitude}
                   onUpdate={handleFlightAreaUpdate}
+                  onMunicipalitySelect={handleMunicipalitySelect}
+                  initialCoords={municipalityData ? { lat: municipalityData.lat, lon: municipalityData.lon } : null}
                 />
               )}
-              {step === 2 && (
+              {step === 1 && (
                 <Step3Drone
                   selectedDrone={selectedDrone}
                   onSelect={handleDroneSelect}
                 />
               )}
-              {step === 3 && (
+              {step === 2 && (
                 <Step4Mitigations
                   mitigations={mitigations}
                   isBVLOS={derivedInputs.operationType === 'BVLOS'}
                   onChange={updateMitigations}
                 />
               )}
-              {step === 4 && (
+              {step === 3 && (
                 <Step5ScenarioForm
                   matchedScenario={bestScenario}
                   sailLevel={results.sail}
@@ -293,7 +288,7 @@ export default function SoraWizard() {
                   onChange={updateScenarioForm}
                 />
               )}
-              {step === 5 && (
+              {step === 4 && (
                 <Step6OSO
                   sail={results.sail}
                   osoTexts={osoTexts}
@@ -306,13 +301,13 @@ export default function SoraWizard() {
                   flightAreaDescription={flightAreaData?.flightDescription || ''}
                 />
               )}
-              {step === 6 && (
+              {step === 5 && (
                 <Step7Explanation
                   sailLevel={results.sail}
                   matchedScenario={bestScenario}
                 />
               )}
-              {step === 7 && (
+              {step === 6 && (
                 <Step8Documents
                   inputs={derivedInputs}
                   results={results}
@@ -324,7 +319,7 @@ export default function SoraWizard() {
                   matchedScenario={bestScenario}
                   scenarioFormData={scenarioFormData}
                 />
-              )}
+              )
             </motion.div>
           </AnimatePresence>
         </div>
