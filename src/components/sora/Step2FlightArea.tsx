@@ -13,7 +13,7 @@ export interface FlightAreaData {
   landingPoint: L.LatLng | null;
   areaKm2: number;
   diagonalM: number;
-  operationType: 'VLOS' | 'BVLOS';
+  operationType: 'VLOS' | 'EVLOS' | 'BVLOS' | null;
   grbMeters: number;
   cvMeters: number;
   populationDensityClass: PopulationDensityClass;
