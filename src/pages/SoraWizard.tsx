@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SoraInputs, calculateAll, matchScenario } from "@/lib/soraCalculations";
 import { DroneSpec } from "@/data/droneDatabase";
+import { PDRA_SCENARIOS, PdraScenario } from "@/data/pdraScenarios";
 import PreStep from "@/components/sora/PreStep";
 import Step1Municipality, { MunicipalityData } from "@/components/sora/Step1Municipality";
 import Step2FlightArea, { FlightAreaData } from "@/components/sora/Step2FlightArea";
