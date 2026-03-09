@@ -328,21 +328,21 @@ export default function StepOperationsManual({
   // ---- PREVIEW ----
   const pv = (key: string) => t(key).trim();
   const previewContent = (
-    <div id="operations-manual-print" className="bg-white rounded-xl p-6 text-gray-900 text-sm space-y-6 print:rounded-none print:p-0 print:shadow-none">
+    <div id="operations-manual-print" className="haiko-card p-6 text-sora-text text-sm space-y-6 font-sora print:rounded-none print:p-0 print:shadow-none print:border-none">
+      <div className="print-gradient-line" />
       {/* Header */}
-      <div className="flex items-start justify-between border-b border-gray-200 pb-4">
+      <div className="flex items-start justify-between border-b border-sora-border pb-4">
         <div>
-          <p className="text-xl font-bold text-gray-900">OPERASJONSMANUAL</p>
-          <p className="text-gray-600 mt-1">{applicantName || '[Operatørnavn]'}</p>
+          <p className="text-xl font-display font-bold text-sora-text">OPERASJONSMANUAL</p>
+          <p className="text-sora-text-muted mt-1 font-sora">{applicantName || '[Operatørnavn]'}</p>
         </div>
-        <div className="text-right text-xs text-gray-400">
-          <p className="font-bold text-sora-purple text-sm">Haiko</p>
+        <div className="text-right text-xs text-sora-text-dim font-sora">
+          <p className="font-display font-bold text-sora-purple text-sm">haiko</p>
           <p>{today}</p>
         </div>
       </div>
 
-      {/* Cover info */}
-      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-500 border-b border-gray-100 pb-3">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-sora-text-dim border-b border-sora-border pb-3 font-sora">
         <span>Drone: {selectedDrone?.name || derivedInputs.droneName || '—'}</span>
         <span>Scenario: {scenario || '—'}</span>
         <span>SAIL: {results.sailRoman || '—'}</span>
