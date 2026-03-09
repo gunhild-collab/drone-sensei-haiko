@@ -14,9 +14,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        display: ["Space Grotesk", "sans-serif"],
-        body: ["Inter", "sans-serif"],
-        sora: ["DM Sans", "sans-serif"],
+        display: ["Poppins", "sans-serif"],
+        body: ["Montserrat", "sans-serif"],
+        sora: ["Montserrat", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
