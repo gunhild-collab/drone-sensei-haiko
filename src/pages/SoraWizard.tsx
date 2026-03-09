@@ -306,12 +306,27 @@ export default function SoraWizard() {
                 />
               )}
               {step === 5 && (
+                <StepOperationsManual
+                  applicantName={applicantName}
+                  applicantEmail={applicantEmail}
+                  flightDate={flightDate}
+                  municipality={municipality}
+                  selectedDrone={selectedDrone}
+                  results={results}
+                  flightAreaData={flightAreaData}
+                  derivedInputs={derivedInputs}
+                  scenario={bestScenarioId}
+                  manualTexts={manualTexts}
+                  onManualTextChange={updateManualText}
+                />
+              )}
+              {step === 6 && (
                 <Step7Explanation
                   sailLevel={results.sail}
                   matchedScenario={bestScenario}
                 />
               )}
-              {step === 6 && (
+              {step === 7 && (
                 <Step8Documents
                   scenario={bestScenarioId}
                 />
