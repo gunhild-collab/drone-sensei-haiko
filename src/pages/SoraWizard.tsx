@@ -7,7 +7,7 @@ import { SoraInputs, calculateAll, matchScenario } from "@/lib/soraCalculations"
 import { DroneSpec } from "@/data/droneDatabase";
 import { PDRA_SCENARIOS, PdraScenario } from "@/data/pdraScenarios";
 import PreStep from "@/components/sora/PreStep";
-import Step1Municipality, { MunicipalityData } from "@/components/sora/Step1Municipality";
+import { MunicipalityData } from "@/components/sora/Step1Municipality";
 import Step2FlightArea, { FlightAreaData } from "@/components/sora/Step2FlightArea";
 import Step3Drone from "@/components/sora/Step3Drone";
 import Step4Mitigations, { MitigationState } from "@/components/sora/Step4Mitigations";
