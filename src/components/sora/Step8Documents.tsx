@@ -153,7 +153,7 @@ export default function Step8Documents({ scenario }: Props) {
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-sora-purple text-sora-text text-sm font-medium hover:opacity-90 transition-all"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-sora-pink to-sora-purple text-white text-sm font-medium hover:opacity-90 transition-all"
               >
                 <ExternalLink className="w-4 h-4" />
                 {link.label}
