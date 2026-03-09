@@ -197,15 +197,11 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
   }, [drone, maxAltitude]);
 
   const processPolygon = useCallback(async (latlngs: L.LatLng[], map: L.Map) => {
-    // BUG 1 FIX: Calculate diagonal using Leaflet's distanceTo (returns meters)
     const polygon = L.polygon(latlngs);
     const bounds = polygon.getBounds();
     const ne = bounds.getNorthEast();
     const sw = bounds.getSouthWest();
-    const diagonalMeters = ne.distanceTo(sw); // Leaflet built-in, meters
-
-    // VLOS/BVLOS: diagonal > 500m = BVLOS, regardless of drone capability
-    const operationType: 'VLOS' | 'BVLOS' = diagonalMeters > 500 ? 'BVLOS' : 'VLOS';
+    const diagonalMeters = ne.distanceTo(sw);
 
     // Calculate area
     let area = 0;
@@ -215,7 +211,7 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
     }
     area = Math.abs(area) * 6378137 * 6378137 / 2 * Math.PI / 180 / 1e6;
 
-    // BUG 3 FIX: Draw buffers immediately
+    // Draw buffers immediately
     drawBuffers(latlngs, map);
 
     const initialData: FlightAreaData = {
@@ -224,12 +220,12 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
       landingPoint: landingMarkerRef.current?.getLatLng() || null,
       areaKm2: Math.round(area * 1000) / 1000,
       diagonalM: Math.round(diagonalMeters),
-      operationType,
+      operationType: localData?.operationType || null, // User must select manually
       grbMeters: Math.round(grbDistance * 10) / 10,
       cvMeters: Math.round(cvDistance),
-      populationDensityClass: 'sparsely', // placeholder until Overpass returns
+      populationDensityClass: 'sparsely',
       airspaceClass: 'uncontrolled_low',
-      flightDescription: `Flygeområde i ${municipality}, ${area.toFixed(3)} km², ${operationType}`,
+      flightDescription: `Flygeområde i ${municipality}, ${area.toFixed(3)} km²`,
       landUseResult: null,
       densityOverridden: false,
     };
@@ -237,9 +233,9 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
     setManualRequired(false);
     onUpdate(initialData);
 
-    // BUG 2 FIX: Query Overpass with improved count-based queries
+    // Query Overpass
     await runLandUseQuery(latlngs, initialData);
-  }, [municipality, drone, grbDistance, cvDistance, onUpdate]);
+  }, [municipality, drone, grbDistance, cvDistance, onUpdate, localData?.operationType]);
 
   const runLandUseQuery = useCallback(async (latlngs: L.LatLng[], baseData?: FlightAreaData) => {
     setQueryingLandUse(true);
