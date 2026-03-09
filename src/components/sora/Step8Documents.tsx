@@ -134,9 +134,9 @@ export default function Step8Documents({ scenario }: Props) {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-bold text-sora-text mb-1">Dokumenter og innsending</h2>
-        <p className="text-sora-text-muted text-sm">
-          Basert på scenario <span className="text-sora-purple font-semibold">{scenario || 'SORA'}</span> — her er dokumentene du trenger.
+        <h2 className="text-[28px] font-display font-bold text-sora-text mb-1">Dokumenter og innsending</h2>
+        <p className="text-sora-text-muted text-[15px] font-sora">
+          Basert på scenario <span className="haiko-badge text-[11px] ml-1">{scenario || 'SORA'}</span> — her er dokumentene du trenger.
         </p>
       </div>
 
