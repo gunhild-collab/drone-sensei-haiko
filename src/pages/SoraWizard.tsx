@@ -312,15 +312,6 @@ export default function SoraWizard() {
           </AnimatePresence>
         </div>
 
-        <LiveSummary
-          applicantName={applicantName}
-          municipality={municipality}
-          droneName={derivedInputs.droneName}
-          results={results}
-          matchedScenario={bestScenario}
-          step={step + 1}
-          totalSteps={STEPS.length}
-        />
       </div>
 
       {/* Navigation */}
