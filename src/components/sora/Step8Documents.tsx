@@ -196,9 +196,9 @@ export default function Step8Documents({ scenario }: Props) {
       {/* SECTION 3 — Contact */}
       {showContact && (
         <section className="space-y-3">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-sora-text-dim">Trenger du hjelp?</h3>
-          <div className="bg-sora-surface border-2 border-sora-purple/40 rounded-xl p-5">
-            <p className="text-sora-text font-semibold text-sm">Haiko hjelper deg med søknadsprosessen</p>
+          <h3 className="haiko-label">Trenger du hjelp?</h3>
+          <div className="haiko-card border-2 border-sora-purple/40 p-5">
+            <p className="text-sora-text font-display font-bold text-sm">Haiko hjelper deg med søknadsprosessen</p>
             <p className="text-sora-text-muted text-xs mt-1">
               Vi har erfaring med SORA, PDRA og operasjonsmanualer for norske kommuner og beredskapstjenester.
             </p>
