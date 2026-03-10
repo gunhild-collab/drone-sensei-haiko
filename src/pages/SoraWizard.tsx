@@ -78,6 +78,22 @@ const defaultScenarioForm: ScenarioFormData = {
   restrictions: '',
 };
 
+export interface OperationsManualState {
+  option: 'A' | 'B' | null;
+  uploaded: boolean;
+  filename?: string;
+  logo?: string; // base64
+  completed: boolean;
+  data: Record<string, string>;
+}
+
+const defaultOM: OperationsManualState = {
+  option: null,
+  uploaded: false,
+  completed: false,
+  data: {},
+};
+
 export default function SoraWizard() {
   const [started, setStarted] = useState(false);
   const [applicantName, setApplicantName] = useState('');
@@ -89,6 +105,10 @@ export default function SoraWizard() {
   const [osoTexts, setOsoTexts] = useState<Record<number, string>>({});
   const [manualTexts, setManualTexts] = useState<Record<string, string>>({});
   const updateManualText = useCallback((key: string, value: string) => setManualTexts(prev => ({ ...prev, [key]: value })), []);
+
+  const [operationsManual, setOperationsManual] = useState<OperationsManualState>(defaultOM);
+  const updateOM = useCallback((updates: Partial<OperationsManualState>) => setOperationsManual(prev => ({ ...prev, ...updates })), []);
+  const updateOMData = useCallback((key: string, value: string) => setOperationsManual(prev => ({ ...prev, data: { ...prev.data, [key]: value } })), []);
   const [mitigations, setMitigations] = useState<MitigationState>(defaultMitigations);
   const [scenarioFormData, setScenarioFormData] = useState<ScenarioFormData>(defaultScenarioForm);
 
@@ -229,6 +249,7 @@ export default function SoraWizard() {
             municipality={municipality} selectedDrone={selectedDrone} results={results}
             flightAreaData={flightAreaData} derivedInputs={derivedInputs} scenario={bestScenarioId}
             manualTexts={manualTexts} onManualTextChange={updateManualText}
+            operationsManual={operationsManual} onUpdateOM={updateOM} onUpdateOMData={updateOMData}
           />
         );
       case 'explanation':
@@ -256,7 +277,12 @@ export default function SoraWizard() {
                 </p>
               </div>
             )}
-            <Step8Documents scenario={bestScenarioId} />
+            <Step8Documents
+              scenario={bestScenarioId} results={results} derivedInputs={derivedInputs}
+              applicantName={applicantName} applicantEmail={applicantEmail}
+              municipality={municipality} selectedDrone={selectedDrone}
+              operationsManual={operationsManual}
+            />
           </>
         );
       default:
