@@ -5,20 +5,26 @@ export interface DroneSpec {
   id: string;
   name: string;
   manufacturer: string;
-  model: string;
+  model?: string;
   mtom: number; // kg
   characteristicDimension: number; // m
   maxSpeed: number; // m/s
   categoryClass: string; // C0–C6
-  easaCategory: 'Open' | 'Specific';
+  easaCategory: 'Open' | 'Specific' | string;
   supportsBVLOS: boolean;
   maxAltitude: number; // m
-  maxFlightTime: number; // min
-  propulsion: 'elektrisk' | 'hybrid' | 'forbrenning';
-  hasRemoteId: boolean;
+  maxFlightTime?: number; // min
+  propulsion?: 'elektrisk' | 'hybrid' | 'forbrenning';
+  hasRemoteId?: boolean;
   hasThermal: boolean;
   hasParachute: boolean;
   hasRTK: boolean;
+  hasRGB?: boolean;
+  hasLidar?: boolean;
+  hasZoom?: boolean;
+  hasPayloadRelease?: boolean;
+  cameraResolution?: string;
+  zoomLevel?: string;
   payloadKg: number;
   notes: string;
 }

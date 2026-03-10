@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
-import { Search, Check, Plane } from "lucide-react";
+import { Search, Check, Plane, Loader2 } from "lucide-react";
 import { DroneSpec, DRONE_DATABASE } from "@/data/droneDatabase";
+import { useDrones } from "@/hooks/useDrones";
 
 interface Props {
   selectedDrone: DroneSpec | null;
@@ -13,12 +14,15 @@ const valueClass = "text-sora-text font-semibold text-sm";
 
 export default function Step3Drone({ selectedDrone, onSelect }: Props) {
   const [search, setSearch] = useState('');
+  const { drones: liveDrones, loading, error } = useDrones();
+
+  const droneList = error ? DRONE_DATABASE : liveDrones;
 
   const filtered = useMemo(() => {
-    if (!search) return DRONE_DATABASE;
+    if (!search) return droneList;
     const q = search.toLowerCase();
-    return DRONE_DATABASE.filter(d => d.name.toLowerCase().includes(q) || d.manufacturer.toLowerCase().includes(q));
-  }, [search]);
+    return droneList.filter(d => d.name.toLowerCase().includes(q) || d.manufacturer.toLowerCase().includes(q));
+  }, [search, droneList]);
 
   return (
     <div className="space-y-6">
@@ -26,6 +30,19 @@ export default function Step3Drone({ selectedDrone, onSelect }: Props) {
         <h2 className="text-2xl font-bold text-sora-text mb-1">Velg dronemodell</h2>
         <p className="text-sora-text-muted text-sm">Velg dronen som skal brukes i operasjonen.</p>
       </div>
+
+      {/* Loading / error states */}
+      {loading && (
+        <div className="flex items-center gap-2 text-sora-text-dim text-sm">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Henter droner...
+        </div>
+      )}
+      {error && (
+        <div className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-yellow-400 text-sm">
+          Kunne ikke hente droner — viser lagrede data
+        </div>
+      )}
 
       {/* Search */}
       <div className="relative">
