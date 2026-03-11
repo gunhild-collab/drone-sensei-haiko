@@ -1,0 +1,20 @@
+name: EASA Drone Sync
+
+on:
+  schedule:
+    - cron: "0 7 * * 1"   # Every Monday 07:00 UTC
+  workflow_dispatch:       # Manual trigger from GitHub UI
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - run: pip install requests pyairtable
+      - run: python easa_airtable_sync.py
+        env:
+          AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
+          AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
