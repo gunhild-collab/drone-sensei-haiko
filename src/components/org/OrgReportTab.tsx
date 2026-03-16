@@ -1,10 +1,13 @@
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FileText } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { FileText, ArrowRight } from "lucide-react";
 
 interface Props { org: any; }
 
 export default function OrgReportTab({ org }: Props) {
+  const navigate = useNavigate();
   const report = org.dmv_report || {};
   const hasReport = Object.keys(report).length > 0 && report.municipality_name;
 
@@ -15,8 +18,11 @@ export default function OrgReportTab({ org }: Props) {
           <FileText className="w-12 h-12 text-muted-foreground mb-4" />
           <h3 className="font-display font-semibold text-foreground text-lg">Ingen DMV-rapport enda</h3>
           <p className="text-sm text-muted-foreground mt-2 max-w-sm">
-            Kjør en DMV-vurdering fra verktøyet for å generere en rapport som kobles hit.
+            Kjør en DMV-vurdering for å generere en rapport som kobles hit.
           </p>
+          <Button className="mt-6" onClick={() => navigate("/vurdering")}>
+            <ArrowRight className="w-4 h-4 mr-2" /> Lag rapport
+          </Button>
         </CardContent>
       </Card>
     );
