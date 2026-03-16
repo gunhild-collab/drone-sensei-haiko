@@ -19,7 +19,6 @@ import { findIKSPartners, getIKSPartnerMunicipalities } from "@/data/iksData";
 import DepartmentEditor, { type ActiveDepartment } from "@/components/dmv/DepartmentEditor";
 import DroneAnalysis from "@/components/dmv/DroneAnalysis";
 import RiskProfileTab from "@/components/dmv/RiskProfileTab";
-import GeographyInfraTab from "@/components/dmv/GeographyInfraTab";
 import OperationsEconomyTab from "@/components/dmv/OperationsEconomyTab";
 import {
   ChevronLeft, ChevronRight, CheckCircle2, Target, Shield, Cpu,
