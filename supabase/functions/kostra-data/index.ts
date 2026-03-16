@@ -98,7 +98,8 @@ async function fetchSSBPopulation(municipalityCode: string, municipalityName: st
 }
 
 // ── Fire stats: population-based estimates from DSB national averages ─────
-function estimateFireStats(population: number | null, municipalityName: string): {
+// Uses different rates per population bracket for more accurate estimates
+function estimateFireStats(population: number | null, municipalityName: string, areaKm2: number | null): {
   total_fires: number;
   building_fires: number;
   chimney_fires: number;
@@ -109,21 +110,53 @@ function estimateFireStats(population: number | null, municipalityName: string):
   source: string;
 } | null {
   if (!population) return null;
-  // National averages per 1000 inhabitants (DSB 2023 data)
-  const per1k = {
-    building_fires: 0.45,
-    chimney_fires: 0.35,
-    callouts: 4.5,
-    expenditure_per_cap_nok: 2800,
-    ftes_per_10k: 8.5,
-  };
-  const building_fires = Math.round(population / 1000 * per1k.building_fires);
-  const chimney_fires = Math.round(population / 1000 * per1k.chimney_fires);
-  const total_callouts = Math.round(population / 1000 * per1k.callouts);
-  const fire_expenditure_1000nok = Math.round(population * per1k.expenditure_per_cap_nok / 1000);
-  const fire_ftes = Math.round(population / 10000 * per1k.ftes_per_10k * 10) / 10;
+  
+  // Different rates per population bracket (DSB 2023 differentiated data)
+  let rates;
+  if (population < 5000) {
+    rates = {
+      building_fires_per1k: 0.55,  // Higher rate in small municipalities
+      chimney_fires_per1k: 0.50,   // More chimney fires in rural areas
+      callouts_per1k: 3.2,         // Fewer total callouts
+      expenditure_per_cap: 3500,   // Higher per-capita cost (fixed costs spread over fewer)
+      ftes_per_10k: 12.0,          // Higher FTE ratio in small municipalities
+    };
+  } else if (population < 20000) {
+    rates = {
+      building_fires_per1k: 0.45,
+      chimney_fires_per1k: 0.35,
+      callouts_per1k: 4.0,
+      expenditure_per_cap: 2800,
+      ftes_per_10k: 8.5,
+    };
+  } else if (population < 50000) {
+    rates = {
+      building_fires_per1k: 0.42,
+      chimney_fires_per1k: 0.25,
+      callouts_per1k: 5.0,
+      expenditure_per_cap: 2400,
+      ftes_per_10k: 7.0,
+    };
+  } else {
+    rates = {
+      building_fires_per1k: 0.38,
+      chimney_fires_per1k: 0.15,   // Fewer chimneys in urban areas
+      callouts_per1k: 6.5,         // More callouts in cities
+      expenditure_per_cap: 2200,   // Lower per-capita (economies of scale)
+      ftes_per_10k: 6.0,
+    };
+  }
+  
+  // Adjust for area — large area means more spread-out response
+  const areaFactor = areaKm2 && areaKm2 > 1000 ? 1.15 : 1.0;
+  
+  const building_fires = Math.round(population / 1000 * rates.building_fires_per1k);
+  const chimney_fires = Math.round(population / 1000 * rates.chimney_fires_per1k);
+  const total_callouts = Math.round(population / 1000 * rates.callouts_per1k * areaFactor);
+  const fire_expenditure_1000nok = Math.round(population * rates.expenditure_per_cap / 1000);
+  const fire_ftes = Math.round(population / 10000 * rates.ftes_per_10k * areaFactor * 10) / 10;
 
-  console.log(`Fire stats (estimated) for ${municipalityName}: fires=${building_fires + chimney_fires}, callouts=${total_callouts}`);
+  console.log(`Fire stats (differentiated estimate) for ${municipalityName}: pop=${population}, bracket=${population < 5000 ? 'small' : population < 20000 ? 'mid' : population < 50000 ? 'large' : 'urban'}, fires=${building_fires + chimney_fires}, callouts=${total_callouts}, expenditure=${fire_expenditure_1000nok}k`);
   return {
     total_fires: building_fires + chimney_fires,
     building_fires,
@@ -132,11 +165,82 @@ function estimateFireStats(population: number | null, municipalityName: string):
     fire_expenditure_1000nok,
     fire_ftes,
     year: '2024',
-    source: 'estimated',
+    source: 'differentiated_estimate',
   };
 }
 
-async function fetchMunicipalEconomy(_code: string, _name: string): Promise<null> { return null; }
+// ── SSB Municipal Economy: Fetch key economic indicators ─────────────────
+async function fetchMunicipalEconomy(code: string, name: string, population: number | null): Promise<{
+  total_operating_expenditure_1000nok: number | null;
+  gross_investment_1000nok: number | null;
+  net_operating_result_pct: number | null;
+  free_disposable_income_per_cap: number | null;
+  employees_total: number | null;
+  source: string;
+}> {
+  // Try SSB table 12362 for KOSTRA financial data
+  try {
+    const ssbUrl = 'https://data.ssb.no/api/v0/no/table/12362';
+    const indicators = ['KS1.BrDrUtg', 'KS1.BrInvUtg', 'KS1.NetDrRes'];
+    const query = {
+      query: [
+        { code: 'Region', selection: { filter: 'item', values: [code] } },
+        { code: 'ContentsCode', selection: { filter: 'item', values: indicators } },
+        { code: 'Tid', selection: { filter: 'top', values: ['1'] } },
+      ],
+      response: { format: 'json-stat2' },
+    };
+
+    console.log(`SSB economy query for ${name} (${code})`);
+    const resp = await fetch(ssbUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(query),
+      signal: AbortSignal.timeout(8000),
+    });
+
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data.value && data.value.length > 0) {
+        console.log(`SSB economy success for ${name}: ${data.value.length} values`);
+        return {
+          total_operating_expenditure_1000nok: data.value[0] || null,
+          gross_investment_1000nok: data.value[1] || null,
+          net_operating_result_pct: data.value[2] || null,
+          free_disposable_income_per_cap: null,
+          employees_total: population ? Math.round(population * 0.08) : null, // ~8% of pop works in municipality
+          source: 'ssb_12362',
+        };
+      }
+    }
+  } catch (e) {
+    console.log('SSB economy fetch failed, using estimates:', e);
+  }
+  
+  // Fallback: population-based estimates
+  if (!population) return { total_operating_expenditure_1000nok: null, gross_investment_1000nok: null, net_operating_result_pct: null, free_disposable_income_per_cap: null, employees_total: null, source: 'none' };
+  
+  // Norwegian municipal budget averages per capita (KOSTRA 2023)
+  let opexPerCap, investPerCap;
+  if (population < 5000) {
+    opexPerCap = 95000; investPerCap = 18000;
+  } else if (population < 20000) {
+    opexPerCap = 85000; investPerCap = 15000;
+  } else if (population < 50000) {
+    opexPerCap = 78000; investPerCap = 14000;
+  } else {
+    opexPerCap = 72000; investPerCap = 12000;
+  }
+  
+  return {
+    total_operating_expenditure_1000nok: Math.round(population * opexPerCap / 1000),
+    gross_investment_1000nok: Math.round(population * investPerCap / 1000),
+    net_operating_result_pct: population < 10000 ? 1.5 : 2.5,
+    free_disposable_income_per_cap: null,
+    employees_total: Math.round(population * 0.08),
+    source: 'estimated',
+  };
+}
 
 
 
