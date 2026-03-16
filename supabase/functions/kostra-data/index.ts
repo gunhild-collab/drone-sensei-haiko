@@ -108,108 +108,70 @@ async function fetchFireStats(municipalityCode: string, municipalityName: string
   year?: string;
 } | null> {
   try {
-    // First discover the table structure
-    const metaUrl = `https://data.ssb.no/api/v0/no/table/12362`;
-    const metaResp = await fetch(metaUrl, { signal: AbortSignal.timeout(5000) });
-    if (!metaResp.ok) {
-      console.log(`SSB 12362 metadata error: ${metaResp.status}`);
-      return null;
-    }
-    const meta = await metaResp.json();
+    const ssbUrl = 'https://data.ssb.no/api/v0/no/table/12362';
     
-    // Log variable codes for debugging
-    const varCodes = meta.map((v: any) => `${v.code}(${v.values?.length || 0})`);
-    console.log(`SSB 12362 variables: ${varCodes.join(', ')}`);
+    // First GET to discover variable codes
+    const metaResp = await fetch(ssbUrl, { signal: AbortSignal.timeout(5000) });
+    if (!metaResp.ok) return null;
+    const metaRaw = await metaResp.json();
+    const meta = Array.isArray(metaRaw) ? metaRaw : [];
+    if (meta.length === 0) return null;
 
-    // Find the region variable (could be 'Region', 'KOSstreg0000', etc.)
-    const regionVar = meta.find((v: any) => 
-      v.code === 'Region' || v.code === 'KOKkommuneregion0000' || 
-      v.values?.some((val: string) => val === municipalityCode)
-    );
-    
+    // Find region var that contains our municipality code
+    const regionVar = meta.find((v: any) => v.values?.includes(municipalityCode));
     if (!regionVar) {
-      console.log(`SSB 12362: no region variable found for ${municipalityCode}`);
+      console.log(`SSB 12362: code ${municipalityCode} not found in any variable`);
       return null;
     }
 
-    // Check if our municipality code is in the values
-    if (!regionVar.values?.includes(municipalityCode)) {
-      console.log(`SSB 12362: ${municipalityCode} not in region values`);
-      return null;
-    }
+    const queryParts = meta.map((v: any) => {
+      if (v.code === regionVar.code) return { code: v.code, selection: { filter: 'item', values: [municipalityCode] } };
+      if (v.code === 'Tid') return { code: 'Tid', selection: { filter: 'top', values: ['1'] } };
+      return { code: v.code, selection: { filter: 'all', values: ['*'] } };
+    });
 
-    // Build query dynamically
-    const query: any = {
-      query: meta.map((v: any) => {
-        if (v.code === regionVar.code) {
-          return { code: v.code, selection: { filter: 'item', values: [municipalityCode] } };
-        }
-        if (v.code === 'Tid') {
-          return { code: 'Tid', selection: { filter: 'top', values: ['1'] } };
-        }
-        // For ContentsCode or any other variable, select all
-        return { code: v.code, selection: { filter: 'all', values: ['*'] } };
-      }),
-      response: { format: 'json-stat2' },
-    };
-
-    console.log(`SSB 12362 fire stats query for ${municipalityName}`);
-    const resp = await fetch(metaUrl, {
+    const resp = await fetch(ssbUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(query),
+      body: JSON.stringify({ query: queryParts, response: { format: 'json-stat2' } }),
       signal: AbortSignal.timeout(8000),
     });
 
-    if (!resp.ok) {
-      const errText = await resp.text();
-      console.log(`SSB 12362 data error ${resp.status}: ${errText.slice(0, 300)}`);
-      return null;
-    }
+    if (!resp.ok) { console.log(`SSB 12362 data error ${resp.status}`); return null; }
 
     const data = await resp.json();
     const values = data.value || [];
+    const dims = data.dimension || {};
+    const contentDimName = Object.keys(dims).find(k => k !== regionVar.code && k !== 'Tid');
+    if (!contentDimName) return null;
     
-    // Find ContentsCode dimension
-    const contentDimName = Object.keys(data.dimension || {}).find(k => k !== 'Region' && k !== 'Tid' && k !== regionVar.code);
-    const contentDim = contentDimName ? data.dimension[contentDimName] : null;
-    const contentLabels = contentDim?.category?.label || {};
-    const contentIds = contentDim?.category?.index ? Object.keys(contentDim.category.index) : [];
-    
-    console.log(`SSB 12362 content: ${contentIds.map(id => `${id}=${contentLabels[id]}`).join('; ')}`);
+    const contentLabels = dims[contentDimName]?.category?.label || {};
+    const contentIds = Object.keys(dims[contentDimName]?.category?.index || {});
+    console.log(`SSB 12362 codes: ${contentIds.map(id => `${id}="${contentLabels[id]}"`).join(', ')}`);
 
     const result: any = {};
-    const timeDim = data.dimension?.Tid;
+    const timeDim = dims.Tid;
     if (timeDim?.category?.label) {
-      const labels = Object.values(timeDim.category.label) as string[];
-      result.year = labels[labels.length - 1];
+      result.year = (Object.values(timeDim.category.label) as string[]).pop();
     }
 
     contentIds.forEach((id: string, i: number) => {
       const val = values[i];
       if (val == null) return;
       const label = (contentLabels[id] || '').toLowerCase();
-      
-      if (label.includes('bygningsbrann') || label.includes('branner i bygning')) {
-        result.building_fires = val;
-      } else if (label.includes('pipebrann') || label.includes('skorstein')) {
-        result.chimney_fires = val;
-      } else if (label.includes('utrykn') || label.includes('oppdrag')) {
-        if (!result.total_callouts || val > result.total_callouts) result.total_callouts = val;
-      } else if ((label.includes('utgift') || label.includes('brutto')) && label.includes('1 000')) {
-        result.fire_expenditure_1000nok = val;
-      } else if (label.includes('årsverk')) {
-        result.fire_ftes = val;
-      }
+      if (label.includes('bygningsbrann')) result.building_fires = val;
+      else if (label.includes('pipebrann') || label.includes('skorstein')) result.chimney_fires = val;
+      else if (label.includes('utrykn')) result.total_callouts = val;
+      else if (label.includes('utgift') && label.includes('1 000')) result.fire_expenditure_1000nok = val;
+      else if (label.includes('årsverk')) result.fire_ftes = val;
     });
 
     if (Object.keys(result).length > 1) {
       result.total_fires = (result.building_fires || 0) + (result.chimney_fires || 0);
       result.source = 'ssb_12362';
-      console.log(`SSB 12362 result: fires=${result.total_fires}, callouts=${result.total_callouts}`);
+      console.log(`Fire stats: fires=${result.total_fires}, callouts=${result.total_callouts}`);
       return result;
     }
-    console.log('SSB 12362: no relevant data found');
     return null;
   } catch (e) {
     console.log('SSB 12362 error:', e);
@@ -217,10 +179,8 @@ async function fetchFireStats(municipalityCode: string, municipalityName: string
   }
 }
 
-// Municipal economy placeholder (data comes from fire_stats)
-async function fetchMunicipalEconomy(_municipalityCode: string, _municipalityName: string): Promise<null> {
-  return null;
-}
+async function fetchMunicipalEconomy(_code: string, _name: string): Promise<null> { return null; }
+
 
 
 // ── Hardcoded fallback data (subset of major municipalities) ─────────────
