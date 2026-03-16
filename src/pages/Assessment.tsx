@@ -15,7 +15,7 @@ import { useAssessment } from "@/hooks/useAssessment";
 import { useMunicipalityProfile } from "@/hooks/useMunicipalityProfile";
 import { evaluationApi, KostraData } from "@/lib/evaluationApi";
 import { getSuggestedDepartments } from "@/data/departmentTemplates";
-import { findIKSPartners, getIKSPartnerMunicipalities } from "@/data/iksData";
+import { findFireDepartment, findAlarmSentral, getPartnerMunicipalities, get110RegionMunicipalities, findIKSPartners, getIKSPartnerMunicipalities } from "@/data/iksData";
 import DepartmentEditor, { type ActiveDepartment } from "@/components/dmv/DepartmentEditor";
 import DroneAnalysis from "@/components/dmv/DroneAnalysis";
 import RiskProfileTab from "@/components/dmv/RiskProfileTab";
@@ -60,9 +60,12 @@ export default function Assessment() {
 
   const scrollToTop = () => topRef.current?.scrollIntoView({ behavior: "smooth" });
 
-  // IKS data
-  const iksPartnership = findIKSPartners(municipalityName);
-  const iksPartners = getIKSPartnerMunicipalities(municipalityName);
+  // IKS / brannvesen data — use full fire department lookup, not just IKS
+  const fireDept = findFireDepartment(municipalityName);
+  const alarmSentral = findAlarmSentral(municipalityName);
+  const iksPartnership = findIKSPartners(municipalityName); // legacy — only IKS-type
+  const fireDeptPartners = fireDept ? fireDept.municipalities.filter(m => m.toLowerCase() !== municipalityName.toLowerCase()) : [];
+  const regionMunicipalities = get110RegionMunicipalities(municipalityName);
 
   // Fetch KOSTRA and initialize departments when moving to data step
   const handleStartData = async () => {
@@ -201,9 +204,14 @@ export default function Assessment() {
                     <Plane className="w-3 h-3" /> {kostra.drone_relevance.controlled_airspace.type}
                   </Badge>
                 )}
-                {iksPartnership && (
+                {fireDept && (
                   <Badge variant="secondary" className="text-xs gap-1">
-                    <Flame className="w-3 h-3" /> {iksPartnership.name}
+                    <Flame className="w-3 h-3" /> {fireDept.name} ({fireDept.type})
+                  </Badge>
+                )}
+                {alarmSentral && (
+                  <Badge variant="outline" className="text-xs gap-1">
+                    110: {alarmSentral.name}
                   </Badge>
                 )}
               </div>
@@ -231,22 +239,36 @@ export default function Assessment() {
                 </CardContent>
               </Card>
 
-              {/* IKS info */}
-              {iksPartnership && (
+              {/* Fire department info */}
+              {fireDept && (
                 <Card>
                   <CardContent className="pt-5 space-y-2">
                     <div className="flex items-center gap-2">
                       <Flame className="w-4 h-4 text-accent" />
-                      <p className="font-display font-semibold text-sm">IKS-samarbeid: {iksPartnership.name}</p>
+                      <p className="font-display font-semibold text-sm">
+                        Brannvesen: {fireDept.name}
+                        <Badge variant="outline" className="ml-2 text-[10px]">{fireDept.type}</Badge>
+                      </p>
                     </div>
-                    <div className="flex flex-wrap gap-1">
-                      {iksPartners.map(m => (
-                        <Badge key={m} variant="outline" className="text-xs">{m}</Badge>
-                      ))}
-                    </div>
+                    {fireDeptPartners.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {fireDeptPartners.map(m => (
+                          <Badge key={m} variant="outline" className="text-xs">{m}</Badge>
+                        ))}
+                      </div>
+                    )}
                     <p className="text-xs text-muted-foreground">
-                      Brannvesenet deler ressurser med {iksPartners.length} nabokommuner. Dette tas med i droneanalysen.
+                      {fireDept.type === 'IKS'
+                        ? `Brannvesenet deler ressurser med ${fireDeptPartners.length} nabokommuner. Dronestasjonen kan stasjoneres sentralt.`
+                        : fireDept.type === 'KF'
+                        ? 'Kommunalt foretak — egen brannberedskap.'
+                        : 'Enkeltkommunalt brannvesen.'}
                     </p>
+                    {alarmSentral && (
+                      <p className="text-xs text-muted-foreground">
+                        110-sentral: {alarmSentral.name} ({alarmSentral.region}) — dekker {regionMunicipalities.length} kommuner i regionen.
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
               )}
@@ -316,7 +338,11 @@ export default function Assessment() {
         terrainType={kostra?.drone_relevance?.urban_rural || "Ukjent"}
         densityPerKm2={kostra?.drone_relevance?.population_density || 10}
         departments={departments}
-        iksPartners={iksPartners}
+        iksPartners={fireDeptPartners}
+        fireDeptName={fireDept?.name || null}
+        fireDeptType={fireDept?.type || null}
+        alarmSentralName={alarmSentral?.name || null}
+        regionMunicipalities={regionMunicipalities}
         onContinue={() => setStep("questions")}
         onBack={() => setStep("data")}
       />

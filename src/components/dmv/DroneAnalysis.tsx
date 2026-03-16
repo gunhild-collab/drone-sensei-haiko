@@ -82,13 +82,19 @@ interface Props {
   densityPerKm2: number;
   departments: ActiveDepartment[];
   iksPartners: string[];
+  fireDeptName: string | null;
+  fireDeptType: string | null;
+  alarmSentralName: string | null;
+  regionMunicipalities: string[];
   onContinue: () => void;
   onBack: () => void;
 }
 
 export default function DroneAnalysis({
   municipalityName, population, areaKm2, roadKm, vaKm, buildings,
-  terrainType, densityPerKm2, departments, iksPartners, onContinue, onBack
+  terrainType, densityPerKm2, departments, iksPartners,
+  fireDeptName, fireDeptType, alarmSentralName, regionMunicipalities,
+  onContinue, onBack
 }: Props) {
   const [analysis, setAnalysis] = useState<DroneAnalysisResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -96,6 +102,9 @@ export default function DroneAnalysis({
   const [expandedDept, setExpandedDept] = useState<string | null>(null);
 
   useEffect(() => {
+    const activeDepts = departments.filter(d => d.enabled).map(d => d.name);
+    if (activeDepts.length === 0) return;
+    
     const run = async () => {
       setLoading(true);
       setError(null);
@@ -110,8 +119,12 @@ export default function DroneAnalysis({
             buildings,
             terrain_type: terrainType,
             density_per_km2: densityPerKm2,
-            departments: departments.filter(d => d.enabled).map(d => d.name),
+            departments: activeDepts,
             iks_partners: iksPartners,
+            fire_dept_name: fireDeptName,
+            fire_dept_type: fireDeptType,
+            alarm_sentral_name: alarmSentralName,
+            region_municipalities: regionMunicipalities,
           },
         });
         if (fnError) throw new Error(fnError.message);
@@ -124,7 +137,7 @@ export default function DroneAnalysis({
       }
     };
     run();
-  }, [municipalityName]);
+  }, [municipalityName, population, areaKm2, roadKm, vaKm, buildings, terrainType, densityPerKm2, departments, iksPartners, fireDeptName, fireDeptType]);
 
   if (loading) {
     return (

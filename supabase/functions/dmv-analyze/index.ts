@@ -7,10 +7,6 @@ const corsHeaders = {
 };
 
 // === DRONE ARCHETYPES ===
-// All operations default to autonomous BVLOS from a central drone station.
-// Only two drone types:
-//   1. Multirotor (compact, autonomous BVLOS from dock) — for local/close-range ops, thermal, RTK, inspections
-//   2. Fixed-wing drone-in-a-box (Robot Aviation FX10 or similar) — for large-area mapping, long-range patrols, corridor inspections
 const DRONE_ARCHETYPES = {
   multirotor: {
     type: "Multirotor (autonom BVLOS fra dronestasjon)",
@@ -26,9 +22,7 @@ const DRONE_ARCHETYPES = {
   },
 };
 
-// Verified use case database — the AI MUST only select from these, never invent new ones
-// KEY CHANGE: Nearly all operations are autonomous BVLOS from a central drone station.
-// Only a few exceptions remain VLOS (e.g. close bridge inspection, indoor-adjacent).
+// Verified use case database
 const VERIFIED_USE_CASES = [
   { id: "UC-001", name: "Situasjonsbevissthet ved bygningsbrann", department: "Brann og redning", operationType: "BVLOS", easaCategory: "Spesifikk kategori", certRequirement: "STS-01 + BVLOS-tillatelse", droneArchetype: "multirotor", priority: "Høy", flightHoursFormula: "30 timer/år flat", needsThermal: true, needsRtk: false, notes: "Autonom utsending fra stasjon ved alarm. Termisk kamera kritisk." },
   { id: "UC-002", name: "Søk og redning i terreng", department: "Brann og redning", operationType: "BVLOS", easaCategory: "Spesifikk kategori", certRequirement: "STS-01 + BVLOS-tillatelse", droneArchetype: "multirotor", priority: "Høy", flightHoursFormula: "50 timer/år flat", needsThermal: true, needsRtk: false, notes: "Autonom utsending ved SAR-alarm." },
@@ -56,13 +50,44 @@ const VERIFIED_USE_CASES = [
   { id: "UC-024", name: "Jordbruksareal og tilstandskontroll", department: "Naturforvaltning / Landbruk", operationType: "BVLOS", easaCategory: "Spesifikk kategori", certRequirement: "STS-01 + BVLOS-tillatelse", droneArchetype: "fixedWing", priority: "Lav", flightHoursFormula: "jordbruk_areal_km2 × 0.01 timer/år", needsThermal: false, needsRtk: false, notes: "Fixed-wing for landbrukskartlegging." },
   { id: "UC-025", name: "AED-levering ved hjertestans", department: "Helse og omsorg", operationType: "BVLOS", easaCategory: "Spesifikk - SORA SAIL IV", certRequirement: "Full SORA-opplæring + BVLOS + payload-tillatelse", droneArchetype: "multirotor", priority: "Høy", flightHoursFormula: "20 timer/år flat", needsThermal: false, needsRtk: false, notes: "SAIL IV — krevende tillatelse. Autonom utsending ved AMK-alarm." },
   { id: "UC-026", name: "Medisinlevering til avsidesliggende", department: "Helse og omsorg", operationType: "BVLOS", easaCategory: "Spesifikk + BVLOS", certRequirement: "BVLOS + payload-tillatelse", droneArchetype: "multirotor", priority: "Medium", flightHoursFormula: "10 timer/år flat", needsThermal: false, needsRtk: false, notes: "Autonom levering fra sentralt lager." },
-  { id: "UC-027", name: "Skadevurdering etter ekstremvær", department: "Tverrfaglig beredskap", operationType: "BVLOS", easaCategory: "Spesifikk kategori", certRequirement: "STS-01 + BVLOS-tillatelse", droneArchetype: "multirotor", priority: "Høy", flightHoursFormula: "10 timer/år flat", needsThermal: false, needsRtk: true, notes: "Autonom utsending for rask skadeoversikt." },
-  { id: "UC-028", name: "Storskala ortofoto og 3D-kartlegging", department: "Tverrfaglig", operationType: "BVLOS", easaCategory: "Spesifikk kategori + OpAuth", certRequirement: "STS-01 + BVLOS-tillatelse", droneArchetype: "fixedWing", priority: "Medium", flightHoursFormula: "areal_km2 × 0.004 timer/år", needsThermal: false, needsRtk: true, notes: "Fixed-wing for kommunedekkende kartlegging." },
-  { id: "UC-029", name: "Kommuneteknisk infrastrukturkartlegging", department: "Tverrfaglig teknisk", operationType: "BVLOS", easaCategory: "Spesifikk kategori", certRequirement: "STS-01 + BVLOS-tillatelse", droneArchetype: "multirotor", priority: "Medium", flightHoursFormula: "5 timer/år flat", needsThermal: false, needsRtk: true, notes: "Autonom kartlegging av teknisk infrastruktur." },
-  { id: "UC-030", name: "Sikkerhetsovervåkning offentlige arrangementer", department: "Tverrfaglig beredskap", operationType: "VLOS", easaCategory: "Spesifikk - SORA SAIL IV", certRequirement: "Full SORA-opplæring", droneArchetype: "multirotor", priority: "Lav", flightHoursFormula: "5 timer/år flat", needsThermal: false, needsRtk: false, notes: "Unntak: VLOS pga. folkemasse — SAIL IV." },
+  { id: "UC-027", name: "Skadevurdering etter ekstremvær", department: "Beredskap", operationType: "BVLOS", easaCategory: "Spesifikk kategori", certRequirement: "STS-01 + BVLOS-tillatelse", droneArchetype: "multirotor", priority: "Høy", flightHoursFormula: "10 timer/år flat", needsThermal: false, needsRtk: true, notes: "Autonom utsending for rask skadeoversikt." },
+  { id: "UC-028", name: "Storskala ortofoto og 3D-kartlegging", department: "Geodata", operationType: "BVLOS", easaCategory: "Spesifikk kategori + OpAuth", certRequirement: "STS-01 + BVLOS-tillatelse", droneArchetype: "fixedWing", priority: "Medium", flightHoursFormula: "areal_km2 × 0.004 timer/år", needsThermal: false, needsRtk: true, notes: "Fixed-wing for kommunedekkende kartlegging." },
+  { id: "UC-029", name: "Kommuneteknisk infrastrukturkartlegging", department: "Teknisk drift", operationType: "BVLOS", easaCategory: "Spesifikk kategori", certRequirement: "STS-01 + BVLOS-tillatelse", droneArchetype: "multirotor", priority: "Medium", flightHoursFormula: "5 timer/år flat", needsThermal: false, needsRtk: true, notes: "Autonom kartlegging av teknisk infrastruktur." },
+  { id: "UC-030", name: "Sikkerhetsovervåkning offentlige arrangementer", department: "Beredskap", operationType: "VLOS", easaCategory: "Spesifikk - SORA SAIL IV", certRequirement: "Full SORA-opplæring", droneArchetype: "multirotor", priority: "Lav", flightHoursFormula: "5 timer/år flat", needsThermal: false, needsRtk: false, notes: "Unntak: VLOS pga. folkemasse — SAIL IV." },
 ];
 
-// Certification hierarchy — CRITICAL: These are mutually exclusive paths
+// Department name mapping for precise matching
+const DEPT_MATCH_MAP: Record<string, string[]> = {
+  "Brann og redning": ["Brann og redning"],
+  "Tekniske tjenester - Vei": ["Teknisk drift", "Vei", "Tekniske tjenester"],
+  "Vann og avløp": ["Vann og avløp", "VA"],
+  "Byggesak / Eiendom": ["Plan og bygg", "Byggesak", "Eiendom"],
+  "Naturforvaltning": ["Miljø og klima", "Naturforvaltning", "Landbruk"],
+  "Naturforvaltning / Landbruk": ["Landbruk", "Miljø og klima", "Naturforvaltning"],
+  "Helse og omsorg": ["Helse og omsorg", "Helse"],
+  "Beredskap": ["Brann og redning", "Beredskap"],
+  "Geodata": ["Geodata", "Plan og bygg"],
+  "Teknisk drift": ["Teknisk drift", "Tekniske tjenester"],
+};
+
+function matchDepartments(ucDepartment: string, activeDepts: string[]): boolean {
+  const activeLower = activeDepts.map(d => d.toLowerCase());
+  
+  // Direct match
+  if (activeLower.some(d => d === ucDepartment.toLowerCase())) return true;
+  
+  // Use mapping
+  const mappedNames = DEPT_MATCH_MAP[ucDepartment];
+  if (mappedNames) {
+    return mappedNames.some(mapped => 
+      activeLower.some(d => d.includes(mapped.toLowerCase()) || mapped.toLowerCase().includes(d))
+    );
+  }
+  
+  return false;
+}
+
+// Certification hierarchy
 const CERT_RULES = `
 KRITISKE SERTIFISERINGSREGLER — bryt disse ALDRI:
 
@@ -88,24 +113,35 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { municipality_name, population, area_km2, road_km, va_km, buildings, terrain_type, density_per_km2, departments, iks_partners } = await req.json();
+    const { 
+      municipality_name, population, area_km2, road_km, va_km, buildings, 
+      terrain_type, density_per_km2, departments, iks_partners,
+      fire_dept_name, fire_dept_type, alarm_sentral_name, region_municipalities
+    } = await req.json();
+    
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    // Filter use cases to only those matching active departments
+    // Filter use cases to only those matching active departments — PRECISE matching
     const deptNames = (departments || []) as string[];
-    const deptNameLower = deptNames.map((d: string) => d.toLowerCase());
     
-    // Match use cases to departments (fuzzy matching on department name)
-    const relevantUCs = VERIFIED_USE_CASES.filter(uc => {
-      const ucDeptLower = uc.department.toLowerCase();
-      return deptNameLower.some((d: string) => 
-        ucDeptLower.includes(d.split(' - ')[0].split(' / ')[0]) || 
-        d.includes(ucDeptLower.split(' - ')[0].split(' / ')[0]) ||
-        // Tverrfaglig matches any
-        ucDeptLower.includes('tverrfaglig')
-      );
-    });
+    const relevantUCs = VERIFIED_USE_CASES.filter(uc => 
+      matchDepartments(uc.department, deptNames)
+    );
+
+    console.log(`[${municipality_name}] Active depts: ${JSON.stringify(deptNames)}`);
+    console.log(`[${municipality_name}] Matched ${relevantUCs.length}/${VERIFIED_USE_CASES.length} use cases`);
+    console.log(`[${municipality_name}] Matched UC IDs: ${relevantUCs.map(uc => uc.id).join(', ')}`);
+
+    // Build IKS/fire department context
+    const iksContext = fire_dept_name 
+      ? `BRANNVESEN: ${fire_dept_name} (type: ${fire_dept_type || 'ukjent'})
+${iks_partners && iks_partners.length > 0 
+  ? `Partnerkommuner i brannvesenet: ${iks_partners.join(', ')}. Dronestasjonen kan stasjoneres sentralt for hele ${fire_dept_type === 'IKS' ? 'IKS-et' : 'distriktet'}.`
+  : `Enkeltkommunalt brannvesen — ingen delte ressurser.`}
+${alarm_sentral_name ? `110-sentral: ${alarm_sentral_name}` : ''}
+${region_municipalities && region_municipalities.length > 0 ? `Totalt ${region_municipalities.length} kommuner under samme 110-region.` : ''}`
+      : 'Ingen brannvesendata tilgjengelig.';
 
     const systemPrompt = `Du er en ekspert på kommunal dronebruk i Norge med dyp kunnskap om EASA-regelverk, SORA-metodikk og norsk luftfartslovgivning.
 
@@ -127,8 +163,22 @@ DET FINNES KUN TO DRONETYPER:
 
 ${CERT_RULES}
 
-Du har tilgang til en VERIFISERT database med ${relevantUCs.length} bruksområder. Du skal KUN velge fra disse — ALDRI finne opp nye.
+VIKTIG — DIFFERENSIER ANALYSEN BASERT PÅ KOMMUNEDATA:
+- Bruk REELLE tall for beregninger (vei_km, innbyggere, areal osv.). 
+- Ikke bruk faste timer for variable formler — beregn fra kommunedata.
+- En liten kommune (5000 innb., 50 km vei) skal få VESENTLIG lavere flytimer og færre droner enn en stor (50000 innb., 500 km vei).
+- Små kommuner (<10000 innb.) trenger typisk 1 multirotor og muligens 0 fixed-wing.
+- Mellomstore kommuner (10000-30000) trenger 1-2 multirotorer og muligens 1 fixed-wing.
+- Store kommuner (>30000) kan trenge 2+ multirotorer og 1 fixed-wing.
+
+Du har tilgang til en VERIFISERT database med ${relevantUCs.length} bruksområder som matcher kommunens aktive avdelinger. 
+Du skal KUN velge fra disse — ALDRI finne opp nye.
 Hvert use case har et fast felt 'droneArchetype' som er enten 'multirotor' eller 'fixedWing' — bruk dette.
+
+VIKTIG: Ikke inkluder use cases som åpenbart er irrelevante for kommunen.
+- UC-020 (kystsonekartlegging): Kun for kystkommuner.
+- UC-004/UC-021 (skogbrann/skogovervåkning): Kun for kommuner med vesentlig skogareal.
+- UC-025/UC-026 (medisinlevering/AED): Mest relevant for distriktskommuner.
 `;
 
     const userPrompt = `Analyser dronemulighetene for ${municipality_name} kommune.
@@ -144,21 +194,28 @@ KOMMUNEDATA:
 
 AKTIVE AVDELINGER: ${JSON.stringify(deptNames)}
 
-IKS-SAMARBEID (brannvesen): ${JSON.stringify(iks_partners || [])}
-${(iks_partners || []).length > 0 ? `Brannvesenet deles mellom disse kommunene. Dronestasjonen kan stasjoneres sentralt for IKS-et.` : 'Kommunen har ikke identifisert IKS-samarbeid for brannvesen.'}
+${iksContext}
 
 VERIFISERT USE CASE-DATABASE (velg KUN fra disse):
 ${JSON.stringify(relevantUCs, null, 1)}
 
 INSTRUKSJONER:
-1. Velg relevante use cases fra databasen basert på kommunens profil
-2. Beregn flytimer ved å bruke formlene og kommunedata (f.eks. vei_km × 0.15)
+1. Velg relevante use cases fra databasen basert på kommunens SPESIFIKKE profil — ekskluder irrelevante.
+2. Beregn flytimer ved å bruke formlene og REELLE kommunedata:
+   - "vei_km × 0.15" med vei_km = ${road_km || 'ukjent'} → vis beregningen f.eks. "${road_km || '?'}km × 0.15 = ${road_km ? Math.round(road_km * 0.15) : '?'} timer"
+   - "rør_km × 0.2" med rør_km = ${va_km || 'ukjent'}
+   - "areal_km2 × 0.002" med areal = ${area_km2 || 'ukjent'}
+   - Faste timer brukes som de er (f.eks. "30 timer/år flat")
 3. For HVER operasjon: bruk NØYAKTIG operationType, easaCategory og certRequirement fra databasen
-4. DRONEFLÅTE: Beregn antall multirotorer og fixed-wing basert på bruksområdene.
-   - MULTIROTOR: Alle use cases med droneArchetype="multirotor" deler 1 multirotor-stasjon (med mindre timer overstiger 400t/år — da 2)
-   - FIXED-WING: Alle use cases med droneArchetype="fixedWing" deler 1 fixed-wing (med mindre timer overstiger 400t/år)
+4. DRONEFLÅTE: Beregn antall multirotorer og fixed-wing basert på totale flytimer per type.
+   - MULTIROTOR: 1 stk med mindre timer overstiger 400t/år — da 2
+   - FIXED-WING: 1 stk med mindre timer overstiger 400t/år — kun inkluder om det er UC-er som krever den
    - Bruk modellnavnene: "${DRONE_ARCHETYPES.multirotor.example}" og "${DRONE_ARCHETYPES.fixedWing.example}"
-5. For IKS-brannvesen: vurder om dronestasjonen kan dekke hele IKS-området
+5. ${fire_dept_type === 'IKS' 
+    ? `For IKS-brannvesenet ${fire_dept_name}: vurder om dronestasjonen kan dekke hele IKS-området med partnerkommuner: ${(iks_partners || []).join(', ')}` 
+    : fire_dept_name 
+    ? `Brannvesenet er et ${fire_dept_type}: ${fire_dept_name}. Dronestasjonen dekker kun ${municipality_name}.`
+    : 'Ingen brannveseninfo.'}
 6. Gi én sertifiseringsvei per pilot — ALDRI bland åpen og spesifikk kategori
 7. Estimer totalkostnad basert på antall dronestasjoner × enhetspris`;
 
@@ -183,7 +240,7 @@ INSTRUKSJONER:
               parameters: {
                 type: "object",
                 properties: {
-                  summary: { type: "string", description: "Kort oppsummering (2-3 setninger)" },
+                  summary: { type: "string", description: "Kort oppsummering (2-3 setninger) SPESIFIKT for denne kommunen" },
                   department_analyses: {
                     type: "array",
                     items: {
@@ -317,7 +374,7 @@ INSTRUKSJONER:
 
     const analysis = JSON.parse(toolCall.function.arguments);
 
-    // POST-PROCESSING VALIDATION: Catch any AI mistakes
+    // POST-PROCESSING VALIDATION: Enforce correct values from verified database
     if (analysis.department_analyses) {
       for (const dept of analysis.department_analyses) {
         for (const uc of dept.use_cases) {
@@ -326,7 +383,6 @@ INSTRUKSJONER:
             uc.operation_type = sourceUC.operationType;
             uc.easa_category = sourceUC.easaCategory;
             uc.pilot_certification = sourceUC.certRequirement;
-            // Map archetype to display name
             const archetype = DRONE_ARCHETYPES[sourceUC.droneArchetype as keyof typeof DRONE_ARCHETYPES];
             uc.drone_type = archetype ? archetype.type : sourceUC.droneArchetype;
             uc.needs_thermal = sourceUC.needsThermal;
