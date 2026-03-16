@@ -239,22 +239,36 @@ export default function Assessment() {
                 </CardContent>
               </Card>
 
-              {/* IKS info */}
-              {iksPartnership && (
+              {/* Fire department info */}
+              {fireDept && (
                 <Card>
                   <CardContent className="pt-5 space-y-2">
                     <div className="flex items-center gap-2">
                       <Flame className="w-4 h-4 text-accent" />
-                      <p className="font-display font-semibold text-sm">IKS-samarbeid: {iksPartnership.name}</p>
+                      <p className="font-display font-semibold text-sm">
+                        Brannvesen: {fireDept.name}
+                        <Badge variant="outline" className="ml-2 text-[10px]">{fireDept.type}</Badge>
+                      </p>
                     </div>
-                    <div className="flex flex-wrap gap-1">
-                      {iksPartners.map(m => (
-                        <Badge key={m} variant="outline" className="text-xs">{m}</Badge>
-                      ))}
-                    </div>
+                    {fireDeptPartners.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {fireDeptPartners.map(m => (
+                          <Badge key={m} variant="outline" className="text-xs">{m}</Badge>
+                        ))}
+                      </div>
+                    )}
                     <p className="text-xs text-muted-foreground">
-                      Brannvesenet deler ressurser med {iksPartners.length} nabokommuner. Dette tas med i droneanalysen.
+                      {fireDept.type === 'IKS'
+                        ? `Brannvesenet deler ressurser med ${fireDeptPartners.length} nabokommuner. Dronestasjonen kan stasjoneres sentralt.`
+                        : fireDept.type === 'KF'
+                        ? 'Kommunalt foretak — egen brannberedskap.'
+                        : 'Enkeltkommunalt brannvesen.'}
                     </p>
+                    {alarmSentral && (
+                      <p className="text-xs text-muted-foreground">
+                        110-sentral: {alarmSentral.name} ({alarmSentral.region}) — dekker {regionMunicipalities.length} kommuner i regionen.
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
               )}
