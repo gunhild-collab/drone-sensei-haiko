@@ -181,7 +181,7 @@ export default function OrgFlightLogsTab({ orgId }: Props) {
                       <TableCell className="whitespace-nowrap">{log.flight_date}</TableCell>
                       <TableCell><Badge variant="outline" className="text-xs">{log.mission_type}</Badge></TableCell>
                       <TableCell className="text-muted-foreground text-sm max-w-[200px] truncate">{log.location_description || "—"}</TableCell>
-                      <TableCell className="text-sm">{log.pilots?.name || "—"}</TableCell>
+                      <TableCell className="text-sm">{pilots.find(p => p.id === log.pilot_id)?.name || "—"}</TableCell>
                       <TableCell className="text-right">{log.drone_time_minutes != null ? `${log.drone_time_minutes} min` : "—"}</TableCell>
                       <TableCell className="text-right">{log.manual_reference_time_minutes != null ? `${log.manual_reference_time_minutes} min` : "—"}</TableCell>
                       <TableCell className="text-right">
