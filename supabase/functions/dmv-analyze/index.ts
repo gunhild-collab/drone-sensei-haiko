@@ -107,12 +107,28 @@ serve(async (req) => {
       );
     });
 
-    const systemPrompt = `Du er en ekspert på kommunal dronebruk i Norge med dyp kunnskap om EASA-regelverk, SORA-metodikk og norsk luftfartslovgivning (Luftfartstilsynet).
+    const systemPrompt = `Du er en ekspert på kommunal dronebruk i Norge med dyp kunnskap om EASA-regelverk, SORA-metodikk og norsk luftfartslovgivning.
+
+GRUNNLEGGENDE PREMISS — AUTONOME BVLOS-OPERASJONER FRA SENTRAL:
+Nesten ALLE operasjoner skal gjøres autonomt BVLOS fra en sentral dronestasjon for å gi økonomisk vinning.
+Kommunen drifter droner fra en eller flere faste dronestasjoner — dronen starter, flyr oppdraget og lander automatisk.
+Kun et fåtall unntaksoperasjoner (broinspeksjon, tunnelportal, vernebygninger) krever manuell VLOS.
+
+DET FINNES KUN TO DRONETYPER:
+1. MULTIROTOR (autonom BVLOS fra dronestasjon): Kompakt multirotor med dock (f.eks. DJI Dock 2 + Matrice 4T).
+   - Brukes til: lokale inspeksjoner, termisk, SAR, beredskap, bygningsdokumentasjon
+   - Rekkevidde: opptil ~15 km radius fra stasjon
+   - Pris ca. ${DRONE_ARCHETYPES.multirotor.costNok.toLocaleString('nb-NO')} NOK per enhet
+
+2. FIXED-WING DRONE-IN-A-BOX (f.eks. Robot Aviation FX10):
+   - Brukes til: lange korridorflyginger (vei, rør), stor arealdekning (skog, natur, kartlegging), vilttelling
+   - Rekkevidde: 50+ km, 2+ timer flygetid
+   - Pris ca. ${DRONE_ARCHETYPES.fixedWing.costNok.toLocaleString('nb-NO')} NOK per enhet
 
 ${CERT_RULES}
 
 Du har tilgang til en VERIFISERT database med ${relevantUCs.length} bruksområder. Du skal KUN velge fra disse — ALDRI finne opp nye.
-Du skal beregne flytimer basert på formlene i databasen og kommunens nøkkeltall.
+Hvert use case har et fast felt 'droneArchetype' som er enten 'multirotor' eller 'fixedWing' — bruk dette.
 `;
 
     const userPrompt = `Analyser dronemulighetene for ${municipality_name} kommune.
@@ -129,7 +145,7 @@ KOMMUNEDATA:
 AKTIVE AVDELINGER: ${JSON.stringify(deptNames)}
 
 IKS-SAMARBEID (brannvesen): ${JSON.stringify(iks_partners || [])}
-${(iks_partners || []).length > 0 ? `Brannvesenet deles mellom disse kommunene. Vurder om droner og piloter kan deles.` : 'Kommunen har ikke identifisert IKS-samarbeid for brannvesen.'}
+${(iks_partners || []).length > 0 ? `Brannvesenet deles mellom disse kommunene. Dronestasjonen kan stasjoneres sentralt for IKS-et.` : 'Kommunen har ikke identifisert IKS-samarbeid for brannvesen.'}
 
 VERIFISERT USE CASE-DATABASE (velg KUN fra disse):
 ${JSON.stringify(relevantUCs, null, 1)}
@@ -138,9 +154,13 @@ INSTRUKSJONER:
 1. Velg relevante use cases fra databasen basert på kommunens profil
 2. Beregn flytimer ved å bruke formlene og kommunedata (f.eks. vei_km × 0.15)
 3. For HVER operasjon: bruk NØYAKTIG operationType, easaCategory og certRequirement fra databasen
-4. Konsolider droner mellom avdelinger der det er mulig (samme dronetype kan deles)
-5. For IKS-brannvesen: vurder om SAR-drone og termisk drone kan stasjoneres sentralt
-6. Gi én sertifiseringsvei per pilot — ALDRI bland åpen og spesifikk kategori`;
+4. DRONEFLÅTE: Beregn antall multirotorer og fixed-wing basert på bruksområdene.
+   - MULTIROTOR: Alle use cases med droneArchetype="multirotor" deler 1 multirotor-stasjon (med mindre timer overstiger 400t/år — da 2)
+   - FIXED-WING: Alle use cases med droneArchetype="fixedWing" deler 1 fixed-wing (med mindre timer overstiger 400t/år)
+   - Bruk modellnavnene: "${DRONE_ARCHETYPES.multirotor.example}" og "${DRONE_ARCHETYPES.fixedWing.example}"
+5. For IKS-brannvesen: vurder om dronestasjonen kan dekke hele IKS-området
+6. Gi én sertifiseringsvei per pilot — ALDRI bland åpen og spesifikk kategori
+7. Estimer totalkostnad basert på antall dronestasjoner × enhetspris`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
