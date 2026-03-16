@@ -257,24 +257,20 @@ export default function Assessment() {
                 population={overrides.population || 8000}
               />
 
-              {/* Enrichment tabs: Risk, Geography, Operations */}
+              {/* Enrichment tabs: Risk + Operations */}
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg font-display">Utvidet kommuneprofil</CardTitle>
-                  <CardDescription>Risikobilde, geografi og driftsdata — lagres automatisk per kommune.</CardDescription>
+                  <CardDescription>Risikobilde og driftsdata — data hentes automatisk fra SSB/KOSTRA der mulig.</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Tabs defaultValue="risk" className="w-full">
-                    <TabsList className="grid w-full grid-cols-3">
+                    <TabsList className="grid w-full grid-cols-2">
                       <TabsTrigger value="risk" className="text-xs sm:text-sm">Risikobilde</TabsTrigger>
-                      <TabsTrigger value="geography" className="text-xs sm:text-sm">Geografi & infra</TabsTrigger>
                       <TabsTrigger value="operations" className="text-xs sm:text-sm">Drift & økonomi</TabsTrigger>
                     </TabsList>
                     <TabsContent value="risk" className="mt-4">
                       <RiskProfileTab data={profile.risk_profile} onChange={updateRisk} />
-                    </TabsContent>
-                    <TabsContent value="geography" className="mt-4">
-                      <GeographyInfraTab data={profile.geography_infrastructure} onChange={updateGeography} />
                     </TabsContent>
                     <TabsContent value="operations" className="mt-4">
                       <OperationsEconomyTab data={profile.operations_economy} onChange={updateOperations} />
