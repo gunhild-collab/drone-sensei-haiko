@@ -9,17 +9,22 @@ import { KommuneCombobox } from "@/components/KommuneCombobox";
 import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { dimensions } from "@/data/dmvData";
 import { useAssessment } from "@/hooks/useAssessment";
+import { useMunicipalityProfile } from "@/hooks/useMunicipalityProfile";
 import { evaluationApi, KostraData } from "@/lib/evaluationApi";
 import { getSuggestedDepartments } from "@/data/departmentTemplates";
 import { findIKSPartners, getIKSPartnerMunicipalities } from "@/data/iksData";
 import DepartmentEditor, { type ActiveDepartment } from "@/components/dmv/DepartmentEditor";
 import DroneAnalysis from "@/components/dmv/DroneAnalysis";
+import RiskProfileTab from "@/components/dmv/RiskProfileTab";
+import GeographyInfraTab from "@/components/dmv/GeographyInfraTab";
+import OperationsEconomyTab from "@/components/dmv/OperationsEconomyTab";
 import {
   ChevronLeft, ChevronRight, CheckCircle2, Target, Shield, Cpu,
   Building2, Network, MapPin, Users, Route, Droplets, Plane,
-  TreePine, AlertTriangle, Flame, Loader2
+  TreePine, AlertTriangle, Flame, Loader2, Save
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -47,6 +52,7 @@ export default function Assessment() {
     vaKm: null as number | null,
   });
   const topRef = useRef<HTMLDivElement>(null);
+  const { profile, loading: profileLoading, saving, updateRisk, updateGeography, updateOperations, save: saveProfile } = useMunicipalityProfile(municipalityName);
 
   const dim = dimensions[currentDimension];
   const Icon = dimensionIcons[currentDimension];
@@ -101,12 +107,15 @@ export default function Assessment() {
     setOverrides(prev => ({ ...prev, [field]: isNaN(num as number) ? null : num }));
   };
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
+    // Save profile to DB before navigating
+    await saveProfile();
     sessionStorage.setItem("dmv-answers", JSON.stringify(answers));
     sessionStorage.setItem("dmv-municipality", municipalityName);
     sessionStorage.setItem("dmv-assessor", assessorName);
     sessionStorage.setItem("dmv-kostra-overrides", JSON.stringify(overrides));
     sessionStorage.setItem("dmv-departments", JSON.stringify(departments.filter(d => d.enabled)));
+    sessionStorage.setItem("dmv-municipality-profile", JSON.stringify(profile));
     navigate("/resultater");
   };
 
@@ -247,6 +256,37 @@ export default function Assessment() {
                 onUpdate={setDepartments}
                 population={overrides.population || 8000}
               />
+
+              {/* Enrichment tabs: Risk, Geography, Operations */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg font-display">Utvidet kommuneprofil</CardTitle>
+                  <CardDescription>Risikobilde, geografi og driftsdata — lagres automatisk per kommune.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Tabs defaultValue="risk" className="w-full">
+                    <TabsList className="grid w-full grid-cols-3">
+                      <TabsTrigger value="risk" className="text-xs sm:text-sm">Risikobilde</TabsTrigger>
+                      <TabsTrigger value="geography" className="text-xs sm:text-sm">Geografi & infra</TabsTrigger>
+                      <TabsTrigger value="operations" className="text-xs sm:text-sm">Drift & økonomi</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="risk" className="mt-4">
+                      <RiskProfileTab data={profile.risk_profile} onChange={updateRisk} />
+                    </TabsContent>
+                    <TabsContent value="geography" className="mt-4">
+                      <GeographyInfraTab data={profile.geography_infrastructure} onChange={updateGeography} />
+                    </TabsContent>
+                    <TabsContent value="operations" className="mt-4">
+                      <OperationsEconomyTab data={profile.operations_economy} onChange={updateOperations} />
+                    </TabsContent>
+                  </Tabs>
+                  <div className="flex justify-end mt-4">
+                    <Button variant="outline" size="sm" onClick={saveProfile} disabled={saving} className="gap-2">
+                      <Save className="w-4 h-4" /> {saving ? "Lagrer..." : "Lagre profil"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* Actions */}
               <div className="flex justify-between pt-2">

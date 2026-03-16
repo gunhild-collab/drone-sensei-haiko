@@ -215,6 +215,36 @@ export type Database = {
         }
         Relationships: []
       }
+      municipality_profiles: {
+        Row: {
+          created_at: string
+          geography_infrastructure: Json
+          id: string
+          municipality_name: string
+          operations_economy: Json
+          risk_profile: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          geography_infrastructure?: Json
+          id?: string
+          municipality_name: string
+          operations_economy?: Json
+          risk_profile?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          geography_infrastructure?: Json
+          id?: string
+          municipality_name?: string
+          operations_economy?: Json
+          risk_profile?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
