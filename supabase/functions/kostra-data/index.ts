@@ -281,11 +281,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // If Kartverket returned a code but no area, fetch area separately
-    if (municipalityCode && !areaKm2) {
-      const geoArea = await fetchAreaFromGeonorge(municipalityCode);
-      if (geoArea) areaKm2 = geoArea;
-    }
+
 
     // ── Step 2: Fetch population from SSB ──────────────────────────────
     if (municipalityCode) {
