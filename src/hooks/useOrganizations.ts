@@ -7,6 +7,14 @@ export interface Organization {
   org_type: "municipality" | "iks";
   municipality_number: string | null;
   dmv_report: any;
+  config: any;
+  created_at: string;
+}
+
+// Fix type casts
+const castOrgs = (data: any[]): Organization[] => data as unknown as Organization[];
+const castOrg = (data: any): Organization => data as unknown as Organization;
+  dmv_report: any;
   config: { hourly_rate_nok: number };
   created_at: string;
 }
