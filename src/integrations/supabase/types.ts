@@ -179,6 +179,82 @@ export type Database = {
         }
         Relationships: []
       }
+      flight_logs: {
+        Row: {
+          cost_model_version: number
+          created_at: string
+          drone_id: string | null
+          drone_time_minutes: number | null
+          end_time: string | null
+          flight_date: string
+          id: string
+          location_description: string | null
+          manual_reference_time_minutes: number | null
+          mission_type: string
+          notes: string | null
+          organization_id: string
+          pilot_id: string | null
+          start_time: string | null
+          updated_at: string
+        }
+        Insert: {
+          cost_model_version?: number
+          created_at?: string
+          drone_id?: string | null
+          drone_time_minutes?: number | null
+          end_time?: string | null
+          flight_date?: string
+          id?: string
+          location_description?: string | null
+          manual_reference_time_minutes?: number | null
+          mission_type?: string
+          notes?: string | null
+          organization_id: string
+          pilot_id?: string | null
+          start_time?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cost_model_version?: number
+          created_at?: string
+          drone_id?: string | null
+          drone_time_minutes?: number | null
+          end_time?: string | null
+          flight_date?: string
+          id?: string
+          location_description?: string | null
+          manual_reference_time_minutes?: number | null
+          mission_type?: string
+          notes?: string | null
+          organization_id?: string
+          pilot_id?: string | null
+          start_time?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flight_logs_drone_id_fkey"
+            columns: ["drone_id"]
+            isOneToOne: false
+            referencedRelation: "org_drones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "flight_logs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "flight_logs_pilot_id_fkey"
+            columns: ["pilot_id"]
+            isOneToOne: false
+            referencedRelation: "pilots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kostra_data: {
         Row: {
           fetched_at: string
@@ -245,15 +321,236 @@ export type Database = {
         }
         Relationships: []
       }
+      org_documents: {
+        Row: {
+          created_at: string
+          doc_type: string
+          drone_id: string | null
+          file_url: string | null
+          id: string
+          organization_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          doc_type?: string
+          drone_id?: string | null
+          file_url?: string | null
+          id?: string
+          organization_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          doc_type?: string
+          drone_id?: string | null
+          file_url?: string | null
+          id?: string
+          organization_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_documents_drone_id_fkey"
+            columns: ["drone_id"]
+            isOneToOne: false
+            referencedRelation: "org_drones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_documents_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_drones: {
+        Row: {
+          created_at: string
+          id: string
+          model: string | null
+          name: string
+          organization_id: string
+          owner_type: string
+          serial_number: string | null
+          status: Database["public"]["Enums"]["resource_status"]
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          model?: string | null
+          name: string
+          organization_id: string
+          owner_type?: string
+          serial_number?: string | null
+          status?: Database["public"]["Enums"]["resource_status"]
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          model?: string | null
+          name?: string
+          organization_id?: string
+          owner_type?: string
+          serial_number?: string | null
+          status?: Database["public"]["Enums"]["resource_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_drones_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_members: {
+        Row: {
+          created_at: string
+          id: string
+          organization_id: string
+          role: Database["public"]["Enums"]["org_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          organization_id: string
+          role?: Database["public"]["Enums"]["org_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          organization_id?: string
+          role?: Database["public"]["Enums"]["org_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          config: Json | null
+          created_at: string
+          dmv_report: Json | null
+          id: string
+          municipality_number: string | null
+          name: string
+          org_type: Database["public"]["Enums"]["org_type"]
+          updated_at: string
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string
+          dmv_report?: Json | null
+          id?: string
+          municipality_number?: string | null
+          name: string
+          org_type?: Database["public"]["Enums"]["org_type"]
+          updated_at?: string
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string
+          dmv_report?: Json | null
+          id?: string
+          municipality_number?: string | null
+          name?: string
+          org_type?: Database["public"]["Enums"]["org_type"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      pilots: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          organization_id: string
+          phone: string | null
+          role: string | null
+          status: Database["public"]["Enums"]["resource_status"]
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          organization_id: string
+          phone?: string | null
+          role?: string | null
+          status?: Database["public"]["Enums"]["resource_status"]
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          organization_id?: string
+          phone?: string | null
+          role?: string | null
+          status?: Database["public"]["Enums"]["resource_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pilots_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          email: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_org_member: {
+        Args: { _org_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      org_role: "admin" | "member" | "viewer"
+      org_type: "municipality" | "iks"
+      resource_status: "active" | "inactive"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -380,6 +677,10 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      org_role: ["admin", "member", "viewer"],
+      org_type: ["municipality", "iks"],
+      resource_status: ["active", "inactive"],
+    },
   },
 } as const
