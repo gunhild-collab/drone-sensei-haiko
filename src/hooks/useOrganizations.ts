@@ -25,7 +25,7 @@ export function useOrganizations(userId: string | undefined) {
       .from("organizations")
       .select("*")
       .then(({ data }) => {
-        setOrgs((data as Organization[]) || []);
+        setOrgs(castOrgs(data || []));
         setLoading(false);
       });
   }, [userId]);
