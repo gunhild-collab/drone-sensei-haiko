@@ -109,10 +109,10 @@ export default function OrgFlightLogsTab({ orgId }: Props) {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Pilot</Label>
-                  <Select value={form.pilot_id} onValueChange={v => setForm(f => ({ ...f, pilot_id: v }))}>
+                  <Select value={form.pilot_id || "none"} onValueChange={v => setForm(f => ({ ...f, pilot_id: v === "none" ? "" : v }))}>
                     <SelectTrigger><SelectValue placeholder="Velg pilot" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Ingen</SelectItem>
+                      <SelectItem value="none">Ingen</SelectItem>
                       {pilots.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
