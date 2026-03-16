@@ -189,7 +189,6 @@ Deno.serve(async (req) => {
             { code: 'Region', selection: { filter: 'item', values: [municipalityCode] } },
             { code: 'Kjonn', selection: { filter: 'all', values: ['*'] } },
             { code: 'Alder', selection: { filter: 'all', values: ['*'] } },
-            { code: 'ContentsCode', selection: { filter: 'item', values: ['Folkemengde'] } },
             { code: 'Tid', selection: { filter: 'top', values: ['1'] } },
           ],
           response: { format: 'json-stat2' },
