@@ -107,12 +107,15 @@ export default function Assessment() {
     setOverrides(prev => ({ ...prev, [field]: isNaN(num as number) ? null : num }));
   };
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
+    // Save profile to DB before navigating
+    await saveProfile();
     sessionStorage.setItem("dmv-answers", JSON.stringify(answers));
     sessionStorage.setItem("dmv-municipality", municipalityName);
     sessionStorage.setItem("dmv-assessor", assessorName);
     sessionStorage.setItem("dmv-kostra-overrides", JSON.stringify(overrides));
     sessionStorage.setItem("dmv-departments", JSON.stringify(departments.filter(d => d.enabled)));
+    sessionStorage.setItem("dmv-municipality-profile", JSON.stringify(profile));
     navigate("/resultater");
   };
 
