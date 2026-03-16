@@ -98,8 +98,12 @@ async function fetchAreaFromGeonorge(code: string): Promise<number | null> {
     });
     if (!resp.ok) { await resp.text(); return null; }
     const data = await resp.json();
-    return data.areaKm2 ? Math.round(data.areaKm2) : null;
-  } catch {
+    // Try multiple field names
+    const area = data.areaKm2 || data.arealIKm2 || data.areal_km2 || null;
+    console.log(`Geonorge area for ${code}: ${JSON.stringify({ areaKm2: data.areaKm2, arealIKm2: data.arealIKm2, keys: Object.keys(data).slice(0, 10) })}`);
+    return area ? Math.round(area) : null;
+  } catch (e) {
+    console.log('Geonorge area lookup failed:', e);
     return null;
   }
 }
