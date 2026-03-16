@@ -396,7 +396,7 @@ Deno.serve(async (req) => {
         services,
         fire_stats: estimateFireStats(population, municipality_name, areaKm2),
         sector_data: finalSectors,
-        sector_data_source: ssbSectorSuccess ? 'ssb' : 'estimated',
+        sector_data_source: sectorSource,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
