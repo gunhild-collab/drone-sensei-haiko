@@ -96,9 +96,10 @@ const KOSTRA_FGK: Record<string, { code: string; label: string }> = {
   'Næring': { code: 'FGK4', label: 'Næringsforvaltning' },
 };
 
-async function fetchSectorData(code: string, name: string, artCode: string): Promise<Record<string, number>> {
+async function fetchSectorData(code: string, name: string): Promise<Record<string, number>> {
   const fgkCodes = Object.values(KOSTRA_FGK).map(s => s.code);
   try {
+    // Use per-capita amount (NOK) - no art dimension needed
     const resp = await fetch('https://data.ssb.no/api/v0/no/table/12362', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -106,8 +107,7 @@ async function fetchSectorData(code: string, name: string, artCode: string): Pro
         query: [
           { code: 'KOKkommuneregion0000', selection: { filter: 'item', values: [code] } },
           { code: 'KOKfunksjon0000', selection: { filter: 'item', values: fgkCodes } },
-          { code: 'KOKart0000', selection: { filter: 'item', values: [artCode] } },
-          { code: 'ContentsCode', selection: { filter: 'item', values: ['KOSbelop0000'] } },
+          { code: 'ContentsCode', selection: { filter: 'item', values: ['KOSbelop0000', 'KOSbelopinnbygge0000'] } },
           { code: 'Tid', selection: { filter: 'top', values: ['1'] } },
         ],
         response: { format: 'json-stat2' },
@@ -116,24 +116,26 @@ async function fetchSectorData(code: string, name: string, artCode: string): Pro
     });
     if (!resp.ok) {
       const errText = await resp.text().catch(() => '');
-      console.log(`SSB 12362 ${artCode} failed ${resp.status} for ${name}: ${errText.substring(0, 300)}`);
+      console.log(`SSB 12362 failed ${resp.status} for ${name}: ${errText.substring(0, 300)}`);
       return {};
     }
     const data = await resp.json();
     if (!data.value || !data.dimension) return {};
-    // Find the function dimension (might be named differently)
-    const funDimKey = Object.keys(data.dimension).find(k => k.toLowerCase().includes('funksjon') || k.toLowerCase().includes('kok')) || Object.keys(data.dimension)[0];
+    // Find function dimension
+    const dimKeys = Object.keys(data.dimension);
+    const funDimKey = dimKeys.find(k => k.toLowerCase().includes('funksjon')) || dimKeys[1];
     const funDim = data.dimension[funDimKey];
     const funCodes = funDim?.category?.index ? Object.keys(funDim.category.index) : [];
+    // First half of values = KOSbelop0000 (total 1000 NOK), second = per capita
     const result: Record<string, number> = {};
     funCodes.forEach((fc: string, i: number) => {
-      const val = data.value[i];
+      const val = data.value[i]; // KOSbelop0000
       if (val !== null && val !== undefined) result[fc] = val;
     });
-    console.log(`SSB 12362 ${artCode} for ${name}: ${JSON.stringify(result)}`);
+    console.log(`SSB 12362 for ${name}: ${JSON.stringify(result)}`);
     return result;
   } catch (e) {
-    console.log(`SSB 12362 ${artCode} fetch failed:`, e);
+    console.log(`SSB 12362 fetch failed:`, e);
     return {};
   }
 }
