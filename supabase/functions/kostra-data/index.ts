@@ -409,8 +409,8 @@ Deno.serve(async (req) => {
         indicators,
         drone_relevance: droneRelevance,
         services,
-        fire_stats: fireStatsResult || null,
-        municipal_economy: economyResult || null,
+        fire_stats: estimateFireStats(population, municipality_name),
+        municipal_economy: null,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
