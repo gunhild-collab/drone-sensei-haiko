@@ -23,7 +23,9 @@ export interface DroneSpec {
   notes: string;
 }
 
-export const DRONE_DATABASE: DroneSpec[] = [
+import { FIXED_WING_DATABASE } from './fixedWingDatabase';
+
+export const MULTIROTOR_DATABASE: DroneSpec[] = [
   {
     id: 'dji-mini-4-pro',
     name: 'DJI Mini 4 Pro',
