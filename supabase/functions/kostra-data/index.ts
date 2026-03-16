@@ -138,28 +138,23 @@ async function fetchSectorData(code: string, name: string, artCode: string): Pro
   }
 }
 
-function aggregateSectors(valueByFunction: Record<string, number>): Record<string, number> {
+function mapFgkToSectors(valueByFgk: Record<string, number>): Record<string, number> {
   const result: Record<string, number> = {};
-  for (const [sector, cfg] of Object.entries(KOSTRA_FUNCTIONS)) {
-    let total = 0, hasData = false;
-    for (const fn of cfg.functions) {
-      if (valueByFunction[fn] !== undefined) { total += valueByFunction[fn]; hasData = true; }
-    }
-    if (hasData) result[sector] = total;
+  for (const [sector, cfg] of Object.entries(KOSTRA_FGK)) {
+    if (valueByFgk[cfg.code] !== undefined) result[sector] = valueByFgk[cfg.code];
   }
   return result;
 }
 
 async function fetchAllSectorData(code: string, name: string): Promise<{ sectors: SectorData[]; source: string }> {
-  // Fetch expenditure and wages in parallel from table 12362
   const [expenditure, wages] = await Promise.all([
-    fetchSectorData(code, name, 'BDR'),  // Gross operating expenditure
-    fetchSectorData(code, name, 'LONN'), // Wages (proxy for FTEs)
+    fetchSectorData(code, name, 'BDR'),
+    fetchSectorData(code, name, 'LONN'),
   ]);
 
-  const expBySector = aggregateSectors(expenditure);
-  const wageBySector = aggregateSectors(wages);
-  const AVG_SALARY_1000 = 600; // Average municipal salary ~600k NOK
+  const expBySector = mapFgkToSectors(expenditure);
+  const wageBySector = mapFgkToSectors(wages);
+  const AVG_SALARY_1000 = 600;
 
   const hasExpData = Object.keys(expBySector).length > 0;
   const hasWageData = Object.keys(wageBySector).length > 0;
