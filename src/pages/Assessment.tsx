@@ -254,6 +254,37 @@ export default function Assessment() {
                 population={overrides.population || 8000}
               />
 
+              {/* Enrichment tabs: Risk, Geography, Operations */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg font-display">Utvidet kommuneprofil</CardTitle>
+                  <CardDescription>Risikobilde, geografi og driftsdata — lagres automatisk per kommune.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Tabs defaultValue="risk" className="w-full">
+                    <TabsList className="grid w-full grid-cols-3">
+                      <TabsTrigger value="risk" className="text-xs sm:text-sm">Risikobilde</TabsTrigger>
+                      <TabsTrigger value="geography" className="text-xs sm:text-sm">Geografi & infra</TabsTrigger>
+                      <TabsTrigger value="operations" className="text-xs sm:text-sm">Drift & økonomi</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="risk" className="mt-4">
+                      <RiskProfileTab data={profile.risk_profile} onChange={updateRisk} />
+                    </TabsContent>
+                    <TabsContent value="geography" className="mt-4">
+                      <GeographyInfraTab data={profile.geography_infrastructure} onChange={updateGeography} />
+                    </TabsContent>
+                    <TabsContent value="operations" className="mt-4">
+                      <OperationsEconomyTab data={profile.operations_economy} onChange={updateOperations} />
+                    </TabsContent>
+                  </Tabs>
+                  <div className="flex justify-end mt-4">
+                    <Button variant="outline" size="sm" onClick={saveProfile} disabled={saving} className="gap-2">
+                      <Save className="w-4 h-4" /> {saving ? "Lagrer..." : "Lagre profil"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Actions */}
               <div className="flex justify-between pt-2">
                 <Button variant="outline" onClick={() => setStep("intro")}>Tilbake</Button>
