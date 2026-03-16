@@ -204,9 +204,14 @@ export default function Assessment() {
                     <Plane className="w-3 h-3" /> {kostra.drone_relevance.controlled_airspace.type}
                   </Badge>
                 )}
-                {iksPartnership && (
+                {fireDept && (
                   <Badge variant="secondary" className="text-xs gap-1">
-                    <Flame className="w-3 h-3" /> {iksPartnership.name}
+                    <Flame className="w-3 h-3" /> {fireDept.name} ({fireDept.type})
+                  </Badge>
+                )}
+                {alarmSentral && (
+                  <Badge variant="outline" className="text-xs gap-1">
+                    110: {alarmSentral.name}
                   </Badge>
                 )}
               </div>
