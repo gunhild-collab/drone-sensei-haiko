@@ -14,11 +14,6 @@ export interface Organization {
 // Fix type casts
 const castOrgs = (data: any[]): Organization[] => data as unknown as Organization[];
 const castOrg = (data: any): Organization => data as unknown as Organization;
-  dmv_report: any;
-  config: { hourly_rate_nok: number };
-  created_at: string;
-}
-
 export function useOrganizations(userId: string | undefined) {
   const [orgs, setOrgs] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
