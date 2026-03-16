@@ -350,7 +350,7 @@ export function getSiblingFireDepartments(municipalityName: string): FireDepartm
  * Finn alle kommuner under samme 110-sentral
  */
 export function get110RegionMunicipalities(municipalityName: string): string[] {
-  const siblings = getSibling FireDepartments(municipalityName);
+  const siblings = getSiblingFireDepartments(municipalityName);
   const fd = findFireDepartment(municipalityName);
   if (!fd) return [];
   const allDepts = [fd, ...siblings];
