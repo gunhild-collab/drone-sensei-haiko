@@ -83,28 +83,30 @@ interface SectorData {
   source: string;
 }
 
-const KOSTRA_FUNCTIONS: Record<string, { functions: string[]; label: string }> = {
-  'Brann': { functions: ['338', '339'], label: 'Brann og ulykkesvern' },
-  'Drift/vei': { functions: ['332', '335'], label: 'Kommunale veier og samferdsel' },
-  'VA': { functions: ['340', '345', '350', '353'], label: 'Vann, avløp og renovasjon' },
-  'Plan': { functions: ['301', '302', '303', '304'], label: 'Plansak og byggesak' },
-  'Miljø': { functions: ['360', '365'], label: 'Naturforvaltning og friluftsliv' },
-  'Landbruk': { functions: ['329'], label: 'Landbruk og skogbruk' },
-  'Helse': { functions: ['232', '233', '234', '241', '242'], label: 'Helse og omsorg' },
-  'Eiendom': { functions: ['221', '222', '261'], label: 'Kommunal eiendom' },
+// Use pre-aggregated KOSTRA function groups (FGK) from table 12362
+// These are sector-level aggregates that SSB provides directly
+const KOSTRA_FGK: Record<string, { code: string; label: string }> = {
+  'Brann': { code: 'FGK17', label: 'Brann og ulykkesvern' },
+  'Drift/vei': { code: 'FGK5', label: 'Samferdsel' },
+  'VA': { code: 'FGK14', label: 'Vann, avløp og renovasjon' },
+  'Plan': { code: 'FGK3', label: 'Plan, byggesak og miljø' },
+  'Helse': { code: 'FGK9', label: 'Helse, pleie og omsorg' },
+  'Eiendom': { code: 'FGK6a', label: 'Eiendomsforvaltning' },
+  'Kultur': { code: 'FGK2', label: 'Kultur' },
+  'Næring': { code: 'FGK4', label: 'Næringsforvaltning' },
 };
 
-async function fetchSectorData(code: string, name: string, artGruppe: string): Promise<Record<string, number>> {
-  const allFunctions = Object.values(KOSTRA_FUNCTIONS).flatMap(s => s.functions);
+async function fetchSectorData(code: string, name: string, artCode: string): Promise<Record<string, number>> {
+  const fgkCodes = Object.values(KOSTRA_FGK).map(s => s.code);
   try {
     const resp = await fetch('https://data.ssb.no/api/v0/no/table/12362', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         query: [
-          { code: 'Region', selection: { filter: 'item', values: [code] } },
-          { code: 'Funksjon', selection: { filter: 'item', values: allFunctions } },
-          { code: 'ArtGruppe', selection: { filter: 'item', values: [artGruppe] } },
+          { code: 'KOKkommuneregion0000', selection: { filter: 'item', values: [code] } },
+          { code: 'KOKfunksjon0000', selection: { filter: 'item', values: fgkCodes } },
+          { code: 'KOKart0000', selection: { filter: 'item', values: [artCode] } },
           { code: 'ContentsCode', selection: { filter: 'item', values: ['KOSbelop0000'] } },
           { code: 'Tid', selection: { filter: 'top', values: ['1'] } },
         ],
@@ -114,22 +116,24 @@ async function fetchSectorData(code: string, name: string, artGruppe: string): P
     });
     if (!resp.ok) {
       const errText = await resp.text().catch(() => '');
-      console.log(`SSB 12362 ${artGruppe} failed ${resp.status} for ${name}: ${errText.substring(0, 200)}`);
+      console.log(`SSB 12362 ${artCode} failed ${resp.status} for ${name}: ${errText.substring(0, 300)}`);
       return {};
     }
     const data = await resp.json();
     if (!data.value || !data.dimension) return {};
-    const funDim = data.dimension.Funksjon;
+    // Find the function dimension (might be named differently)
+    const funDimKey = Object.keys(data.dimension).find(k => k.toLowerCase().includes('funksjon') || k.toLowerCase().includes('kok')) || Object.keys(data.dimension)[0];
+    const funDim = data.dimension[funDimKey];
     const funCodes = funDim?.category?.index ? Object.keys(funDim.category.index) : [];
     const result: Record<string, number> = {};
     funCodes.forEach((fc: string, i: number) => {
       const val = data.value[i];
       if (val !== null && val !== undefined) result[fc] = val;
     });
-    console.log(`SSB 12362 ${artGruppe} for ${name}: ${Object.keys(result).length} values`);
+    console.log(`SSB 12362 ${artCode} for ${name}: ${JSON.stringify(result)}`);
     return result;
   } catch (e) {
-    console.log(`SSB 12362 ${artGruppe} fetch failed:`, e);
+    console.log(`SSB 12362 ${artCode} fetch failed:`, e);
     return {};
   }
 }
