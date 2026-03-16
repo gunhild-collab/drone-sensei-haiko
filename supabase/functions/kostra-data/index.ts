@@ -4,23 +4,39 @@ const corsHeaders = {
 };
 
 // ── Kartverket API: dynamic municipality code + area lookup ──────────────
-async function lookupMunicipality(name: string): Promise<{ code: string; areaKm2: number } | null> {
+async function lookupMunicipality(name: string): Promise<{ code: string; areaKm2: number; officialName: string } | null> {
   try {
-    // Geonorge kommuneinfo API — search by name
     const url = `https://ws.geonorge.no/kommuneinfo/v1/sok?knavn=${encodeURIComponent(name)}`;
     const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
     if (!resp.ok) { await resp.text(); return null; }
     const data = await resp.json();
-    if (!data || data.length === 0) return null;
-    // Find best match (exact or first)
-    const exact = data.find((m: any) => m.kommunenavn?.toLowerCase() === name.toLowerCase());
-    const match = exact || data[0];
+    
+    // API returns array or object with kommuner array
+    let results: any[] = [];
+    if (Array.isArray(data)) {
+      results = data;
+    } else if (data?.kommuner && Array.isArray(data.kommuner)) {
+      results = data.kommuner;
+    } else if (data?.kommunenummer) {
+      // Single result object
+      results = [data];
+    }
+    
+    if (results.length === 0) {
+      console.log(`Kartverket: no results for "${name}"`);
+      return null;
+    }
+    
+    // Find best match
+    const exact = results.find((m: any) => 
+      m.kommunenavnNorsk?.toLowerCase() === name.toLowerCase() ||
+      m.kommunenavn?.toLowerCase() === name.toLowerCase()
+    );
+    const match = exact || results[0];
     const code = match.kommunenummer;
-    const areaKm2 = match.avgrensningsboks
-      ? Math.round(match.areaKm2 || 0)
-      : null;
-    console.log(`Kartverket lookup: ${name} → ${code} (area: ${areaKm2})`);
-    return { code, areaKm2: areaKm2 || 0 };
+    const officialName = match.kommunenavnNorsk || match.kommunenavn || name;
+    console.log(`Kartverket: "${name}" → ${code} (${officialName})`);
+    return { code, areaKm2: 0, officialName };
   } catch (e) {
     console.log('Kartverket lookup failed:', e);
     return null;
