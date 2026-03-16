@@ -97,23 +97,8 @@ async function fetchSSBPopulation(municipalityCode: string, municipalityName: st
   }
 }
 
-// ── Geonorge area lookup (backup if Kartverket search didn't return area) ──
-async function fetchAreaFromGeonorge(code: string): Promise<number | null> {
-  try {
-    const resp = await fetch(`https://ws.geonorge.no/kommuneinfo/v1/kommune/${code}`, {
-      signal: AbortSignal.timeout(5000),
-    });
-    if (!resp.ok) { await resp.text(); return null; }
-    const data = await resp.json();
-    // Try multiple field names
-    const area = data.areaKm2 || data.arealIKm2 || data.areal_km2 || null;
-    console.log(`Geonorge area for ${code}: ${JSON.stringify({ areaKm2: data.areaKm2, arealIKm2: data.arealIKm2, keys: Object.keys(data).slice(0, 10) })}`);
-    return area ? Math.round(area) : null;
-  } catch (e) {
-    console.log('Geonorge area lookup failed:', e);
-    return null;
-  }
-}
+
+
 
 // ── Hardcoded fallback data (subset of major municipalities) ─────────────
 const FALLBACK_CODES: Record<string, string> = {
