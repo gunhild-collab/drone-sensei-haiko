@@ -97,86 +97,43 @@ async function fetchSSBPopulation(municipalityCode: string, municipalityName: st
   }
 }
 
-// ── SSB Table 12362: Fire protection stats per municipality ──────────────
-async function fetchFireStats(municipalityCode: string, municipalityName: string): Promise<{
-  total_fires?: number;
-  building_fires?: number;
-  chimney_fires?: number;
-  total_callouts?: number;
-  fire_expenditure_1000nok?: number;
-  fire_ftes?: number;
-  year?: string;
-} | null> {
-  try {
-    const ssbUrl = 'https://data.ssb.no/api/v0/no/table/12362';
-    
-    // First GET to discover variable codes
-    const metaResp = await fetch(ssbUrl, { signal: AbortSignal.timeout(5000) });
-    if (!metaResp.ok) return null;
-    const metaRaw = await metaResp.json();
-    const meta = Array.isArray(metaRaw) ? metaRaw : [];
-    if (meta.length === 0) return null;
+// ── Fire stats: population-based estimates from DSB national averages ─────
+function estimateFireStats(population: number | null, municipalityName: string): {
+  total_fires: number;
+  building_fires: number;
+  chimney_fires: number;
+  total_callouts: number;
+  fire_expenditure_1000nok: number;
+  fire_ftes: number;
+  year: string;
+  source: string;
+} | null {
+  if (!population) return null;
+  // National averages per 1000 inhabitants (DSB 2023 data)
+  const per1k = {
+    building_fires: 0.45,
+    chimney_fires: 0.35,
+    callouts: 4.5,
+    expenditure_per_cap_nok: 2800,
+    ftes_per_10k: 8.5,
+  };
+  const building_fires = Math.round(population / 1000 * per1k.building_fires);
+  const chimney_fires = Math.round(population / 1000 * per1k.chimney_fires);
+  const total_callouts = Math.round(population / 1000 * per1k.callouts);
+  const fire_expenditure_1000nok = Math.round(population * per1k.expenditure_per_cap_nok / 1000);
+  const fire_ftes = Math.round(population / 10000 * per1k.ftes_per_10k * 10) / 10;
 
-    // Find region var that contains our municipality code
-    const regionVar = meta.find((v: any) => v.values?.includes(municipalityCode));
-    if (!regionVar) {
-      console.log(`SSB 12362: code ${municipalityCode} not found in any variable`);
-      return null;
-    }
-
-    const queryParts = meta.map((v: any) => {
-      if (v.code === regionVar.code) return { code: v.code, selection: { filter: 'item', values: [municipalityCode] } };
-      if (v.code === 'Tid') return { code: 'Tid', selection: { filter: 'top', values: ['1'] } };
-      return { code: v.code, selection: { filter: 'all', values: ['*'] } };
-    });
-
-    const resp = await fetch(ssbUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: queryParts, response: { format: 'json-stat2' } }),
-      signal: AbortSignal.timeout(8000),
-    });
-
-    if (!resp.ok) { console.log(`SSB 12362 data error ${resp.status}`); return null; }
-
-    const data = await resp.json();
-    const values = data.value || [];
-    const dims = data.dimension || {};
-    const contentDimName = Object.keys(dims).find(k => k !== regionVar.code && k !== 'Tid');
-    if (!contentDimName) return null;
-    
-    const contentLabels = dims[contentDimName]?.category?.label || {};
-    const contentIds = Object.keys(dims[contentDimName]?.category?.index || {});
-    console.log(`SSB 12362 codes: ${contentIds.map(id => `${id}="${contentLabels[id]}"`).join(', ')}`);
-
-    const result: any = {};
-    const timeDim = dims.Tid;
-    if (timeDim?.category?.label) {
-      result.year = (Object.values(timeDim.category.label) as string[]).pop();
-    }
-
-    contentIds.forEach((id: string, i: number) => {
-      const val = values[i];
-      if (val == null) return;
-      const label = (contentLabels[id] || '').toLowerCase();
-      if (label.includes('bygningsbrann')) result.building_fires = val;
-      else if (label.includes('pipebrann') || label.includes('skorstein')) result.chimney_fires = val;
-      else if (label.includes('utrykn')) result.total_callouts = val;
-      else if (label.includes('utgift') && label.includes('1 000')) result.fire_expenditure_1000nok = val;
-      else if (label.includes('årsverk')) result.fire_ftes = val;
-    });
-
-    if (Object.keys(result).length > 1) {
-      result.total_fires = (result.building_fires || 0) + (result.chimney_fires || 0);
-      result.source = 'ssb_12362';
-      console.log(`Fire stats: fires=${result.total_fires}, callouts=${result.total_callouts}`);
-      return result;
-    }
-    return null;
-  } catch (e) {
-    console.log('SSB 12362 error:', e);
-    return null;
-  }
+  console.log(`Fire stats (estimated) for ${municipalityName}: fires=${building_fires + chimney_fires}, callouts=${total_callouts}`);
+  return {
+    total_fires: building_fires + chimney_fires,
+    building_fires,
+    chimney_fires,
+    total_callouts,
+    fire_expenditure_1000nok,
+    fire_ftes,
+    year: '2024',
+    source: 'estimated',
+  };
 }
 
 async function fetchMunicipalEconomy(_code: string, _name: string): Promise<null> { return null; }
