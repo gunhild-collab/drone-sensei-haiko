@@ -43,8 +43,8 @@ export function useOrganizations(userId: string | undefined) {
       user_id: userId,
       role: "admin",
     }]);
-    setOrgs(prev => [...prev, data as Organization]);
-    return data as Organization;
+    setOrgs(prev => [...prev, castOrg(data)]);
+    return castOrg(data);
   };
 
   return { orgs, loading, createOrg, refetch: () => {
