@@ -92,7 +92,9 @@ interface Props {
 
 export default function DroneAnalysis({
   municipalityName, population, areaKm2, roadKm, vaKm, buildings,
-  terrainType, densityPerKm2, departments, iksPartners, onContinue, onBack
+  terrainType, densityPerKm2, departments, iksPartners,
+  fireDeptName, fireDeptType, alarmSentralName, regionMunicipalities,
+  onContinue, onBack
 }: Props) {
   const [analysis, setAnalysis] = useState<DroneAnalysisResult | null>(null);
   const [loading, setLoading] = useState(true);
