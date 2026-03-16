@@ -338,11 +338,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (ssbResult) {
-      indicators.push({ id: 'population', name: 'Folkemengde', value: ssbResult.population, unit: 'personer', year: ssbResult.year });
-      ssbSuccess = true;
-      source = 'ssb';
-    }
 
     // ── Step 3: Fallback to hardcoded population ───────────────────────
     if (!ssbSuccess && FALLBACK_POP[municipality_name]) {
