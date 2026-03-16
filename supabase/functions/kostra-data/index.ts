@@ -71,15 +71,9 @@ async function fetchSSBPopulation(code: string, name: string): Promise<{ populat
 }
 
 // ── SSB Table 12362: Sector-level KOSTRA expenditure & staffing ─────────
-// ContentsCode mapping for sector-level data:
-// Brann: KS1.Brutto driftsutgifter i 1000 kr, funksjon 338 → use KS1.BrDrUtg338
-// Plan/bygg: funksjon 301,302,303,304 → KS1.BrDrUtg301 etc.
-// BUT 12362 only has aggregate. We need table 12367 for function-level detail.
-//
-// SSB Table 12367: "Brutto driftsutgifter" by function, per municipality.
-// Functions: 338 (brann), 332 (vei), 345 (VA avløp), 340 (VA vann),
-//            301 (plansak), 302 (byggesak), 329 (samferdsel), 360 (naturforv),
-//            385 (land/skog), 242 (helse), 234 (aktivisering), 265 (omsorg).
+// Table 12362 dimensions: Region, Funksjon, ArtGruppe (type), ContentsCode, Tid
+// ArtGruppe values: BDR (gross operating expenditure), LONN (wages excl sick pay)
+// ContentsCode: KOSbelop0000 (Sum NOK 1000)
 
 interface SectorData {
   sector: string;
@@ -89,10 +83,9 @@ interface SectorData {
   source: string;
 }
 
-// KOSTRA function codes mapped to our department sectors
 const KOSTRA_FUNCTIONS: Record<string, { functions: string[]; label: string }> = {
   'Brann': { functions: ['338', '339'], label: 'Brann og ulykkesvern' },
-  'Drift/vei': { functions: ['332', '333', '334'], label: 'Kommunale veier og samferdsel' },
+  'Drift/vei': { functions: ['332', '335'], label: 'Kommunale veier og samferdsel' },
   'VA': { functions: ['340', '345', '350', '353'], label: 'Vann, avløp og renovasjon' },
   'Plan': { functions: ['301', '302', '303', '304'], label: 'Plansak og byggesak' },
   'Miljø': { functions: ['360', '365'], label: 'Naturforvaltning og friluftsliv' },
@@ -101,147 +94,86 @@ const KOSTRA_FUNCTIONS: Record<string, { functions: string[]; label: string }> =
   'Eiendom': { functions: ['221', '222', '261'], label: 'Kommunal eiendom' },
 };
 
-async function fetchSectorExpenditure(code: string, name: string): Promise<SectorData[]> {
-  // Collect all function codes we need
+async function fetchSectorData(code: string, name: string, artGruppe: string): Promise<Record<string, number>> {
   const allFunctions = Object.values(KOSTRA_FUNCTIONS).flatMap(s => s.functions);
-  
   try {
-    // SSB table 12367: Gross operating expenditure by function per municipality
-    const resp = await fetch('https://data.ssb.no/api/v0/no/table/12367', {
+    const resp = await fetch('https://data.ssb.no/api/v0/no/table/12362', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         query: [
           { code: 'Region', selection: { filter: 'item', values: [code] } },
           { code: 'Funksjon', selection: { filter: 'item', values: allFunctions } },
-          { code: 'ContentsCode', selection: { filter: 'item', values: ['KOSbdr1000'] } },
+          { code: 'ArtGruppe', selection: { filter: 'item', values: [artGruppe] } },
+          { code: 'ContentsCode', selection: { filter: 'item', values: ['KOSbelop0000'] } },
           { code: 'Tid', selection: { filter: 'top', values: ['1'] } },
         ],
         response: { format: 'json-stat2' },
       }),
       signal: AbortSignal.timeout(10000),
     });
-
     if (!resp.ok) {
-      console.log(`SSB 12367 failed ${resp.status} for ${name}`);
-      return [];
+      const errText = await resp.text().catch(() => '');
+      console.log(`SSB 12362 ${artGruppe} failed ${resp.status} for ${name}: ${errText.substring(0, 200)}`);
+      return {};
     }
-
     const data = await resp.json();
-    if (!data.value || !data.dimension) return [];
-
-    // Parse the json-stat2 response
+    if (!data.value || !data.dimension) return {};
     const funDim = data.dimension.Funksjon;
-    const timeDim = data.dimension.Tid;
     const funCodes = funDim?.category?.index ? Object.keys(funDim.category.index) : [];
-    const funLabels = funDim?.category?.label || {};
-    const timeLabels = timeDim?.category?.label || {};
-    const year = Object.values(timeLabels)[0] as string || '2024';
-
-    // Map values back: data.value is flat array indexed by [function][time]
-    const valueByFunction: Record<string, number> = {};
+    const result: Record<string, number> = {};
     funCodes.forEach((fc: string, i: number) => {
       const val = data.value[i];
-      if (val !== null && val !== undefined) {
-        valueByFunction[fc] = val;
-      }
+      if (val !== null && val !== undefined) result[fc] = val;
     });
-
-    console.log(`SSB 12367 for ${name}: got ${Object.keys(valueByFunction).length} function values, year=${year}`);
-
-    // Aggregate per sector
-    const results: SectorData[] = [];
-    for (const [sector, cfg] of Object.entries(KOSTRA_FUNCTIONS)) {
-      let total = 0;
-      let hasData = false;
-      for (const fn of cfg.functions) {
-        if (valueByFunction[fn] !== undefined) {
-          total += valueByFunction[fn];
-          hasData = true;
-        }
-      }
-      if (hasData) {
-        results.push({
-          sector,
-          expenditure_1000nok: Math.round(total),
-          employees_fte: null, // filled separately
-          year,
-          source: 'ssb_12367',
-        });
-      }
-    }
-    return results;
+    console.log(`SSB 12362 ${artGruppe} for ${name}: ${Object.keys(result).length} values`);
+    return result;
   } catch (e) {
-    console.log('SSB 12367 fetch failed:', e);
-    return [];
+    console.log(`SSB 12362 ${artGruppe} fetch failed:`, e);
+    return {};
   }
 }
 
-// ── SSB Table 11567: Municipal employees by service area ─────────────────
-// Uses "avtalte årsverk" (agreed FTEs) by function group
-async function fetchSectorStaffing(code: string, name: string): Promise<Record<string, number>> {
-  try {
-    // Table 11567: Sysselsatte i kommuneforvaltningen
-    // Function groups that map to our sectors
-    const staffFunctions = [
-      'F338a339', // Brann
-      'F332a334', // Vei
-      'F340a345a350a353', // VA
-      'F300a304', // Plan/bygg
-      'F360a365', // Miljø
-      'F232a242', // Helse
-    ];
-    
-    const resp = await fetch('https://data.ssb.no/api/v0/no/table/11567', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query: [
-          { code: 'Region', selection: { filter: 'item', values: [code] } },
-          { code: 'Funksjon', selection: { filter: 'item', values: staffFunctions } },
-          { code: 'ContentsCode', selection: { filter: 'item', values: ['Avtal1'] } },
-          { code: 'Tid', selection: { filter: 'top', values: ['1'] } },
-        ],
-        response: { format: 'json-stat2' },
-      }),
-      signal: AbortSignal.timeout(10000),
-    });
-
-    if (!resp.ok) {
-      console.log(`SSB 11567 failed ${resp.status} for ${name}`);
-      return {};
+function aggregateSectors(valueByFunction: Record<string, number>): Record<string, number> {
+  const result: Record<string, number> = {};
+  for (const [sector, cfg] of Object.entries(KOSTRA_FUNCTIONS)) {
+    let total = 0, hasData = false;
+    for (const fn of cfg.functions) {
+      if (valueByFunction[fn] !== undefined) { total += valueByFunction[fn]; hasData = true; }
     }
-
-    const data = await resp.json();
-    if (!data.value || !data.dimension) return {};
-
-    const funDim = data.dimension.Funksjon;
-    const funCodes = funDim?.category?.index ? Object.keys(funDim.category.index) : [];
-    
-    const result: Record<string, number> = {};
-    const sectorMap: Record<string, string> = {
-      'F338a339': 'Brann',
-      'F332a334': 'Drift/vei',
-      'F340a345a350a353': 'VA',
-      'F300a304': 'Plan',
-      'F360a365': 'Miljø',
-      'F232a242': 'Helse',
-    };
-    
-    funCodes.forEach((fc: string, i: number) => {
-      const val = data.value[i];
-      const sector = sectorMap[fc];
-      if (val !== null && val !== undefined && sector) {
-        result[sector] = Math.round(val * 10) / 10;
-      }
-    });
-
-    console.log(`SSB 11567 staffing for ${name}: ${JSON.stringify(result)}`);
-    return result;
-  } catch (e) {
-    console.log('SSB 11567 fetch failed:', e);
-    return {};
+    if (hasData) result[sector] = total;
   }
+  return result;
+}
+
+async function fetchAllSectorData(code: string, name: string): Promise<{ sectors: SectorData[]; source: string }> {
+  // Fetch expenditure and wages in parallel from table 12362
+  const [expenditure, wages] = await Promise.all([
+    fetchSectorData(code, name, 'BDR'),  // Gross operating expenditure
+    fetchSectorData(code, name, 'LONN'), // Wages (proxy for FTEs)
+  ]);
+
+  const expBySector = aggregateSectors(expenditure);
+  const wageBySector = aggregateSectors(wages);
+  const AVG_SALARY_1000 = 600; // Average municipal salary ~600k NOK
+
+  const hasExpData = Object.keys(expBySector).length > 0;
+  const hasWageData = Object.keys(wageBySector).length > 0;
+  
+  if (!hasExpData && !hasWageData) return { sectors: [], source: 'none' };
+
+  const allSectors = new Set([...Object.keys(expBySector), ...Object.keys(wageBySector)]);
+  const sectors: SectorData[] = [];
+  for (const sector of allSectors) {
+    sectors.push({
+      sector,
+      expenditure_1000nok: expBySector[sector] ? Math.round(expBySector[sector]) : null,
+      employees_fte: wageBySector[sector] ? Math.round(wageBySector[sector] / AVG_SALARY_1000 * 10) / 10 : null,
+      year: '2024',
+      source: 'ssb_12362',
+    });
+  }
+  return { sectors, source: 'ssb' };
 }
 
 // ── Fire stats estimates (fallback) ──────────────────────────────────────
