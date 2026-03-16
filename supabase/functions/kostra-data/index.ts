@@ -108,19 +108,53 @@ async function fetchFireStats(municipalityCode: string, municipalityName: string
   year?: string;
 } | null> {
   try {
-    // Use wildcard for ContentsCode to get all available stats
-    const ssbUrl = 'https://data.ssb.no/api/v0/no/table/12362';
-    const query = {
-      query: [
-        { code: 'Region', selection: { filter: 'item', values: [municipalityCode] } },
-        { code: 'ContentsCode', selection: { filter: 'all', values: ['*'] } },
-        { code: 'Tid', selection: { filter: 'top', values: ['1'] } },
-      ],
+    // First discover the table structure
+    const metaUrl = `https://data.ssb.no/api/v0/no/table/12362`;
+    const metaResp = await fetch(metaUrl, { signal: AbortSignal.timeout(5000) });
+    if (!metaResp.ok) {
+      console.log(`SSB 12362 metadata error: ${metaResp.status}`);
+      return null;
+    }
+    const meta = await metaResp.json();
+    
+    // Log variable codes for debugging
+    const varCodes = meta.map((v: any) => `${v.code}(${v.values?.length || 0})`);
+    console.log(`SSB 12362 variables: ${varCodes.join(', ')}`);
+
+    // Find the region variable (could be 'Region', 'KOSstreg0000', etc.)
+    const regionVar = meta.find((v: any) => 
+      v.code === 'Region' || v.code === 'KOKkommuneregion0000' || 
+      v.values?.some((val: string) => val === municipalityCode)
+    );
+    
+    if (!regionVar) {
+      console.log(`SSB 12362: no region variable found for ${municipalityCode}`);
+      return null;
+    }
+
+    // Check if our municipality code is in the values
+    if (!regionVar.values?.includes(municipalityCode)) {
+      console.log(`SSB 12362: ${municipalityCode} not in region values`);
+      return null;
+    }
+
+    // Build query dynamically
+    const query: any = {
+      query: meta.map((v: any) => {
+        if (v.code === regionVar.code) {
+          return { code: v.code, selection: { filter: 'item', values: [municipalityCode] } };
+        }
+        if (v.code === 'Tid') {
+          return { code: 'Tid', selection: { filter: 'top', values: ['1'] } };
+        }
+        // For ContentsCode or any other variable, select all
+        return { code: v.code, selection: { filter: 'all', values: ['*'] } };
+      }),
       response: { format: 'json-stat2' },
     };
 
-    console.log(`SSB 12362 fire stats for ${municipalityName} (${municipalityCode})`);
-    const resp = await fetch(ssbUrl, {
+    console.log(`SSB 12362 fire stats query for ${municipalityName}`);
+    const resp = await fetch(metaUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(query),
@@ -129,17 +163,20 @@ async function fetchFireStats(municipalityCode: string, municipalityName: string
 
     if (!resp.ok) {
       const errText = await resp.text();
-      console.log(`SSB 12362 error ${resp.status}: ${errText.slice(0, 200)}`);
+      console.log(`SSB 12362 data error ${resp.status}: ${errText.slice(0, 300)}`);
       return null;
     }
 
     const data = await resp.json();
     const values = data.value || [];
-    const contentDim = data.dimension?.ContentsCode;
-    const contentIds = contentDim?.category?.index ? Object.keys(contentDim.category.index) : [];
-    const contentLabels = contentDim?.category?.label || {};
     
-    console.log(`SSB 12362 content codes: ${contentIds.join(', ')}`);
+    // Find ContentsCode dimension
+    const contentDimName = Object.keys(data.dimension || {}).find(k => k !== 'Region' && k !== 'Tid' && k !== regionVar.code);
+    const contentDim = contentDimName ? data.dimension[contentDimName] : null;
+    const contentLabels = contentDim?.category?.label || {};
+    const contentIds = contentDim?.category?.index ? Object.keys(contentDim.category.index) : [];
+    
+    console.log(`SSB 12362 content: ${contentIds.map(id => `${id}=${contentLabels[id]}`).join('; ')}`);
 
     const result: any = {};
     const timeDim = data.dimension?.Tid;
@@ -148,7 +185,6 @@ async function fetchFireStats(municipalityCode: string, municipalityName: string
       result.year = labels[labels.length - 1];
     }
 
-    // Map values by looking at labels for semantic matching
     contentIds.forEach((id: string, i: number) => {
       const val = values[i];
       if (val == null) return;
@@ -159,8 +195,8 @@ async function fetchFireStats(municipalityCode: string, municipalityName: string
       } else if (label.includes('pipebrann') || label.includes('skorstein')) {
         result.chimney_fires = val;
       } else if (label.includes('utrykn') || label.includes('oppdrag')) {
-        result.total_callouts = val;
-      } else if (label.includes('utgift') || label.includes('brutto driftsutgift')) {
+        if (!result.total_callouts || val > result.total_callouts) result.total_callouts = val;
+      } else if ((label.includes('utgift') || label.includes('brutto')) && label.includes('1 000')) {
         result.fire_expenditure_1000nok = val;
       } else if (label.includes('årsverk')) {
         result.fire_ftes = val;
@@ -170,9 +206,10 @@ async function fetchFireStats(municipalityCode: string, municipalityName: string
     if (Object.keys(result).length > 1) {
       result.total_fires = (result.building_fires || 0) + (result.chimney_fires || 0);
       result.source = 'ssb_12362';
-      console.log(`SSB 12362 result: fires=${result.total_fires}, callouts=${result.total_callouts}, ftes=${result.fire_ftes}`);
+      console.log(`SSB 12362 result: fires=${result.total_fires}, callouts=${result.total_callouts}`);
       return result;
     }
+    console.log('SSB 12362: no relevant data found');
     return null;
   } catch (e) {
     console.log('SSB 12362 error:', e);
@@ -180,14 +217,8 @@ async function fetchFireStats(municipalityCode: string, municipalityName: string
   }
 }
 
-// ── SSB KOSTRA municipal economy (use same table 12362 for fire economy) ─
-async function fetchMunicipalEconomy(municipalityCode: string, municipalityName: string): Promise<{
-  fire_expenditure_1000nok?: number;
-  fire_ftes?: number;
-  year?: string;
-} | null> {
-  // Economy data is already included in fetchFireStats via table 12362
-  // This is a placeholder that returns null; actual data comes from fire_stats
+// Municipal economy placeholder (data comes from fire_stats)
+async function fetchMunicipalEconomy(_municipalityCode: string, _municipalityName: string): Promise<null> {
   return null;
 }
 
