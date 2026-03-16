@@ -201,8 +201,11 @@ Deno.serve(async (req) => {
           body: JSON.stringify(query),
         });
 
+        console.log(`SSB response status: ${resp.status}`);
         if (resp.ok) {
           const data = await resp.json();
+          console.log(`SSB data keys: ${Object.keys(data).join(', ')}`);
+          console.log(`SSB value: ${JSON.stringify(data.value)}`);
           if (data.value && data.value.length > 0 && data.value[0] !== null) {
             const pop = data.value[0];
             const timeDim = data.dimension?.Tid;
@@ -214,6 +217,9 @@ Deno.serve(async (req) => {
             indicators.push({ id: 'population', name: 'Folkemengde', value: pop, unit: 'personer', year });
             ssbSuccess = true;
           }
+        } else {
+          const errText = await resp.text();
+          console.log(`SSB API error ${resp.status}: ${errText}`);
         }
       } catch (e) {
         console.log('SSB API error:', e);
