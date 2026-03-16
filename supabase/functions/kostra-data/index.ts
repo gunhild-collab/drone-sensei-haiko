@@ -3,8 +3,105 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-// SSB municipality codes
-const MUNICIPALITY_CODES: Record<string, string> = {
+// ── Kartverket API: dynamic municipality code + area lookup ──────────────
+async function lookupMunicipality(name: string): Promise<{ code: string; areaKm2: number; officialName: string } | null> {
+  try {
+    const url = `https://ws.geonorge.no/kommuneinfo/v1/sok?knavn=${encodeURIComponent(name)}`;
+    const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (!resp.ok) { await resp.text(); return null; }
+    const data = await resp.json();
+    
+    // API returns { antallTreff, kommuner: [...] }
+    const results = data?.kommuner || [];
+    if (results.length === 0) {
+      console.log(`Kartverket: no results for "${name}"`);
+      return null;
+    }
+    
+    const exact = results.find((m: any) => 
+      m.kommunenavnNorsk?.toLowerCase() === name.toLowerCase() ||
+      m.kommunenavn?.toLowerCase() === name.toLowerCase()
+    );
+    const match = exact || results[0];
+    const code = match.kommunenummer;
+    const officialName = match.kommunenavnNorsk || match.kommunenavn || name;
+    
+    // Calculate approximate area from bounding box
+    let areaKm2 = 0;
+    if (match.avgrensningsboks?.coordinates?.[0]) {
+      const coords = match.avgrensningsboks.coordinates[0];
+      const west = coords[0][0], south = coords[0][1];
+      const east = coords[2][0], north = coords[2][1];
+      // Approximate area using lat/lng bounding box
+      const latMid = (south + north) / 2;
+      const kmPerDegLat = 111.32;
+      const kmPerDegLng = 111.32 * Math.cos(latMid * Math.PI / 180);
+      const heightKm = (north - south) * kmPerDegLat;
+      const widthKm = (east - west) * kmPerDegLng;
+      // Bbox area × 0.65 factor (municipalities aren't rectangles)
+      areaKm2 = Math.round(heightKm * widthKm * 0.65);
+    }
+    
+    console.log(`Kartverket: "${name}" → ${code} (${officialName}, ~${areaKm2} km²)`);
+    return { code, areaKm2, officialName };
+  } catch (e) {
+    console.log('Kartverket lookup failed:', e);
+    return null;
+  }
+}
+
+// ── SSB API: fetch population for a municipality code ────────────────────
+async function fetchSSBPopulation(municipalityCode: string, municipalityName: string): Promise<{ population: number; year: string } | null> {
+  try {
+    const ssbUrl = 'https://data.ssb.no/api/v0/en/table/07459';
+    const query = {
+      query: [
+        { code: 'Region', selection: { filter: 'item', values: [municipalityCode] } },
+        { code: 'Kjonn', selection: { filter: 'all', values: ['*'] } },
+        { code: 'Alder', selection: { filter: 'all', values: ['*'] } },
+        { code: 'Tid', selection: { filter: 'top', values: ['1'] } },
+      ],
+      response: { format: 'json-stat2' },
+    };
+
+    console.log(`SSB query for ${municipalityName} (${municipalityCode})`);
+    const resp = await fetch(ssbUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(query),
+      signal: AbortSignal.timeout(8000),
+    });
+
+    if (!resp.ok) {
+      const errText = await resp.text();
+      console.log(`SSB error ${resp.status}: ${errText}`);
+      return null;
+    }
+
+    const data = await resp.json();
+    if (data.value && data.value.length > 0) {
+      const pop = data.value.reduce((sum: number, v: number | null) => sum + (v || 0), 0);
+      const timeDim = data.dimension?.Tid;
+      let year = '2025';
+      if (timeDim?.category?.label) {
+        const labels = Object.values(timeDim.category.label) as string[];
+        year = labels[labels.length - 1] || year;
+      }
+      console.log(`SSB result: ${municipalityName} = ${pop} (${year})`);
+      return { population: pop, year };
+    }
+    return null;
+  } catch (e) {
+    console.log('SSB API error:', e);
+    return null;
+  }
+}
+
+
+
+
+// ── Hardcoded fallback data (subset of major municipalities) ─────────────
+const FALLBACK_CODES: Record<string, string> = {
   'Oslo': '0301', 'Bergen': '4601', 'Trondheim': '5001', 'Stavanger': '1103',
   'Bærum': '3024', 'Kristiansand': '4204', 'Drammen': '3005', 'Asker': '3025',
   'Lillestrøm': '3030', 'Fredrikstad': '3004', 'Sandnes': '1108', 'Tromsø': '5401',
@@ -19,8 +116,7 @@ const MUNICIPALITY_CODES: Record<string, string> = {
   'Sarpsborg': '3003', 'Lørenskog': '3029', 'Karmøy': '1149',
 };
 
-// Known population data (fallback)
-const POPULATION_DATA: Record<string, number> = {
+const FALLBACK_POP: Record<string, number> = {
   'Oslo': 710000, 'Bergen': 290000, 'Trondheim': 210000, 'Stavanger': 145000,
   'Bærum': 130000, 'Kristiansand': 112000, 'Drammen': 101000, 'Asker': 100000,
   'Lillestrøm': 88000, 'Fredrikstad': 84000, 'Sandnes': 80000, 'Tromsø': 78000,
@@ -35,8 +131,7 @@ const POPULATION_DATA: Record<string, number> = {
   'Karmøy': 43000,
 };
 
-// Municipal area in km² (approximate)
-const AREA_DATA: Record<string, number> = {
+const FALLBACK_AREA: Record<string, number> = {
   'Oslo': 454, 'Bergen': 465, 'Trondheim': 342, 'Stavanger': 71,
   'Bærum': 191, 'Kristiansand': 560, 'Drammen': 138, 'Asker': 101,
   'Lillestrøm': 78, 'Fredrikstad': 290, 'Sandnes': 304, 'Tromsø': 2566,
@@ -89,7 +184,6 @@ const CONTROLLED_AIRSPACE: Record<string, { type: string; airport: string; radiu
   'Kristiansund': { type: 'ATZ', airport: 'ENKB Kvernberget', radius_km: 8 },
 };
 
-// Proximity to national parks / protected areas (Miljødirektoratet)
 const PROTECTED_AREAS: Record<string, string[]> = {
   'Ringebu': ['Rondane nasjonalpark'],
   'Lillehammer': ['Langsua nasjonalpark (nærområde)'],
@@ -102,30 +196,24 @@ const PROTECTED_AREAS: Record<string, string[]> = {
   'Hammerfest': ['Seiland nasjonalpark'],
 };
 
-// Municipal services based on population bracket (fallback inference)
+// Municipal services based on population bracket
 function inferServices(population: number | null): {
   active_services: string[];
   departments: Array<{ id: string; name: string; relevant_use_cases: string[] }>;
 } {
   const pop = population || 5000;
-
   const baseDepts = [
     { id: 'teknisk', name: 'Teknisk drift', relevant_use_cases: ['UC06', 'UC04', 'UC17'] },
     { id: 'plan', name: 'Plan og bygg', relevant_use_cases: ['UC01', 'UC02', 'UC03'] },
     { id: 'brann', name: 'Brann og redning', relevant_use_cases: ['UC12', 'UC13', 'UC14'] },
     { id: 'miljo', name: 'Miljø og klima', relevant_use_cases: ['UC09', 'UC10', 'UC11'] },
   ];
-
   if (pop < 5000) {
     return {
       active_services: ['Teknisk drift', 'Plan og bygg', 'Brann (IKS)', 'Landbruk'],
-      departments: [
-        ...baseDepts,
-        { id: 'landbruk', name: 'Landbruk', relevant_use_cases: ['UC15', 'UC16'] },
-      ],
+      departments: [...baseDepts, { id: 'landbruk', name: 'Landbruk', relevant_use_cases: ['UC15', 'UC16'] }],
     };
   }
-
   if (pop < 20000) {
     return {
       active_services: ['Teknisk drift', 'Plan og bygg', 'Brann og redning', 'VA', 'Miljø', 'Eiendom', 'Landbruk'],
@@ -137,8 +225,6 @@ function inferServices(population: number | null): {
       ],
     };
   }
-
-  // Urban (>20k)
   return {
     active_services: ['Teknisk drift', 'Plan og bygg', 'Brann og redning', 'VA', 'Miljø', 'Eiendom', 'Geodata', 'Kultur', 'Helse'],
     departments: [
@@ -158,6 +244,7 @@ function getPopulationBracket(pop: number | null): string {
   return 'urban';
 }
 
+// ── Main handler ─────────────────────────────────────────────────────────
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -172,75 +259,61 @@ Deno.serve(async (req) => {
       );
     }
 
-    const municipalityCode = MUNICIPALITY_CODES[municipality_name];
-    const knownPopulation = POPULATION_DATA[municipality_name];
-    const areaKm2 = AREA_DATA[municipality_name] || null;
-    const centrality = CENTRALITY[municipality_name] || null;
     const indicators: Array<{ id: string; name: string; value: number; unit: string; year?: string }> = [];
     let ssbSuccess = false;
+    let municipalityCode: string | null = null;
+    let areaKm2: number | null = null;
+    let source = 'estimated';
 
-    // Try SSB API for population data (table 07459)
-    if (municipalityCode) {
-      try {
-        // Use v1 POST API for table 07459
-        const ssbUrl = 'https://data.ssb.no/api/v0/en/table/07459';
-        const query = {
-          query: [
-            { code: 'Region', selection: { filter: 'item', values: [municipalityCode] } },
-            { code: 'Kjonn', selection: { filter: 'all', values: ['*'] } },
-            { code: 'Alder', selection: { filter: 'all', values: ['*'] } },
-            { code: 'Tid', selection: { filter: 'top', values: ['1'] } },
-          ],
-          response: { format: 'json-stat2' },
-        };
+    // Normalize name: strip parenthetical disambiguation like "Bø (Nordland)" → "Bø"
+    const searchName = municipality_name.replace(/\s*\(.*?\)\s*$/, '').trim();
 
-        console.log(`Fetching SSB v1 data for ${municipality_name} (${municipalityCode})`);
-        const resp = await fetch(ssbUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(query),
-          signal: AbortSignal.timeout(8000),
-        });
+    // ── Step 1: Resolve municipality code ──────────────────────────────
+    if (FALLBACK_CODES[municipality_name]) {
+      municipalityCode = FALLBACK_CODES[municipality_name];
+      areaKm2 = FALLBACK_AREA[municipality_name] || null;
+    }
 
-        console.log(`SSB response status: ${resp.status}`);
-        if (resp.ok) {
-          const data = await resp.json();
-          // Sum all values (all ages × both sexes) to get total population
-          if (data.value && data.value.length > 0) {
-            const pop = data.value.reduce((sum: number, v: number | null) => sum + (v || 0), 0);
-            const timeDim = data.dimension?.Tid;
-            let year = '2025';
-            if (timeDim?.category?.label) {
-              const labels = Object.values(timeDim.category.label) as string[];
-              year = labels[labels.length - 1] || year;
-            }
-            console.log(`SSB population for ${municipality_name}: ${pop} (year: ${year}), values count: ${data.value.length}`);
-            indicators.push({ id: 'population', name: 'Folkemengde', value: pop, unit: 'personer', year });
-            ssbSuccess = true;
-          }
-        } else {
-          const errText = await resp.text();
-          console.log(`SSB API error ${resp.status}: ${errText}`);
-        }
-      } catch (e) {
-        console.log('SSB API error:', e);
+    // Try Kartverket with normalized name, then original if different
+    let kartverket = await lookupMunicipality(searchName);
+    if (!kartverket && searchName !== municipality_name) {
+      kartverket = await lookupMunicipality(municipality_name);
+    }
+    if (kartverket) {
+      municipalityCode = kartverket.code;
+      if (kartverket.areaKm2 > 0) {
+        areaKm2 = kartverket.areaKm2;
       }
     }
 
-    // Fall back to known data
-    if (!ssbSuccess && knownPopulation) {
-      indicators.push({ id: 'population', name: 'Folkemengde', value: knownPopulation, unit: 'personer', year: '2024' });
+
+
+    // ── Step 2: Fetch population from SSB ──────────────────────────────
+    if (municipalityCode) {
+      const ssb = await fetchSSBPopulation(municipalityCode, municipality_name);
+      if (ssb) {
+        indicators.push({ id: 'population', name: 'Folkemengde', value: ssb.population, unit: 'personer', year: ssb.year });
+        ssbSuccess = true;
+        source = 'ssb';
+      }
+    }
+
+    // ── Step 3: Fallback to hardcoded population ───────────────────────
+    if (!ssbSuccess && FALLBACK_POP[municipality_name]) {
+      indicators.push({ id: 'population', name: 'Folkemengde', value: FALLBACK_POP[municipality_name], unit: 'personer', year: '2024' });
+      source = 'fallback';
     }
 
     const population = indicators.find(i => i.id === 'population')?.value || null;
     const bracket = getPopulationBracket(population);
+    const centrality = CENTRALITY[municipality_name] || null;
 
     // Add area
     if (areaKm2) {
       indicators.push({ id: 'area_km2', name: 'Areal', value: areaKm2, unit: 'km²', year: '2024' });
     }
 
-    // Derive drone-relevant metrics
+    // ── Step 4: Derive drone-relevant metrics ──────────────────────────
     const popDensity = population && areaKm2 ? Math.round(population / areaKm2) : null;
     const estimatedRoadKm = population ? Math.round(population * 0.015) : null;
     const estimatedBuildings = population ? Math.round(population * 0.4) : null;
@@ -253,12 +326,18 @@ Deno.serve(async (req) => {
     if (estimatedVaKm) indicators.push({ id: 'va_km', name: 'VA-ledningsnett (est.)', value: estimatedVaKm, unit: 'km' });
     if (estimatedAgriLand) indicators.push({ id: 'agri_km2', name: 'Jordbruksareal (est.)', value: estimatedAgriLand, unit: 'km²' });
 
-    // Services and departments
     const services = inferServices(population);
-
-    // Airspace and protected areas
     const airspace = CONTROLLED_AIRSPACE[municipality_name] || null;
     const protectedAreas = PROTECTED_AREAS[municipality_name] || [];
+
+    // Estimate centrality for unknown municipalities based on population
+    let effectiveCentrality = centrality;
+    if (!effectiveCentrality && population) {
+      if (population > 50000) effectiveCentrality = 2;
+      else if (population > 15000) effectiveCentrality = 3;
+      else if (population > 5000) effectiveCentrality = 4;
+      else effectiveCentrality = 5;
+    }
 
     const droneRelevance = {
       population_density: popDensity,
@@ -268,8 +347,8 @@ Deno.serve(async (req) => {
       estimated_va_km: estimatedVaKm,
       estimated_agri_km2: estimatedAgriLand,
       infrastructure_complexity: population && population > 50000 ? 'Høy' : population && population > 10000 ? 'Middels' : 'Lav',
-      centrality_index: centrality,
-      urban_rural: centrality ? (centrality <= 2 ? 'Urban' : centrality <= 4 ? 'Halvsentral' : 'Rural') : null,
+      centrality_index: effectiveCentrality,
+      urban_rural: effectiveCentrality ? (effectiveCentrality <= 2 ? 'Urban' : effectiveCentrality <= 4 ? 'Halvsentral' : 'Rural') : null,
       controlled_airspace: airspace,
       protected_areas: protectedAreas,
     };
@@ -277,7 +356,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        source: ssbSuccess ? 'ssb' : knownPopulation ? 'fallback' : 'estimated',
+        source,
         municipality: municipality_name,
         municipality_code: municipalityCode || null,
         area_km2: areaKm2,
