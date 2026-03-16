@@ -60,9 +60,12 @@ export default function Assessment() {
 
   const scrollToTop = () => topRef.current?.scrollIntoView({ behavior: "smooth" });
 
-  // IKS data
-  const iksPartnership = findIKSPartners(municipalityName);
-  const iksPartners = getIKSPartnerMunicipalities(municipalityName);
+  // IKS / brannvesen data — use full fire department lookup, not just IKS
+  const fireDept = findFireDepartment(municipalityName);
+  const alarmSentral = findAlarmSentral(municipalityName);
+  const iksPartnership = findIKSPartners(municipalityName); // legacy — only IKS-type
+  const fireDeptPartners = fireDept ? fireDept.municipalities.filter(m => m.toLowerCase() !== municipalityName.toLowerCase()) : [];
+  const regionMunicipalities = get110RegionMunicipalities(municipalityName);
 
   // Fetch KOSTRA and initialize departments when moving to data step
   const handleStartData = async () => {
