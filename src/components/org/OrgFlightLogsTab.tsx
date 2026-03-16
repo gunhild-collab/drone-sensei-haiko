@@ -39,9 +39,9 @@ export default function OrgFlightLogsTab({ orgId }: Props) {
 
   const fetchLogs = useCallback(async () => {
     const [l, p, d] = await Promise.all([
-      supabase.from("flight_logs").select("*, pilots(name), org_drones(name)").eq("organization_id", orgId).order("flight_date", { ascending: false }),
-      supabase.from("pilots").select("id, name").eq("organization_id", orgId).eq("status", "active"),
-      supabase.from("org_drones").select("id, name").eq("organization_id", orgId).eq("status", "active"),
+      supabase.from("flight_logs").select("*").eq("organization_id", orgId).order("flight_date", { ascending: false }),
+      supabase.from("pilots").select("id, name").eq("organization_id", orgId).eq("status", "active" as any),
+      supabase.from("org_drones").select("id, name").eq("organization_id", orgId).eq("status", "active" as any),
     ]);
     setLogs(l.data || []);
     setPilots(p.data || []);
