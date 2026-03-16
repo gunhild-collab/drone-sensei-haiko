@@ -338,7 +338,7 @@ export function getPartnerMunicipalities(municipalityName: string): string[] {
 /**
  * Finn alle brannvesen under samme 110-sentral
  */
-export function getSibling FireDepartments(municipalityName: string): FireDepartment[] {
+export function getSiblingFireDepartments(municipalityName: string): FireDepartment[] {
   const fd = findFireDepartment(municipalityName);
   if (!fd) return [];
   return FIRE_DEPARTMENTS.filter(
