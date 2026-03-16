@@ -1,5 +1,13 @@
 import { supabase } from '@/integrations/supabase/client';
 
+export interface KostraSectorData {
+  sector: string;
+  expenditure_1000nok: number | null;
+  employees_fte: number | null;
+  year: string;
+  source: string;
+}
+
 export interface KostraData {
   success: boolean;
   source?: string;
@@ -24,6 +32,9 @@ export interface KostraData {
     active_services: string[];
     departments: Array<{ id: string; name: string; relevant_use_cases: string[] }>;
   };
+  fire_stats?: any;
+  sector_data?: KostraSectorData[];
+  sector_data_source?: 'ssb' | 'estimated';
   error?: string;
 }
 
