@@ -334,6 +334,32 @@ export default function DroneAnalysis({
           </div>
         </div>
 
+        {/* Certification plan */}
+        {analysis.certification_plan && analysis.certification_plan.pilot_groups.length > 0 && (
+          <div className="space-y-3 mb-6">
+            <h2 className="text-lg font-display font-semibold flex items-center gap-2">
+              <GraduationCap className="w-5 h-5 text-primary" /> Sertifiseringsplan
+            </h2>
+            {analysis.certification_plan.pilot_groups.map((group, i) => (
+              <Card key={i}>
+                <CardContent className="pt-4 pb-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="font-medium text-sm">{group.group_name}</p>
+                    <Badge variant="secondary" className="text-xs">{group.estimated_training_days} dager</Badge>
+                  </div>
+                  <p className="text-xs font-medium text-primary">{group.certification_path}</p>
+                  <p className="text-xs text-muted-foreground">{group.training_description}</p>
+                  <div className="flex flex-wrap gap-1">
+                    {group.covers_use_cases.map(uc => (
+                      <Badge key={uc} variant="outline" className="text-[10px]">{uc}</Badge>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
         {/* IKS */}
         {analysis.iks_recommendation && (
           <Card className="mb-6">
