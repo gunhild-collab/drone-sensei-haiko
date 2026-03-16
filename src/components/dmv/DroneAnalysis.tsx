@@ -46,7 +46,6 @@ export interface DroneAnalysisResult {
       estimated_training_days: number;
     }>;
   };
-  }>;
   drone_fleet: Array<{
     drone_type: string;
     recommended_model: string;
