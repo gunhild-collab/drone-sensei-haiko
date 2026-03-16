@@ -542,6 +542,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_organization: {
+        Args: {
+          _name: string
+          _org_type?: Database["public"]["Enums"]["org_type"]
+        }
+        Returns: string
+      }
       is_org_member: {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
