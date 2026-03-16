@@ -321,17 +321,14 @@ INSTRUKSJONER:
     if (analysis.department_analyses) {
       for (const dept of analysis.department_analyses) {
         for (const uc of dept.use_cases) {
-          // Verify against source database
           const sourceUC = VERIFIED_USE_CASES.find(v => v.id === uc.id);
           if (sourceUC) {
-            // Force correct operation_type from verified data
             uc.operation_type = sourceUC.operationType;
-            // Force correct EASA category
             uc.easa_category = sourceUC.easaCategory;
-            // Force correct cert requirement
             uc.pilot_certification = sourceUC.certRequirement;
-            // Force correct drone class
-            uc.drone_type = sourceUC.droneClass;
+            // Map archetype to display name
+            const archetype = DRONE_ARCHETYPES[sourceUC.droneArchetype as keyof typeof DRONE_ARCHETYPES];
+            uc.drone_type = archetype ? archetype.type : sourceUC.droneArchetype;
             uc.needs_thermal = sourceUC.needsThermal;
             uc.needs_rtk = sourceUC.needsRtk;
           }
