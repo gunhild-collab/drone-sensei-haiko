@@ -285,6 +285,9 @@ export default function DroneAnalysis({
                             <Badge variant="secondary" className="text-[10px]">
                               {uc.annual_flight_hours} t/år
                             </Badge>
+                            {uc.calculation_basis && (
+                              <span className="text-[10px] text-muted-foreground italic">{uc.calculation_basis}</span>
+                            )}
                           </div>
                         </div>
                       ))}
