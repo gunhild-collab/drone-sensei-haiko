@@ -149,27 +149,17 @@ function mapFgkToSectors(valueByFgk: Record<string, number>): Record<string, num
 }
 
 async function fetchAllSectorData(code: string, name: string): Promise<{ sectors: SectorData[]; source: string }> {
-  const [expenditure, wages] = await Promise.all([
-    fetchSectorData(code, name, 'BDR'),
-    fetchSectorData(code, name, 'LONN'),
-  ]);
+  const raw = await fetchSectorData(code, name);
+  const expBySector = mapFgkToSectors(raw);
 
-  const expBySector = mapFgkToSectors(expenditure);
-  const wageBySector = mapFgkToSectors(wages);
-  const AVG_SALARY_1000 = 600;
+  if (Object.keys(expBySector).length === 0) return { sectors: [], source: 'none' };
 
-  const hasExpData = Object.keys(expBySector).length > 0;
-  const hasWageData = Object.keys(wageBySector).length > 0;
-  
-  if (!hasExpData && !hasWageData) return { sectors: [], source: 'none' };
-
-  const allSectors = new Set([...Object.keys(expBySector), ...Object.keys(wageBySector)]);
   const sectors: SectorData[] = [];
-  for (const sector of allSectors) {
+  for (const [sector, val] of Object.entries(expBySector)) {
     sectors.push({
       sector,
-      expenditure_1000nok: expBySector[sector] ? Math.round(expBySector[sector]) : null,
-      employees_fte: wageBySector[sector] ? Math.round(wageBySector[sector] / AVG_SALARY_1000 * 10) / 10 : null,
+      expenditure_1000nok: Math.round(val),
+      employees_fte: null,
       year: '2024',
       source: 'ssb_12362',
     });
