@@ -119,10 +119,10 @@ export default function OrgFlightLogsTab({ orgId }: Props) {
                 </div>
                 <div>
                   <Label>Drone</Label>
-                  <Select value={form.drone_id} onValueChange={v => setForm(f => ({ ...f, drone_id: v }))}>
+                  <Select value={form.drone_id || "none"} onValueChange={v => setForm(f => ({ ...f, drone_id: v === "none" ? "" : v }))}>
                     <SelectTrigger><SelectValue placeholder="Velg drone" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Ingen</SelectItem>
+                      <SelectItem value="none">Ingen</SelectItem>
                       {drones.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
