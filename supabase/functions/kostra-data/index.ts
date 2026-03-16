@@ -11,23 +11,13 @@ async function lookupMunicipality(name: string): Promise<{ code: string; areaKm2
     if (!resp.ok) { await resp.text(); return null; }
     const data = await resp.json();
     
-    // API returns array or object with kommuner array
-    let results: any[] = [];
-    if (Array.isArray(data)) {
-      results = data;
-    } else if (data?.kommuner && Array.isArray(data.kommuner)) {
-      results = data.kommuner;
-    } else if (data?.kommunenummer) {
-      // Single result object
-      results = [data];
-    }
-    
+    // API returns { antallTreff, kommuner: [...] }
+    const results = data?.kommuner || [];
     if (results.length === 0) {
       console.log(`Kartverket: no results for "${name}"`);
       return null;
     }
     
-    // Find best match
     const exact = results.find((m: any) => 
       m.kommunenavnNorsk?.toLowerCase() === name.toLowerCase() ||
       m.kommunenavn?.toLowerCase() === name.toLowerCase()
@@ -35,8 +25,25 @@ async function lookupMunicipality(name: string): Promise<{ code: string; areaKm2
     const match = exact || results[0];
     const code = match.kommunenummer;
     const officialName = match.kommunenavnNorsk || match.kommunenavn || name;
-    console.log(`Kartverket: "${name}" → ${code} (${officialName})`);
-    return { code, areaKm2: 0, officialName };
+    
+    // Calculate approximate area from bounding box
+    let areaKm2 = 0;
+    if (match.avgrensningsboks?.coordinates?.[0]) {
+      const coords = match.avgrensningsboks.coordinates[0];
+      const west = coords[0][0], south = coords[0][1];
+      const east = coords[2][0], north = coords[2][1];
+      // Approximate area using lat/lng bounding box
+      const latMid = (south + north) / 2;
+      const kmPerDegLat = 111.32;
+      const kmPerDegLng = 111.32 * Math.cos(latMid * Math.PI / 180);
+      const heightKm = (north - south) * kmPerDegLat;
+      const widthKm = (east - west) * kmPerDegLng;
+      // Bbox area × 0.65 factor (municipalities aren't rectangles)
+      areaKm2 = Math.round(heightKm * widthKm * 0.65);
+    }
+    
+    console.log(`Kartverket: "${name}" → ${code} (${officialName}, ~${areaKm2} km²)`);
+    return { code, areaKm2, officialName };
   } catch (e) {
     console.log('Kartverket lookup failed:', e);
     return null;
