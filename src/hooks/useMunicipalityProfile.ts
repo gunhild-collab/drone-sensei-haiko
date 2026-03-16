@@ -203,15 +203,15 @@ export function useMunicipalityProfile(municipalityName: string) {
     try {
       const payload = {
         municipality_name: profile.municipality_name,
-        risk_profile: profile.risk_profile as unknown as Record<string, unknown>,
-        geography_infrastructure: profile.geography_infrastructure as unknown as Record<string, unknown>,
-        operations_economy: profile.operations_economy as unknown as Record<string, unknown>,
+        risk_profile: profile.risk_profile as any,
+        geography_infrastructure: profile.geography_infrastructure as any,
+        operations_economy: profile.operations_economy as any,
       };
 
       if (profile.id) {
         await supabase.from("municipality_profiles").update(payload).eq("id", profile.id);
       } else {
-        const { data } = await supabase.from("municipality_profiles").insert(payload).select("id").single();
+        const { data } = await supabase.from("municipality_profiles").insert([payload]).select("id").single();
         if (data) setProfile(prev => ({ ...prev, id: data.id }));
       }
       toast.success("Kommuneprofil lagret");
