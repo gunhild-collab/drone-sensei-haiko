@@ -19,7 +19,6 @@ import { findIKSPartners, getIKSPartnerMunicipalities } from "@/data/iksData";
 import DepartmentEditor, { type ActiveDepartment } from "@/components/dmv/DepartmentEditor";
 import DroneAnalysis from "@/components/dmv/DroneAnalysis";
 import RiskProfileTab from "@/components/dmv/RiskProfileTab";
-import GeographyInfraTab from "@/components/dmv/GeographyInfraTab";
 import OperationsEconomyTab from "@/components/dmv/OperationsEconomyTab";
 import {
   ChevronLeft, ChevronRight, CheckCircle2, Target, Shield, Cpu,
@@ -52,7 +51,7 @@ export default function Assessment() {
     vaKm: null as number | null,
   });
   const topRef = useRef<HTMLDivElement>(null);
-  const { profile, loading: profileLoading, saving, updateRisk, updateGeography, updateOperations, save: saveProfile } = useMunicipalityProfile(municipalityName);
+  const { profile, loading: profileLoading, saving, updateRisk, updateOperations, populateFromKostra, save: saveProfile } = useMunicipalityProfile(municipalityName);
 
   const dim = dimensions[currentDimension];
   const Icon = dimensionIcons[currentDimension];
@@ -90,6 +89,8 @@ export default function Assessment() {
           enabled: true,
           order: i,
         })));
+        // Auto-populate municipality profile from KOSTRA data
+        populateFromKostra(data);
       }
     } catch {
       // fallback
@@ -257,24 +258,20 @@ export default function Assessment() {
                 population={overrides.population || 8000}
               />
 
-              {/* Enrichment tabs: Risk, Geography, Operations */}
+              {/* Enrichment tabs: Risk + Operations */}
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg font-display">Utvidet kommuneprofil</CardTitle>
-                  <CardDescription>Risikobilde, geografi og driftsdata — lagres automatisk per kommune.</CardDescription>
+                  <CardDescription>Risikobilde og driftsdata — data hentes automatisk fra SSB/KOSTRA der mulig.</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Tabs defaultValue="risk" className="w-full">
-                    <TabsList className="grid w-full grid-cols-3">
+                    <TabsList className="grid w-full grid-cols-2">
                       <TabsTrigger value="risk" className="text-xs sm:text-sm">Risikobilde</TabsTrigger>
-                      <TabsTrigger value="geography" className="text-xs sm:text-sm">Geografi & infra</TabsTrigger>
                       <TabsTrigger value="operations" className="text-xs sm:text-sm">Drift & økonomi</TabsTrigger>
                     </TabsList>
                     <TabsContent value="risk" className="mt-4">
                       <RiskProfileTab data={profile.risk_profile} onChange={updateRisk} />
-                    </TabsContent>
-                    <TabsContent value="geography" className="mt-4">
-                      <GeographyInfraTab data={profile.geography_infrastructure} onChange={updateGeography} />
                     </TabsContent>
                     <TabsContent value="operations" className="mt-4">
                       <OperationsEconomyTab data={profile.operations_economy} onChange={updateOperations} />

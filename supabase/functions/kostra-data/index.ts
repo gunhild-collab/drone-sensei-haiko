@@ -97,6 +97,46 @@ async function fetchSSBPopulation(municipalityCode: string, municipalityName: st
   }
 }
 
+// ── Fire stats: population-based estimates from DSB national averages ─────
+function estimateFireStats(population: number | null, municipalityName: string): {
+  total_fires: number;
+  building_fires: number;
+  chimney_fires: number;
+  total_callouts: number;
+  fire_expenditure_1000nok: number;
+  fire_ftes: number;
+  year: string;
+  source: string;
+} | null {
+  if (!population) return null;
+  // National averages per 1000 inhabitants (DSB 2023 data)
+  const per1k = {
+    building_fires: 0.45,
+    chimney_fires: 0.35,
+    callouts: 4.5,
+    expenditure_per_cap_nok: 2800,
+    ftes_per_10k: 8.5,
+  };
+  const building_fires = Math.round(population / 1000 * per1k.building_fires);
+  const chimney_fires = Math.round(population / 1000 * per1k.chimney_fires);
+  const total_callouts = Math.round(population / 1000 * per1k.callouts);
+  const fire_expenditure_1000nok = Math.round(population * per1k.expenditure_per_cap_nok / 1000);
+  const fire_ftes = Math.round(population / 10000 * per1k.ftes_per_10k * 10) / 10;
+
+  console.log(`Fire stats (estimated) for ${municipalityName}: fires=${building_fires + chimney_fires}, callouts=${total_callouts}`);
+  return {
+    total_fires: building_fires + chimney_fires,
+    building_fires,
+    chimney_fires,
+    total_callouts,
+    fire_expenditure_1000nok,
+    fire_ftes,
+    year: '2024',
+    source: 'estimated',
+  };
+}
+
+async function fetchMunicipalEconomy(_code: string, _name: string): Promise<null> { return null; }
 
 
 
@@ -298,6 +338,7 @@ Deno.serve(async (req) => {
       }
     }
 
+
     // ── Step 3: Fallback to hardcoded population ───────────────────────
     if (!ssbSuccess && FALLBACK_POP[municipality_name]) {
       indicators.push({ id: 'population', name: 'Folkemengde', value: FALLBACK_POP[municipality_name], unit: 'personer', year: '2024' });
@@ -363,6 +404,8 @@ Deno.serve(async (req) => {
         indicators,
         drone_relevance: droneRelevance,
         services,
+        fire_stats: estimateFireStats(population, municipality_name),
+        municipal_economy: null,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
