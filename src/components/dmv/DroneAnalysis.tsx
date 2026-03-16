@@ -82,6 +82,10 @@ interface Props {
   densityPerKm2: number;
   departments: ActiveDepartment[];
   iksPartners: string[];
+  fireDeptName: string | null;
+  fireDeptType: string | null;
+  alarmSentralName: string | null;
+  regionMunicipalities: string[];
   onContinue: () => void;
   onBack: () => void;
 }
