@@ -9,17 +9,22 @@ import { KommuneCombobox } from "@/components/KommuneCombobox";
 import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { dimensions } from "@/data/dmvData";
 import { useAssessment } from "@/hooks/useAssessment";
+import { useMunicipalityProfile } from "@/hooks/useMunicipalityProfile";
 import { evaluationApi, KostraData } from "@/lib/evaluationApi";
 import { getSuggestedDepartments } from "@/data/departmentTemplates";
 import { findIKSPartners, getIKSPartnerMunicipalities } from "@/data/iksData";
 import DepartmentEditor, { type ActiveDepartment } from "@/components/dmv/DepartmentEditor";
 import DroneAnalysis from "@/components/dmv/DroneAnalysis";
+import RiskProfileTab from "@/components/dmv/RiskProfileTab";
+import GeographyInfraTab from "@/components/dmv/GeographyInfraTab";
+import OperationsEconomyTab from "@/components/dmv/OperationsEconomyTab";
 import {
   ChevronLeft, ChevronRight, CheckCircle2, Target, Shield, Cpu,
   Building2, Network, MapPin, Users, Route, Droplets, Plane,
-  TreePine, AlertTriangle, Flame, Loader2
+  TreePine, AlertTriangle, Flame, Loader2, Save
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
