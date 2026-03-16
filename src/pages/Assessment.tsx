@@ -51,7 +51,7 @@ export default function Assessment() {
     vaKm: null as number | null,
   });
   const topRef = useRef<HTMLDivElement>(null);
-  const { profile, loading: profileLoading, saving, updateRisk, updateGeography, updateOperations, save: saveProfile } = useMunicipalityProfile(municipalityName);
+  const { profile, loading: profileLoading, saving, updateRisk, updateOperations, populateFromKostra, save: saveProfile } = useMunicipalityProfile(municipalityName);
 
   const dim = dimensions[currentDimension];
   const Icon = dimensionIcons[currentDimension];
