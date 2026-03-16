@@ -356,31 +356,15 @@ Deno.serve(async (req) => {
       protected_areas: protectedAreas,
     };
 
-    // Step 4: Fetch KOSTRA sector-level expenditure + staffing in parallel
-    const [sectorExpenditure, sectorStaffing] = municipalityCode
-      ? await Promise.all([
-          fetchSectorExpenditure(municipalityCode, municipality_name),
-          fetchSectorStaffing(municipalityCode, municipality_name),
-        ])
-      : [[], {}];
-
-    // Merge staffing into expenditure data
-    const sectorData = sectorExpenditure.map(s => ({
-      ...s,
-      employees_fte: sectorStaffing[s.sector] ?? null,
-    }));
-
-    // Add sectors that have staffing but no expenditure
-    for (const [sector, fte] of Object.entries(sectorStaffing)) {
-      if (!sectorData.find(s => s.sector === sector)) {
-        sectorData.push({ sector, expenditure_1000nok: null, employees_fte: fte, year: '2024', source: 'ssb_11567' });
-      }
-    }
+    // Step 4: Fetch KOSTRA sector-level expenditure + staffing
+    const ssbResult = municipalityCode
+      ? await fetchAllSectorData(municipalityCode, municipality_name)
+      : { sectors: [], source: 'none' };
 
     // Fallback: estimate sector budgets from population if SSB returned nothing
-    const ssbSectorSuccess = sectorData.length > 0;
-    let fallbackSectors: SectorData[] = [];
-    if (!ssbSectorSuccess && population) {
+    let finalSectors = ssbResult.sectors;
+    let sectorSource = ssbResult.source;
+    if (finalSectors.length === 0 && population) {
       const pop = population;
       const estSectors: Array<{ sector: string; perCapita: number; ftesPer10k: number }> = [
         { sector: 'Brann', perCapita: pop < 5000 ? 3500 : pop < 20000 ? 2800 : 2400, ftesPer10k: pop < 5000 ? 12 : pop < 20000 ? 8.5 : 7 },
@@ -390,16 +374,15 @@ Deno.serve(async (req) => {
         { sector: 'Miljø', perCapita: pop < 5000 ? 800 : pop < 20000 ? 700 : 600, ftesPer10k: pop < 5000 ? 1.5 : pop < 20000 ? 1.2 : 1 },
         { sector: 'Helse', perCapita: pop < 5000 ? 35000 : pop < 20000 ? 32000 : 28000, ftesPer10k: pop < 5000 ? 60 : pop < 20000 ? 55 : 50 },
       ];
-      fallbackSectors = estSectors.map(e => ({
+      finalSectors = estSectors.map(e => ({
         sector: e.sector,
         expenditure_1000nok: Math.round(pop * e.perCapita / 1000),
         employees_fte: Math.round(pop / 10000 * e.ftesPer10k * 10) / 10,
         year: '2024',
         source: 'estimated',
       }));
+      sectorSource = 'estimated';
     }
-
-    const finalSectors = ssbSectorSuccess ? sectorData : fallbackSectors;
 
     return new Response(
       JSON.stringify({
