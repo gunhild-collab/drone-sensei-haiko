@@ -158,28 +158,29 @@ export function useMunicipalityProfile(municipalityName: string) {
       }));
     }
 
-    // Budget data from KOSTRA
-    if (kostraData.municipal_economy) {
-      const eco = kostraData.municipal_economy;
-      const kostraBudgets: SectorBudget[] = [];
-      if (eco.fire_expenditure_1000nok) {
-        kostraBudgets.push({ sector: "Brann", maintenance_nok: eco.fire_expenditure_1000nok * 1000, source: "kostra", year: parseInt(eco.year) || undefined });
-      }
-      if (eco.road_expenditure_1000nok) {
-        kostraBudgets.push({ sector: "Drift/vei", maintenance_nok: eco.road_expenditure_1000nok * 1000, source: "kostra", year: parseInt(eco.year) || undefined });
-      }
-      if (eco.va_expenditure_1000nok) {
-        kostraBudgets.push({ sector: "VA", maintenance_nok: eco.va_expenditure_1000nok * 1000, source: "kostra", year: parseInt(eco.year) || undefined });
-      }
-
-      const kostraStaffing: StaffingEntry[] = [];
-      if (eco.fire_ftes) {
-        kostraStaffing.push({ sector: "Brann", headcount: Math.round(eco.fire_ftes), source: "kostra" });
-      }
+    // NEW: Use sector_data (from SSB 12367 + 11567) for budgets & staffing
+    if (kostraData.sector_data && kostraData.sector_data.length > 0) {
+      const sectorSource = kostraData.sector_data_source === 'ssb' ? 'kostra' : 'estimated';
+      const kostraBudgets: SectorBudget[] = kostraData.sector_data
+        .filter((s: any) => s.expenditure_1000nok != null)
+        .map((s: any) => ({
+          sector: s.sector,
+          maintenance_nok: s.expenditure_1000nok * 1000,
+          source: sectorSource,
+          year: parseInt(s.year) || undefined,
+        }));
+      
+      const kostraStaffing: StaffingEntry[] = kostraData.sector_data
+        .filter((s: any) => s.employees_fte != null)
+        .map((s: any) => ({
+          sector: s.sector,
+          headcount: Math.round(s.employees_fte),
+          source: sectorSource,
+        }));
 
       setProfile(prev => {
-        const manualBudgets = prev.operations_economy.budgets.filter(b => b.source !== "kostra");
-        const manualStaff = prev.operations_economy.staffing.filter(s => s.source !== "kostra");
+        const manualBudgets = prev.operations_economy.budgets.filter(b => b.source !== 'kostra' && b.source !== 'estimated');
+        const manualStaff = prev.operations_economy.staffing.filter(s => s.source !== 'kostra' && s.source !== 'estimated');
         return {
           ...prev,
           operations_economy: {
