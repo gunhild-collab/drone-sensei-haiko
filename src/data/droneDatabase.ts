@@ -321,3 +321,9 @@ export const MULTIROTOR_DATABASE: DroneSpec[] = [
     notes: 'BVLOS leveringsdrone — fallskjerm payload',
   },
 ];
+
+// Combined database: multirotor + fixed-wing
+export const DRONE_DATABASE: DroneSpec[] = [
+  ...MULTIROTOR_DATABASE,
+  ...FIXED_WING_DATABASE,
+];
