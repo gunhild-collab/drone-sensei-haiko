@@ -31,10 +31,21 @@ export interface DroneAnalysisResult {
       drone_type: string;
       priority: string;
       annual_flight_hours: number;
+      calculation_basis?: string;
       needs_thermal?: boolean;
       needs_rtk?: boolean;
     }>;
     total_annual_hours: number;
+  }>;
+  certification_plan?: {
+    pilot_groups: Array<{
+      group_name: string;
+      certification_path: string;
+      covers_use_cases: string[];
+      training_description: string;
+      estimated_training_days: number;
+    }>;
+  };
   }>;
   drone_fleet: Array<{
     drone_type: string;
