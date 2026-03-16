@@ -182,22 +182,23 @@ Deno.serve(async (req) => {
     // Try SSB API for population data (table 07459)
     if (municipalityCode) {
       try {
-        const ssbUrl = 'https://data.ssb.no/api/v0/no/table/07459';
+        // Use table 11342 (Folkemengde, etter region, statistikkvariabel og år) — simpler, no age/sex dims
+        const ssbUrl = 'https://data.ssb.no/api/v0/no/table/11342';
         const query = {
           query: [
             { code: 'Region', selection: { filter: 'item', values: [municipalityCode] } },
-            { code: 'Alder', selection: { filter: 'item', values: ['999'] } },
-            { code: 'ContentsCode', selection: { filter: 'item', values: ['Folkemengde'] } },
+            { code: 'ContentsCode', selection: { filter: 'item', values: ['Folkemengde1'] } },
             { code: 'Tid', selection: { filter: 'top', values: ['1'] } },
           ],
           response: { format: 'json-stat2' },
         };
 
-        console.log(`Fetching SSB data for ${municipality_name} (${municipalityCode})`);
+        console.log(`Fetching SSB data for ${municipality_name} (${municipalityCode}) from table 11342`);
         const resp = await fetch(ssbUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(query),
+          signal: AbortSignal.timeout(8000),
         });
 
         console.log(`SSB response status: ${resp.status}`);
