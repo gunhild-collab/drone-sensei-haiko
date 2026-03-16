@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { AlertTriangle, Clock, Building2, FileText, Plus, X } from "lucide-react";
+import { AlertTriangle, Clock, Building2, FileText, Flame, Plus, X, Loader2 } from "lucide-react";
 import type { RiskProfile, RosEvent, CriticalInfra, EmergencyPlanLink } from "@/hooks/useMunicipalityProfile";
 
 const ROS_TYPES = ["Flom", "Skred", "Skogbrann", "Trafikkulykke", "CBRNE", "Annet"];
@@ -15,9 +15,10 @@ const INFRA_TYPES = ["Skole", "Sykehjem", "Arrangement", "Kraftverk", "Bru", "An
 interface Props {
   data: RiskProfile;
   onChange: (update: Partial<RiskProfile>) => void;
+  loading?: boolean;
 }
 
-export default function RiskProfileTab({ data, onChange }: Props) {
+export default function RiskProfileTab({ data, onChange, loading }: Props) {
   const addRosEvent = () => {
     onChange({ ros_events: [...data.ros_events, { type: "Flom", description: "", severity: "middels" }] });
   };
@@ -54,8 +55,70 @@ export default function RiskProfileTab({ data, onChange }: Props) {
     onChange({ emergency_plan_links: updated });
   };
 
+  const fireStats = data.fire_stats;
+
   return (
     <div className="space-y-5">
+      {loading && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground p-3 rounded-lg bg-secondary/50">
+          <Loader2 className="w-4 h-4 animate-spin" /> Henter brannstatistikk fra SSB...
+        </div>
+      )}
+
+      {/* Fire stats from SSB/brannstatistikk */}
+      {fireStats && (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Flame className="w-5 h-5 text-destructive" />
+              <CardTitle className="text-base font-display">Brannstatistikk</CardTitle>
+              <Badge variant="outline" className="text-[10px] ml-auto">Kilde: SSB {fireStats.year}</Badge>
+            </div>
+            <CardDescription>Automatisk hentet fra SSB tabell 12362</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              {fireStats.total_fires != null && (
+                <div className="text-center p-3 rounded-lg bg-secondary/30 border border-border">
+                  <div className="text-2xl font-display font-bold text-foreground">{fireStats.total_fires}</div>
+                  <div className="text-xs text-muted-foreground">Branner totalt</div>
+                </div>
+              )}
+              {fireStats.building_fires != null && (
+                <div className="text-center p-3 rounded-lg bg-secondary/30 border border-border">
+                  <div className="text-2xl font-display font-bold text-foreground">{fireStats.building_fires}</div>
+                  <div className="text-xs text-muted-foreground">Bygningsbranner</div>
+                </div>
+              )}
+              {fireStats.chimney_fires != null && (
+                <div className="text-center p-3 rounded-lg bg-secondary/30 border border-border">
+                  <div className="text-2xl font-display font-bold text-foreground">{fireStats.chimney_fires}</div>
+                  <div className="text-xs text-muted-foreground">Pipebranner</div>
+                </div>
+              )}
+              {fireStats.total_callouts != null && (
+                <div className="text-center p-3 rounded-lg bg-secondary/30 border border-border">
+                  <div className="text-2xl font-display font-bold text-foreground">{fireStats.total_callouts}</div>
+                  <div className="text-xs text-muted-foreground">Utrykninger totalt</div>
+                </div>
+              )}
+              {fireStats.fire_expenditure_1000nok != null && (
+                <div className="text-center p-3 rounded-lg bg-secondary/30 border border-border">
+                  <div className="text-2xl font-display font-bold text-foreground">{(fireStats.fire_expenditure_1000nok / 1000).toFixed(1)}M</div>
+                  <div className="text-xs text-muted-foreground">Brannvern (kr)</div>
+                </div>
+              )}
+              {fireStats.fire_ftes != null && (
+                <div className="text-center p-3 rounded-lg bg-secondary/30 border border-border">
+                  <div className="text-2xl font-display font-bold text-foreground">{fireStats.fire_ftes.toFixed(1)}</div>
+                  <div className="text-xs text-muted-foreground">Årsverk brann</div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* ROS-hendelser */}
       <Card>
         <CardHeader className="pb-3">
@@ -63,7 +126,7 @@ export default function RiskProfileTab({ data, onChange }: Props) {
             <AlertTriangle className="w-5 h-5 text-destructive" />
             <CardTitle className="text-base font-display">ROS-hendelser og historikk</CardTitle>
           </div>
-          <CardDescription>Flom, skred, skogbrann, CBRNE og andre hendelser</CardDescription>
+          <CardDescription>Flom, skred, skogbrann, CBRNE — legg til manuelt (valgfritt)</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {data.ros_events.map((ev, i) => (
@@ -92,6 +155,7 @@ export default function RiskProfileTab({ data, onChange }: Props) {
             <Clock className="w-5 h-5 text-primary" />
             <CardTitle className="text-base font-display">Responstider og kapasitet</CardTitle>
           </div>
+          <CardDescription>Valgfritt — påvirker sluttresultatet</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-3">
@@ -112,7 +176,7 @@ export default function RiskProfileTab({ data, onChange }: Props) {
             ))}
           </div>
           <div className="mt-3 space-y-1">
-            <Label className="text-xs">Merknader</Label>
+            <Label className="text-xs">Merknader (valgfritt)</Label>
             <Textarea
               value={data.response_times.notes || ""}
               onChange={e => onChange({ response_times: { ...data.response_times, notes: e.target.value } })}
@@ -130,7 +194,7 @@ export default function RiskProfileTab({ data, onChange }: Props) {
             <Building2 className="w-5 h-5 text-accent" />
             <CardTitle className="text-base font-display">Kritisk infrastruktur</CardTitle>
           </div>
-          <CardDescription>Skoler, sykehjem, større arrangementer, kraftverk m.m.</CardDescription>
+          <CardDescription>Skoler, sykehjem, større arrangementer — valgfritt</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {data.critical_infrastructure.map((ci, i) => (
@@ -140,8 +204,6 @@ export default function RiskProfileTab({ data, onChange }: Props) {
                 <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
                 <SelectContent>{INFRA_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
               </Select>
-              <Input type="number" step="any" placeholder="Lat" value={ci.lat ?? ""} onChange={e => updateInfra(i, { lat: e.target.value ? parseFloat(e.target.value) : undefined })} className="w-24" />
-              <Input type="number" step="any" placeholder="Lng" value={ci.lng ?? ""} onChange={e => updateInfra(i, { lng: e.target.value ? parseFloat(e.target.value) : undefined })} className="w-24" />
               <Button variant="ghost" size="icon" onClick={() => removeInfra(i)}><X className="w-4 h-4" /></Button>
             </div>
           ))}
@@ -156,6 +218,7 @@ export default function RiskProfileTab({ data, onChange }: Props) {
             <FileText className="w-5 h-5 text-muted-foreground" />
             <CardTitle className="text-base font-display">Beredskapsplaner og ROS-analyser</CardTitle>
           </div>
+          <CardDescription>Lenker til kommunens planer — valgfritt</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {data.emergency_plan_links.map((link, i) => (
