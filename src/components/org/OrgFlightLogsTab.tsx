@@ -39,9 +39,9 @@ export default function OrgFlightLogsTab({ orgId }: Props) {
 
   const fetchLogs = useCallback(async () => {
     const [l, p, d] = await Promise.all([
-      supabase.from("flight_logs").select("*, pilots(name), org_drones(name)").eq("organization_id", orgId).order("flight_date", { ascending: false }),
-      supabase.from("pilots").select("id, name").eq("organization_id", orgId).eq("status", "active"),
-      supabase.from("org_drones").select("id, name").eq("organization_id", orgId).eq("status", "active"),
+      supabase.from("flight_logs").select("*").eq("organization_id", orgId).order("flight_date", { ascending: false }),
+      supabase.from("pilots").select("id, name").eq("organization_id", orgId).eq("status", "active" as any),
+      supabase.from("org_drones").select("id, name").eq("organization_id", orgId).eq("status", "active" as any),
     ]);
     setLogs(l.data || []);
     setPilots(p.data || []);
@@ -109,20 +109,20 @@ export default function OrgFlightLogsTab({ orgId }: Props) {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Pilot</Label>
-                  <Select value={form.pilot_id} onValueChange={v => setForm(f => ({ ...f, pilot_id: v }))}>
+                  <Select value={form.pilot_id || "none"} onValueChange={v => setForm(f => ({ ...f, pilot_id: v === "none" ? "" : v }))}>
                     <SelectTrigger><SelectValue placeholder="Velg pilot" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Ingen</SelectItem>
+                      <SelectItem value="none">Ingen</SelectItem>
                       {pilots.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
                   <Label>Drone</Label>
-                  <Select value={form.drone_id} onValueChange={v => setForm(f => ({ ...f, drone_id: v }))}>
+                  <Select value={form.drone_id || "none"} onValueChange={v => setForm(f => ({ ...f, drone_id: v === "none" ? "" : v }))}>
                     <SelectTrigger><SelectValue placeholder="Velg drone" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Ingen</SelectItem>
+                      <SelectItem value="none">Ingen</SelectItem>
                       {drones.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
@@ -181,7 +181,7 @@ export default function OrgFlightLogsTab({ orgId }: Props) {
                       <TableCell className="whitespace-nowrap">{log.flight_date}</TableCell>
                       <TableCell><Badge variant="outline" className="text-xs">{log.mission_type}</Badge></TableCell>
                       <TableCell className="text-muted-foreground text-sm max-w-[200px] truncate">{log.location_description || "—"}</TableCell>
-                      <TableCell className="text-sm">{log.pilots?.name || "—"}</TableCell>
+                      <TableCell className="text-sm">{pilots.find(p => p.id === log.pilot_id)?.name || "—"}</TableCell>
                       <TableCell className="text-right">{log.drone_time_minutes != null ? `${log.drone_time_minutes} min` : "—"}</TableCell>
                       <TableCell className="text-right">{log.manual_reference_time_minutes != null ? `${log.manual_reference_time_minutes} min` : "—"}</TableCell>
                       <TableCell className="text-right">

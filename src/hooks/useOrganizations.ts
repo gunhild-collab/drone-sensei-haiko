@@ -31,20 +31,18 @@ export function useOrganizations(userId: string | undefined) {
   }, [userId]);
 
   const createOrg = async (name: string, orgType: "municipality" | "iks") => {
-    const { data, error } = await supabase
-      .from("organizations")
-      .insert([{ name, org_type: orgType }])
-      .select()
-      .single();
+    const { data: orgId, error } = await supabase.rpc("create_organization", {
+      _name: name,
+      _org_type: orgType,
+    });
     if (error) throw error;
-    // Add self as admin
-    await supabase.from("organization_members").insert([{
-      organization_id: data.id,
-      user_id: userId,
-      role: "admin",
-    }]);
-    setOrgs(prev => [...prev, castOrg(data)]);
-    return castOrg(data);
+    // Now fetch the org (user is now a member, so SELECT RLS passes)
+    const { data: org } = await supabase.from("organizations").select("*").eq("id", orgId).single();
+    if (org) {
+      setOrgs(prev => [...prev, castOrg(org)]);
+      return castOrg(org);
+    }
+    throw new Error("Organisasjon opprettet men kunne ikke hentes");
   };
 
   return { orgs, loading, createOrg, refetch: () => {
