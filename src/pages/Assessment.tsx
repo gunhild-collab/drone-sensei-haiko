@@ -89,6 +89,8 @@ export default function Assessment() {
           enabled: true,
           order: i,
         })));
+        // Auto-populate municipality profile from KOSTRA data
+        populateFromKostra(data);
       }
     } catch {
       // fallback
