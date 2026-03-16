@@ -107,7 +107,7 @@ async function fetchSectorData(code: string, name: string): Promise<Record<strin
         query: [
           { code: 'KOKkommuneregion0000', selection: { filter: 'item', values: [code] } },
           { code: 'KOKfunksjon0000', selection: { filter: 'item', values: fgkCodes } },
-          { code: 'ContentsCode', selection: { filter: 'item', values: ['KOSbelop0000', 'KOSbelopinnbygge0000'] } },
+          { code: 'ContentsCode', selection: { filter: 'item', values: ['KOSbelop0000'] } },
           { code: 'Tid', selection: { filter: 'top', values: ['1'] } },
         ],
         response: { format: 'json-stat2' },
