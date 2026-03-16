@@ -338,7 +338,11 @@ export default function Assessment() {
         terrainType={kostra?.drone_relevance?.urban_rural || "Ukjent"}
         densityPerKm2={kostra?.drone_relevance?.population_density || 10}
         departments={departments}
-        iksPartners={iksPartners}
+        iksPartners={fireDeptPartners}
+        fireDeptName={fireDept?.name || null}
+        fireDeptType={fireDept?.type || null}
+        alarmSentralName={alarmSentral?.name || null}
+        regionMunicipalities={regionMunicipalities}
         onContinue={() => setStep("questions")}
         onBack={() => setStep("data")}
       />
