@@ -182,22 +182,11 @@ Deno.serve(async (req) => {
     // Try SSB API for population data (table 07459)
     if (municipalityCode) {
       try {
-        // Use table 11342 (Folkemengde, etter region, statistikkvariabel og år) — simpler, no age/sex dims
-        const ssbUrl = 'https://data.ssb.no/api/v0/no/table/11342';
-        const query = {
-          query: [
-            { code: 'Region', selection: { filter: 'item', values: [municipalityCode] } },
-            { code: 'ContentsCode', selection: { filter: 'item', values: ['Folkemengde1'] } },
-            { code: 'Tid', selection: { filter: 'top', values: ['1'] } },
-          ],
-          response: { format: 'json-stat2' },
-        };
+        // Use PxWebApi v2 GET endpoint for table 07459 — total population (both sexes, all ages)
+        const ssbUrl = `https://data.ssb.no/api/pxwebapi/v2/tables/07459/data?lang=no&outputFormat=json-stat2&Region=${municipalityCode}&Kjonn=1,2&Alder=999&ContentsCode=Folkemengde&Tid=top1`;
 
-        console.log(`Fetching SSB data for ${municipality_name} (${municipalityCode}) from table 11342`);
+        console.log(`Fetching SSB v2 data for ${municipality_name} (${municipalityCode})`);
         const resp = await fetch(ssbUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(query),
           signal: AbortSignal.timeout(8000),
         });
 
@@ -205,15 +194,16 @@ Deno.serve(async (req) => {
         if (resp.ok) {
           const data = await resp.json();
           console.log(`SSB data keys: ${Object.keys(data).join(', ')}`);
-          console.log(`SSB value: ${JSON.stringify(data.value)}`);
-          if (data.value && data.value.length > 0 && data.value[0] !== null) {
-            const pop = data.value[0];
+          // json-stat2: sum values for both sexes
+          if (data.value && data.value.length > 0) {
+            const pop = data.value.reduce((sum: number, v: number | null) => sum + (v || 0), 0);
             const timeDim = data.dimension?.Tid;
-            let year = '2024';
+            let year = '2025';
             if (timeDim?.category?.label) {
               const labels = Object.values(timeDim.category.label) as string[];
               year = labels[labels.length - 1] || year;
             }
+            console.log(`SSB population for ${municipality_name}: ${pop} (year: ${year})`);
             indicators.push({ id: 'population', name: 'Folkemengde', value: pop, unit: 'personer', year });
             ssbSuccess = true;
           }
