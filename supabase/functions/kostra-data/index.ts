@@ -265,17 +265,22 @@ Deno.serve(async (req) => {
     let areaKm2: number | null = null;
     let source = 'estimated';
 
+    // Normalize name: strip parenthetical disambiguation like "Bø (Nordland)" → "Bø"
+    const searchName = municipality_name.replace(/\s*\(.*?\)\s*$/, '').trim();
+
     // ── Step 1: Resolve municipality code ──────────────────────────────
-    // Try hardcoded first (instant), then Kartverket API (dynamic)
     if (FALLBACK_CODES[municipality_name]) {
       municipalityCode = FALLBACK_CODES[municipality_name];
       areaKm2 = FALLBACK_AREA[municipality_name] || null;
     }
 
-    // Always try Kartverket for accurate area data + code for unknown municipalities
-    const kartverket = await lookupMunicipality(municipality_name);
+    // Try Kartverket with normalized name, then original if different
+    let kartverket = await lookupMunicipality(searchName);
+    if (!kartverket && searchName !== municipality_name) {
+      kartverket = await lookupMunicipality(municipality_name);
+    }
     if (kartverket) {
-      municipalityCode = kartverket.code; // Kartverket has the most up-to-date codes
+      municipalityCode = kartverket.code;
       if (kartverket.areaKm2 > 0) {
         areaKm2 = kartverket.areaKm2;
       }
