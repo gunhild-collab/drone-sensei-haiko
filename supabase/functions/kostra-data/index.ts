@@ -97,7 +97,142 @@ async function fetchSSBPopulation(municipalityCode: string, municipalityName: st
   }
 }
 
+// ── SSB Table 12362: Fire protection stats per municipality ──────────────
+async function fetchFireStats(municipalityCode: string, municipalityName: string): Promise<{
+  total_fires?: number;
+  building_fires?: number;
+  chimney_fires?: number;
+  total_callouts?: number;
+  fire_expenditure_1000nok?: number;
+  fire_ftes?: number;
+  year?: string;
+} | null> {
+  try {
+    const ssbUrl = 'https://data.ssb.no/api/v0/no/table/12362';
+    const query = {
+      query: [
+        { code: 'Region', selection: { filter: 'item', values: [municipalityCode] } },
+        { code: 'ContentsCode', selection: { filter: 'item', values: [
+          'KOSbranbyg0000', // Building fires
+          'KOSpipbra0000',  // Chimney fires
+          'KOSutrykn0000',  // Total callouts
+          'KOSbrutdr0000',  // Total expenditure fire (1000 kr)
+          'KOSarsvrk0000',  // FTEs fire
+        ] } },
+        { code: 'Tid', selection: { filter: 'top', values: ['1'] } },
+      ],
+      response: { format: 'json-stat2' },
+    };
 
+    console.log(`SSB 12362 query for ${municipalityName} (${municipalityCode})`);
+    const resp = await fetch(ssbUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(query),
+      signal: AbortSignal.timeout(8000),
+    });
+
+    if (!resp.ok) {
+      console.log(`SSB 12362 error ${resp.status}`);
+      return null;
+    }
+
+    const data = await resp.json();
+    const values = data.value || [];
+    const contentIds = Object.keys(data.dimension?.ContentsCode?.category?.index || {});
+    
+    const result: any = {};
+    const timeDim = data.dimension?.Tid;
+    if (timeDim?.category?.label) {
+      const labels = Object.values(timeDim.category.label) as string[];
+      result.year = labels[labels.length - 1];
+    }
+
+    contentIds.forEach((id: string, i: number) => {
+      const val = values[i];
+      if (val == null) return;
+      switch (id) {
+        case 'KOSbranbyg0000': result.building_fires = val; break;
+        case 'KOSpipbra0000': result.chimney_fires = val; break;
+        case 'KOSutrykn0000': result.total_callouts = val; break;
+        case 'KOSbrutdr0000': result.fire_expenditure_1000nok = val; break;
+        case 'KOSarsvrk0000': result.fire_ftes = val; break;
+      }
+    });
+
+    if (result.building_fires != null || result.total_callouts != null) {
+      result.total_fires = (result.building_fires || 0) + (result.chimney_fires || 0);
+      console.log(`SSB 12362 result: ${municipalityName} fires=${result.total_fires}, callouts=${result.total_callouts}`);
+      return result;
+    }
+    return null;
+  } catch (e) {
+    console.log('SSB 12362 error:', e);
+    return null;
+  }
+}
+
+// ── SSB KOSTRA municipal economy ─────────────────────────────────────────
+async function fetchMunicipalEconomy(municipalityCode: string, municipalityName: string): Promise<{
+  fire_expenditure_1000nok?: number;
+  road_expenditure_1000nok?: number;
+  va_expenditure_1000nok?: number;
+  fire_ftes?: number;
+  year?: string;
+} | null> {
+  try {
+    // Table 12367: KOSTRA key figures by municipality
+    const ssbUrl = 'https://data.ssb.no/api/v0/no/table/12367';
+    const query = {
+      query: [
+        { code: 'Region', selection: { filter: 'item', values: [municipalityCode] } },
+        { code: 'ContentsCode', selection: { filter: 'item', values: [
+          'KOSbrutdr0000',  // Fire expenditure
+          'KOSveidrift0000', // Road maintenance
+          'KOSvadrift0000',  // VA operations
+        ] } },
+        { code: 'Tid', selection: { filter: 'top', values: ['1'] } },
+      ],
+      response: { format: 'json-stat2' },
+    };
+
+    const resp = await fetch(ssbUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(query),
+      signal: AbortSignal.timeout(8000),
+    });
+
+    if (!resp.ok) return null;
+
+    const data = await resp.json();
+    const values = data.value || [];
+    const contentIds = Object.keys(data.dimension?.ContentsCode?.category?.index || {});
+    
+    const result: any = {};
+    const timeDim = data.dimension?.Tid;
+    if (timeDim?.category?.label) {
+      const labels = Object.values(timeDim.category.label) as string[];
+      result.year = labels[labels.length - 1];
+    }
+
+    contentIds.forEach((id: string, i: number) => {
+      const val = values[i];
+      if (val == null) return;
+      switch (id) {
+        case 'KOSbrutdr0000': result.fire_expenditure_1000nok = val; break;
+        case 'KOSveidrift0000': result.road_expenditure_1000nok = val; break;
+        case 'KOSvadrift0000': result.va_expenditure_1000nok = val; break;
+      }
+    });
+
+    console.log(`KOSTRA economy for ${municipalityName}: fire=${result.fire_expenditure_1000nok}, road=${result.road_expenditure_1000nok}`);
+    return Object.keys(result).length > 1 ? result : null;
+  } catch (e) {
+    console.log('KOSTRA economy error:', e);
+    return null;
+  }
+}
 
 
 // ── Hardcoded fallback data (subset of major municipalities) ─────────────
