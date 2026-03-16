@@ -182,37 +182,45 @@ Deno.serve(async (req) => {
     // Try SSB API for population data (table 07459)
     if (municipalityCode) {
       try {
-        const ssbUrl = 'https://data.ssb.no/api/v0/no/table/07459';
+        // Use v1 POST API for table 07459
+        const ssbUrl = 'https://data.ssb.no/api/v0/en/table/07459';
         const query = {
           query: [
             { code: 'Region', selection: { filter: 'item', values: [municipalityCode] } },
-            { code: 'Alder', selection: { filter: 'vs', values: ['999'] } },
-            { code: 'ContentsCode', selection: { filter: 'item', values: ['Folkemengde'] } },
+            { code: 'Kjonn', selection: { filter: 'all', values: ['*'] } },
+            { code: 'Alder', selection: { filter: 'all', values: ['*'] } },
             { code: 'Tid', selection: { filter: 'top', values: ['1'] } },
           ],
           response: { format: 'json-stat2' },
         };
 
-        console.log(`Fetching SSB data for ${municipality_name} (${municipalityCode})`);
+        console.log(`Fetching SSB v1 data for ${municipality_name} (${municipalityCode})`);
         const resp = await fetch(ssbUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(query),
+          signal: AbortSignal.timeout(8000),
         });
 
+        console.log(`SSB response status: ${resp.status}`);
         if (resp.ok) {
           const data = await resp.json();
-          if (data.value && data.value.length > 0 && data.value[0] !== null) {
-            const pop = data.value[0];
+          // Sum all values (all ages × both sexes) to get total population
+          if (data.value && data.value.length > 0) {
+            const pop = data.value.reduce((sum: number, v: number | null) => sum + (v || 0), 0);
             const timeDim = data.dimension?.Tid;
-            let year = '2024';
+            let year = '2025';
             if (timeDim?.category?.label) {
               const labels = Object.values(timeDim.category.label) as string[];
               year = labels[labels.length - 1] || year;
             }
+            console.log(`SSB population for ${municipality_name}: ${pop} (year: ${year}), values count: ${data.value.length}`);
             indicators.push({ id: 'population', name: 'Folkemengde', value: pop, unit: 'personer', year });
             ssbSuccess = true;
           }
+        } else {
+          const errText = await resp.text();
+          console.log(`SSB API error ${resp.status}: ${errText}`);
         }
       } catch (e) {
         console.log('SSB API error:', e);
