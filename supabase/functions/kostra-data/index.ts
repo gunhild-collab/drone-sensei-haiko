@@ -10,38 +10,25 @@ async function lookupMunicipality(name: string): Promise<{ code: string; areaKm2
     const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
     if (!resp.ok) { await resp.text(); return null; }
     const data = await resp.json();
-    
-    // API returns { antallTreff, kommuner: [...] }
     const results = data?.kommuner || [];
-    if (results.length === 0) {
-      console.log(`Kartverket: no results for "${name}"`);
-      return null;
-    }
-    
-    const exact = results.find((m: any) => 
+    if (results.length === 0) return null;
+    const exact = results.find((m: any) =>
       m.kommunenavnNorsk?.toLowerCase() === name.toLowerCase() ||
       m.kommunenavn?.toLowerCase() === name.toLowerCase()
     );
     const match = exact || results[0];
     const code = match.kommunenummer;
     const officialName = match.kommunenavnNorsk || match.kommunenavn || name;
-    
-    // Calculate approximate area from bounding box
     let areaKm2 = 0;
     if (match.avgrensningsboks?.coordinates?.[0]) {
       const coords = match.avgrensningsboks.coordinates[0];
       const west = coords[0][0], south = coords[0][1];
       const east = coords[2][0], north = coords[2][1];
-      // Approximate area using lat/lng bounding box
       const latMid = (south + north) / 2;
       const kmPerDegLat = 111.32;
       const kmPerDegLng = 111.32 * Math.cos(latMid * Math.PI / 180);
-      const heightKm = (north - south) * kmPerDegLat;
-      const widthKm = (east - west) * kmPerDegLng;
-      // Bbox area × 0.65 factor (municipalities aren't rectangles)
-      areaKm2 = Math.round(heightKm * widthKm * 0.65);
+      areaKm2 = Math.round((north - south) * kmPerDegLat * (east - west) * kmPerDegLng * 0.65);
     }
-    
     console.log(`Kartverket: "${name}" → ${code} (${officialName}, ~${areaKm2} km²)`);
     return { code, areaKm2, officialName };
   } catch (e) {
@@ -50,201 +37,234 @@ async function lookupMunicipality(name: string): Promise<{ code: string; areaKm2
   }
 }
 
-// ── SSB API: fetch population for a municipality code ────────────────────
-async function fetchSSBPopulation(municipalityCode: string, municipalityName: string): Promise<{ population: number; year: string } | null> {
+// ── SSB API: fetch population ────────────────────────────────────────────
+async function fetchSSBPopulation(code: string, name: string): Promise<{ population: number; year: string } | null> {
   try {
-    const ssbUrl = 'https://data.ssb.no/api/v0/en/table/07459';
-    const query = {
-      query: [
-        { code: 'Region', selection: { filter: 'item', values: [municipalityCode] } },
-        { code: 'Kjonn', selection: { filter: 'all', values: ['*'] } },
-        { code: 'Alder', selection: { filter: 'all', values: ['*'] } },
-        { code: 'Tid', selection: { filter: 'top', values: ['1'] } },
-      ],
-      response: { format: 'json-stat2' },
-    };
-
-    console.log(`SSB query for ${municipalityName} (${municipalityCode})`);
-    const resp = await fetch(ssbUrl, {
+    const resp = await fetch('https://data.ssb.no/api/v0/en/table/07459', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(query),
+      body: JSON.stringify({
+        query: [
+          { code: 'Region', selection: { filter: 'item', values: [code] } },
+          { code: 'Kjonn', selection: { filter: 'all', values: ['*'] } },
+          { code: 'Alder', selection: { filter: 'all', values: ['*'] } },
+          { code: 'Tid', selection: { filter: 'top', values: ['1'] } },
+        ],
+        response: { format: 'json-stat2' },
+      }),
       signal: AbortSignal.timeout(8000),
     });
-
-    if (!resp.ok) {
-      const errText = await resp.text();
-      console.log(`SSB error ${resp.status}: ${errText}`);
-      return null;
-    }
-
+    if (!resp.ok) return null;
     const data = await resp.json();
-    if (data.value && data.value.length > 0) {
+    if (data.value?.length > 0) {
       const pop = data.value.reduce((sum: number, v: number | null) => sum + (v || 0), 0);
       const timeDim = data.dimension?.Tid;
-      let year = '2025';
+      let year = '2024';
       if (timeDim?.category?.label) {
         const labels = Object.values(timeDim.category.label) as string[];
         year = labels[labels.length - 1] || year;
       }
-      console.log(`SSB result: ${municipalityName} = ${pop} (${year})`);
       return { population: pop, year };
     }
     return null;
-  } catch (e) {
-    console.log('SSB API error:', e);
-    return null;
-  }
+  } catch { return null; }
 }
 
-// ── Fire stats: population-based estimates from DSB national averages ─────
-// Uses different rates per population bracket for more accurate estimates
-function estimateFireStats(population: number | null, municipalityName: string, areaKm2: number | null): {
-  total_fires: number;
-  building_fires: number;
-  chimney_fires: number;
-  total_callouts: number;
-  fire_expenditure_1000nok: number;
-  fire_ftes: number;
+// ── SSB Table 12362: Sector-level KOSTRA expenditure & staffing ─────────
+// ContentsCode mapping for sector-level data:
+// Brann: KS1.Brutto driftsutgifter i 1000 kr, funksjon 338 → use KS1.BrDrUtg338
+// Plan/bygg: funksjon 301,302,303,304 → KS1.BrDrUtg301 etc.
+// BUT 12362 only has aggregate. We need table 12367 for function-level detail.
+//
+// SSB Table 12367: "Brutto driftsutgifter" by function, per municipality.
+// Functions: 338 (brann), 332 (vei), 345 (VA avløp), 340 (VA vann),
+//            301 (plansak), 302 (byggesak), 329 (samferdsel), 360 (naturforv),
+//            385 (land/skog), 242 (helse), 234 (aktivisering), 265 (omsorg).
+
+interface SectorData {
+  sector: string;
+  expenditure_1000nok: number | null;
+  employees_fte: number | null;
   year: string;
   source: string;
-} | null {
-  if (!population) return null;
-  
-  // Different rates per population bracket (DSB 2023 differentiated data)
-  let rates;
-  if (population < 5000) {
-    rates = {
-      building_fires_per1k: 0.55,  // Higher rate in small municipalities
-      chimney_fires_per1k: 0.50,   // More chimney fires in rural areas
-      callouts_per1k: 3.2,         // Fewer total callouts
-      expenditure_per_cap: 3500,   // Higher per-capita cost (fixed costs spread over fewer)
-      ftes_per_10k: 12.0,          // Higher FTE ratio in small municipalities
-    };
-  } else if (population < 20000) {
-    rates = {
-      building_fires_per1k: 0.45,
-      chimney_fires_per1k: 0.35,
-      callouts_per1k: 4.0,
-      expenditure_per_cap: 2800,
-      ftes_per_10k: 8.5,
-    };
-  } else if (population < 50000) {
-    rates = {
-      building_fires_per1k: 0.42,
-      chimney_fires_per1k: 0.25,
-      callouts_per1k: 5.0,
-      expenditure_per_cap: 2400,
-      ftes_per_10k: 7.0,
-    };
-  } else {
-    rates = {
-      building_fires_per1k: 0.38,
-      chimney_fires_per1k: 0.15,   // Fewer chimneys in urban areas
-      callouts_per1k: 6.5,         // More callouts in cities
-      expenditure_per_cap: 2200,   // Lower per-capita (economies of scale)
-      ftes_per_10k: 6.0,
-    };
-  }
-  
-  // Adjust for area — large area means more spread-out response
-  const areaFactor = areaKm2 && areaKm2 > 1000 ? 1.15 : 1.0;
-  
-  const building_fires = Math.round(population / 1000 * rates.building_fires_per1k);
-  const chimney_fires = Math.round(population / 1000 * rates.chimney_fires_per1k);
-  const total_callouts = Math.round(population / 1000 * rates.callouts_per1k * areaFactor);
-  const fire_expenditure_1000nok = Math.round(population * rates.expenditure_per_cap / 1000);
-  const fire_ftes = Math.round(population / 10000 * rates.ftes_per_10k * areaFactor * 10) / 10;
-
-  console.log(`Fire stats (differentiated estimate) for ${municipalityName}: pop=${population}, bracket=${population < 5000 ? 'small' : population < 20000 ? 'mid' : population < 50000 ? 'large' : 'urban'}, fires=${building_fires + chimney_fires}, callouts=${total_callouts}, expenditure=${fire_expenditure_1000nok}k`);
-  return {
-    total_fires: building_fires + chimney_fires,
-    building_fires,
-    chimney_fires,
-    total_callouts,
-    fire_expenditure_1000nok,
-    fire_ftes,
-    year: '2024',
-    source: 'differentiated_estimate',
-  };
 }
 
-// ── SSB Municipal Economy: Fetch key economic indicators ─────────────────
-async function fetchMunicipalEconomy(code: string, name: string, population: number | null): Promise<{
-  total_operating_expenditure_1000nok: number | null;
-  gross_investment_1000nok: number | null;
-  net_operating_result_pct: number | null;
-  free_disposable_income_per_cap: number | null;
-  employees_total: number | null;
-  source: string;
-}> {
-  // Try SSB table 12362 for KOSTRA financial data
-  try {
-    const ssbUrl = 'https://data.ssb.no/api/v0/no/table/12362';
-    const indicators = ['KS1.BrDrUtg', 'KS1.BrInvUtg', 'KS1.NetDrRes'];
-    const query = {
-      query: [
-        { code: 'Region', selection: { filter: 'item', values: [code] } },
-        { code: 'ContentsCode', selection: { filter: 'item', values: indicators } },
-        { code: 'Tid', selection: { filter: 'top', values: ['1'] } },
-      ],
-      response: { format: 'json-stat2' },
-    };
+// KOSTRA function codes mapped to our department sectors
+const KOSTRA_FUNCTIONS: Record<string, { functions: string[]; label: string }> = {
+  'Brann': { functions: ['338', '339'], label: 'Brann og ulykkesvern' },
+  'Drift/vei': { functions: ['332', '333', '334'], label: 'Kommunale veier og samferdsel' },
+  'VA': { functions: ['340', '345', '350', '353'], label: 'Vann, avløp og renovasjon' },
+  'Plan': { functions: ['301', '302', '303', '304'], label: 'Plansak og byggesak' },
+  'Miljø': { functions: ['360', '365'], label: 'Naturforvaltning og friluftsliv' },
+  'Landbruk': { functions: ['329'], label: 'Landbruk og skogbruk' },
+  'Helse': { functions: ['232', '233', '234', '241', '242'], label: 'Helse og omsorg' },
+  'Eiendom': { functions: ['221', '222', '261'], label: 'Kommunal eiendom' },
+};
 
-    console.log(`SSB economy query for ${name} (${code})`);
-    const resp = await fetch(ssbUrl, {
+async function fetchSectorExpenditure(code: string, name: string): Promise<SectorData[]> {
+  // Collect all function codes we need
+  const allFunctions = Object.values(KOSTRA_FUNCTIONS).flatMap(s => s.functions);
+  
+  try {
+    // SSB table 12367: Gross operating expenditure by function per municipality
+    const resp = await fetch('https://data.ssb.no/api/v0/no/table/12367', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(query),
-      signal: AbortSignal.timeout(8000),
+      body: JSON.stringify({
+        query: [
+          { code: 'Region', selection: { filter: 'item', values: [code] } },
+          { code: 'Funksjon', selection: { filter: 'item', values: allFunctions } },
+          { code: 'ContentsCode', selection: { filter: 'item', values: ['KOSbdr1000'] } },
+          { code: 'Tid', selection: { filter: 'top', values: ['1'] } },
+        ],
+        response: { format: 'json-stat2' },
+      }),
+      signal: AbortSignal.timeout(10000),
     });
 
-    if (resp.ok) {
-      const data = await resp.json();
-      if (data.value && data.value.length > 0) {
-        console.log(`SSB economy success for ${name}: ${data.value.length} values`);
-        return {
-          total_operating_expenditure_1000nok: data.value[0] || null,
-          gross_investment_1000nok: data.value[1] || null,
-          net_operating_result_pct: data.value[2] || null,
-          free_disposable_income_per_cap: null,
-          employees_total: population ? Math.round(population * 0.08) : null, // ~8% of pop works in municipality
-          source: 'ssb_12362',
-        };
+    if (!resp.ok) {
+      console.log(`SSB 12367 failed ${resp.status} for ${name}`);
+      return [];
+    }
+
+    const data = await resp.json();
+    if (!data.value || !data.dimension) return [];
+
+    // Parse the json-stat2 response
+    const funDim = data.dimension.Funksjon;
+    const timeDim = data.dimension.Tid;
+    const funCodes = funDim?.category?.index ? Object.keys(funDim.category.index) : [];
+    const funLabels = funDim?.category?.label || {};
+    const timeLabels = timeDim?.category?.label || {};
+    const year = Object.values(timeLabels)[0] as string || '2024';
+
+    // Map values back: data.value is flat array indexed by [function][time]
+    const valueByFunction: Record<string, number> = {};
+    funCodes.forEach((fc: string, i: number) => {
+      const val = data.value[i];
+      if (val !== null && val !== undefined) {
+        valueByFunction[fc] = val;
+      }
+    });
+
+    console.log(`SSB 12367 for ${name}: got ${Object.keys(valueByFunction).length} function values, year=${year}`);
+
+    // Aggregate per sector
+    const results: SectorData[] = [];
+    for (const [sector, cfg] of Object.entries(KOSTRA_FUNCTIONS)) {
+      let total = 0;
+      let hasData = false;
+      for (const fn of cfg.functions) {
+        if (valueByFunction[fn] !== undefined) {
+          total += valueByFunction[fn];
+          hasData = true;
+        }
+      }
+      if (hasData) {
+        results.push({
+          sector,
+          expenditure_1000nok: Math.round(total),
+          employees_fte: null, // filled separately
+          year,
+          source: 'ssb_12367',
+        });
       }
     }
+    return results;
   } catch (e) {
-    console.log('SSB economy fetch failed, using estimates:', e);
+    console.log('SSB 12367 fetch failed:', e);
+    return [];
   }
-  
-  // Fallback: population-based estimates
-  if (!population) return { total_operating_expenditure_1000nok: null, gross_investment_1000nok: null, net_operating_result_pct: null, free_disposable_income_per_cap: null, employees_total: null, source: 'none' };
-  
-  // Norwegian municipal budget averages per capita (KOSTRA 2023)
-  let opexPerCap, investPerCap;
-  if (population < 5000) {
-    opexPerCap = 95000; investPerCap = 18000;
-  } else if (population < 20000) {
-    opexPerCap = 85000; investPerCap = 15000;
-  } else if (population < 50000) {
-    opexPerCap = 78000; investPerCap = 14000;
-  } else {
-    opexPerCap = 72000; investPerCap = 12000;
+}
+
+// ── SSB Table 11567: Municipal employees by service area ─────────────────
+// Uses "avtalte årsverk" (agreed FTEs) by function group
+async function fetchSectorStaffing(code: string, name: string): Promise<Record<string, number>> {
+  try {
+    // Table 11567: Sysselsatte i kommuneforvaltningen
+    // Function groups that map to our sectors
+    const staffFunctions = [
+      'F338a339', // Brann
+      'F332a334', // Vei
+      'F340a345a350a353', // VA
+      'F300a304', // Plan/bygg
+      'F360a365', // Miljø
+      'F232a242', // Helse
+    ];
+    
+    const resp = await fetch('https://data.ssb.no/api/v0/no/table/11567', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: [
+          { code: 'Region', selection: { filter: 'item', values: [code] } },
+          { code: 'Funksjon', selection: { filter: 'item', values: staffFunctions } },
+          { code: 'ContentsCode', selection: { filter: 'item', values: ['Avtal1'] } },
+          { code: 'Tid', selection: { filter: 'top', values: ['1'] } },
+        ],
+        response: { format: 'json-stat2' },
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (!resp.ok) {
+      console.log(`SSB 11567 failed ${resp.status} for ${name}`);
+      return {};
+    }
+
+    const data = await resp.json();
+    if (!data.value || !data.dimension) return {};
+
+    const funDim = data.dimension.Funksjon;
+    const funCodes = funDim?.category?.index ? Object.keys(funDim.category.index) : [];
+    
+    const result: Record<string, number> = {};
+    const sectorMap: Record<string, string> = {
+      'F338a339': 'Brann',
+      'F332a334': 'Drift/vei',
+      'F340a345a350a353': 'VA',
+      'F300a304': 'Plan',
+      'F360a365': 'Miljø',
+      'F232a242': 'Helse',
+    };
+    
+    funCodes.forEach((fc: string, i: number) => {
+      const val = data.value[i];
+      const sector = sectorMap[fc];
+      if (val !== null && val !== undefined && sector) {
+        result[sector] = Math.round(val * 10) / 10;
+      }
+    });
+
+    console.log(`SSB 11567 staffing for ${name}: ${JSON.stringify(result)}`);
+    return result;
+  } catch (e) {
+    console.log('SSB 11567 fetch failed:', e);
+    return {};
   }
-  
+}
+
+// ── Fire stats estimates (fallback) ──────────────────────────────────────
+function estimateFireStats(population: number | null, name: string, areaKm2: number | null) {
+  if (!population) return null;
+  let rates;
+  if (population < 5000) rates = { building_fires_per1k: 0.55, chimney_fires_per1k: 0.50, callouts_per1k: 3.2, expenditure_per_cap: 3500, ftes_per_10k: 12.0 };
+  else if (population < 20000) rates = { building_fires_per1k: 0.45, chimney_fires_per1k: 0.35, callouts_per1k: 4.0, expenditure_per_cap: 2800, ftes_per_10k: 8.5 };
+  else if (population < 50000) rates = { building_fires_per1k: 0.42, chimney_fires_per1k: 0.25, callouts_per1k: 5.0, expenditure_per_cap: 2400, ftes_per_10k: 7.0 };
+  else rates = { building_fires_per1k: 0.38, chimney_fires_per1k: 0.15, callouts_per1k: 6.5, expenditure_per_cap: 2200, ftes_per_10k: 6.0 };
+  const areaFactor = areaKm2 && areaKm2 > 1000 ? 1.15 : 1.0;
+  const building_fires = Math.round(population / 1000 * rates.building_fires_per1k);
+  const chimney_fires = Math.round(population / 1000 * rates.chimney_fires_per1k);
   return {
-    total_operating_expenditure_1000nok: Math.round(population * opexPerCap / 1000),
-    gross_investment_1000nok: Math.round(population * investPerCap / 1000),
-    net_operating_result_pct: population < 10000 ? 1.5 : 2.5,
-    free_disposable_income_per_cap: null,
-    employees_total: Math.round(population * 0.08),
-    source: 'estimated',
+    total_fires: building_fires + chimney_fires, building_fires, chimney_fires,
+    total_callouts: Math.round(population / 1000 * rates.callouts_per1k * areaFactor),
+    fire_expenditure_1000nok: Math.round(population * rates.expenditure_per_cap / 1000),
+    fire_ftes: Math.round(population / 10000 * rates.ftes_per_10k * areaFactor * 10) / 10,
+    year: '2024', source: 'differentiated_estimate',
   };
 }
 
-
-
-// ── Hardcoded fallback data (subset of major municipalities) ─────────────
+// ── Hardcoded fallbacks ──────────────────────────────────────────────────
 const FALLBACK_CODES: Record<string, string> = {
   'Oslo': '0301', 'Bergen': '4601', 'Trondheim': '5001', 'Stavanger': '1103',
   'Bærum': '3024', 'Kristiansand': '4204', 'Drammen': '3005', 'Asker': '3025',
@@ -264,87 +284,39 @@ const FALLBACK_POP: Record<string, number> = {
   'Oslo': 710000, 'Bergen': 290000, 'Trondheim': 210000, 'Stavanger': 145000,
   'Bærum': 130000, 'Kristiansand': 112000, 'Drammen': 101000, 'Asker': 100000,
   'Lillestrøm': 88000, 'Fredrikstad': 84000, 'Sandnes': 80000, 'Tromsø': 78000,
-  'Ålesund': 67000, 'Bodø': 53000, 'Verdal': 15000, 'Steinkjer': 22000,
-  'Stjørdal': 24000, 'Levanger': 20000, 'Namsos': 13000, 'Rana': 27000,
-  'Narvik': 22000, 'Harstad': 25000, 'Alta': 22000, 'Hammerfest': 11000,
-  'Haugesund': 37000, 'Molde': 32000, 'Kristiansund': 24000, 'Gjøvik': 30000,
-  'Hamar': 32000, 'Lillehammer': 29000, 'Kongsvinger': 17000, 'Ullensaker': 40000,
-  'Sola': 27000, 'Ringebu': 4700, 'Arendal': 46000, 'Larvik': 48000,
-  'Sandefjord': 65000, 'Tønsberg': 55000, 'Skien': 57000, 'Porsgrunn': 35000,
-  'Moss': 33000, 'Halden': 32000, 'Sarpsborg': 61000, 'Lørenskog': 44000,
-  'Karmøy': 43000,
+  'Ålesund': 67000, 'Bodø': 53000, 'Rana': 27000, 'Ringebu': 4700,
 };
 
 const FALLBACK_AREA: Record<string, number> = {
-  'Oslo': 454, 'Bergen': 465, 'Trondheim': 342, 'Stavanger': 71,
-  'Bærum': 191, 'Kristiansand': 560, 'Drammen': 138, 'Asker': 101,
-  'Lillestrøm': 78, 'Fredrikstad': 290, 'Sandnes': 304, 'Tromsø': 2566,
-  'Ålesund': 99, 'Bodø': 1395, 'Verdal': 1548, 'Steinkjer': 1564,
-  'Stjørdal': 541, 'Levanger': 655, 'Namsos': 780, 'Rana': 4460,
-  'Narvik': 2023, 'Harstad': 447, 'Alta': 3849, 'Hammerfest': 2653,
-  'Haugesund': 73, 'Molde': 1501, 'Kristiansund': 88, 'Gjøvik': 673,
-  'Hamar': 351, 'Lillehammer': 477, 'Kongsvinger': 1036, 'Ullensaker': 253,
-  'Sola': 70, 'Ringebu': 1291, 'Arendal': 271, 'Larvik': 534,
-  'Sandefjord': 416, 'Tønsberg': 329, 'Skien': 779, 'Porsgrunn': 163,
-  'Moss': 64, 'Halden': 642, 'Sarpsborg': 407, 'Lørenskog': 71,
-  'Karmøy': 233,
+  'Oslo': 454, 'Bergen': 465, 'Trondheim': 342, 'Tromsø': 2566,
+  'Bodø': 1395, 'Rana': 4460, 'Ringebu': 1291,
 };
 
-// SSB centrality index (1=most central, 6=least central)
 const CENTRALITY: Record<string, number> = {
   'Oslo': 1, 'Bergen': 1, 'Trondheim': 1, 'Stavanger': 1,
-  'Bærum': 1, 'Kristiansand': 2, 'Drammen': 1, 'Asker': 1,
-  'Lillestrøm': 1, 'Fredrikstad': 2, 'Sandnes': 1, 'Tromsø': 2,
-  'Ålesund': 2, 'Bodø': 3, 'Verdal': 4, 'Steinkjer': 3,
-  'Stjørdal': 2, 'Levanger': 3, 'Namsos': 4, 'Rana': 4,
-  'Narvik': 4, 'Harstad': 3, 'Alta': 4, 'Hammerfest': 5,
-  'Haugesund': 2, 'Molde': 3, 'Kristiansund': 3, 'Gjøvik': 3,
-  'Hamar': 2, 'Lillehammer': 3, 'Kongsvinger': 4, 'Ullensaker': 1,
-  'Sola': 1, 'Ringebu': 5, 'Arendal': 2, 'Larvik': 2,
-  'Sandefjord': 2, 'Tønsberg': 2, 'Skien': 2, 'Porsgrunn': 2,
-  'Moss': 2, 'Halden': 3, 'Sarpsborg': 2, 'Lørenskog': 1,
-  'Karmøy': 2,
+  'Bærum': 1, 'Kristiansand': 2, 'Drammen': 1, 'Tromsø': 2,
+  'Bodø': 3, 'Ringebu': 5,
 };
 
-// Municipalities with controlled airspace (CTR/ATZ) near airports
 const CONTROLLED_AIRSPACE: Record<string, { type: string; airport: string; radius_km: number }> = {
   'Oslo': { type: 'TMA', airport: 'ENGM Gardermoen', radius_km: 30 },
   'Ullensaker': { type: 'CTR', airport: 'ENGM Gardermoen', radius_km: 15 },
-  'Lørenskog': { type: 'TMA', airport: 'ENGM Gardermoen', radius_km: 25 },
-  'Bærum': { type: 'TMA', airport: 'ENGM/ENRY', radius_km: 20 },
   'Bergen': { type: 'CTR', airport: 'ENBR Flesland', radius_km: 15 },
   'Stavanger': { type: 'CTR', airport: 'ENZV Sola', radius_km: 15 },
-  'Sola': { type: 'CTR', airport: 'ENZV Sola', radius_km: 10 },
-  'Sandnes': { type: 'TMA', airport: 'ENZV Sola', radius_km: 20 },
   'Trondheim': { type: 'CTR', airport: 'ENVA Værnes', radius_km: 15 },
-  'Stjørdal': { type: 'CTR', airport: 'ENVA Værnes', radius_km: 10 },
   'Tromsø': { type: 'CTR', airport: 'ENTC Langnes', radius_km: 10 },
   'Bodø': { type: 'CTR', airport: 'ENBO Bodø', radius_km: 12 },
   'Kristiansand': { type: 'CTR', airport: 'ENCN Kjevik', radius_km: 10 },
-  'Ålesund': { type: 'CTR', airport: 'ENAL Vigra', radius_km: 10 },
-  'Haugesund': { type: 'CTR', airport: 'ENHD Karmøy', radius_km: 10 },
-  'Karmøy': { type: 'CTR', airport: 'ENHD Karmøy', radius_km: 8 },
-  'Molde': { type: 'ATZ', airport: 'ENML Årø', radius_km: 8 },
-  'Kristiansund': { type: 'ATZ', airport: 'ENKB Kvernberget', radius_km: 8 },
 };
 
 const PROTECTED_AREAS: Record<string, string[]> = {
   'Ringebu': ['Rondane nasjonalpark'],
-  'Lillehammer': ['Langsua nasjonalpark (nærområde)'],
   'Narvik': ['Ofoten landskapsvernområde'],
-  'Alta': ['Stabbursdalen nasjonalpark (nærområde)'],
-  'Tromsø': ['Lyngen landskapsvernområde'],
   'Rana': ['Saltfjellet–Svartisen nasjonalpark'],
   'Bodø': ['Sjunkhatten nasjonalpark'],
-  'Kongsvinger': ['Finnskogen'],
-  'Hammerfest': ['Seiland nasjonalpark'],
 };
 
-// Municipal services based on population bracket
-function inferServices(population: number | null): {
-  active_services: string[];
-  departments: Array<{ id: string; name: string; relevant_use_cases: string[] }>;
-} {
+function inferServices(population: number | null) {
   const pop = population || 5000;
   const baseDepts = [
     { id: 'teknisk', name: 'Teknisk drift', relevant_use_cases: ['UC06', 'UC04', 'UC17'] },
@@ -352,34 +324,9 @@ function inferServices(population: number | null): {
     { id: 'brann', name: 'Brann og redning', relevant_use_cases: ['UC12', 'UC13', 'UC14'] },
     { id: 'miljo', name: 'Miljø og klima', relevant_use_cases: ['UC09', 'UC10', 'UC11'] },
   ];
-  if (pop < 5000) {
-    return {
-      active_services: ['Teknisk drift', 'Plan og bygg', 'Brann (IKS)', 'Landbruk'],
-      departments: [...baseDepts, { id: 'landbruk', name: 'Landbruk', relevant_use_cases: ['UC15', 'UC16'] }],
-    };
-  }
-  if (pop < 20000) {
-    return {
-      active_services: ['Teknisk drift', 'Plan og bygg', 'Brann og redning', 'VA', 'Miljø', 'Eiendom', 'Landbruk'],
-      departments: [
-        ...baseDepts,
-        { id: 'va', name: 'Vann og avløp', relevant_use_cases: ['UC04', 'UC05'] },
-        { id: 'eiendom', name: 'Eiendom', relevant_use_cases: ['UC17', 'UC18'] },
-        { id: 'landbruk', name: 'Landbruk', relevant_use_cases: ['UC15', 'UC16'] },
-      ],
-    };
-  }
-  return {
-    active_services: ['Teknisk drift', 'Plan og bygg', 'Brann og redning', 'VA', 'Miljø', 'Eiendom', 'Geodata', 'Kultur', 'Helse'],
-    departments: [
-      ...baseDepts,
-      { id: 'va', name: 'Vann og avløp', relevant_use_cases: ['UC04', 'UC05'] },
-      { id: 'eiendom', name: 'Eiendom', relevant_use_cases: ['UC17', 'UC18'] },
-      { id: 'geodata', name: 'Geodata', relevant_use_cases: ['UC23', 'UC24'] },
-      { id: 'kultur', name: 'Kultur og turisme', relevant_use_cases: ['UC19', 'UC20'] },
-      { id: 'helse', name: 'Helse og omsorg', relevant_use_cases: ['UC21', 'UC22'] },
-    ],
-  };
+  if (pop < 5000) return { active_services: ['Teknisk drift', 'Plan og bygg', 'Brann (IKS)', 'Landbruk'], departments: [...baseDepts, { id: 'landbruk', name: 'Landbruk', relevant_use_cases: ['UC15', 'UC16'] }] };
+  if (pop < 20000) return { active_services: ['Teknisk drift', 'Plan og bygg', 'Brann og redning', 'VA', 'Miljø', 'Eiendom', 'Landbruk'], departments: [...baseDepts, { id: 'va', name: 'Vann og avløp', relevant_use_cases: ['UC04', 'UC05'] }, { id: 'eiendom', name: 'Eiendom', relevant_use_cases: ['UC17', 'UC18'] }, { id: 'landbruk', name: 'Landbruk', relevant_use_cases: ['UC15', 'UC16'] }] };
+  return { active_services: ['Teknisk drift', 'Plan og bygg', 'Brann og redning', 'VA', 'Miljø', 'Eiendom', 'Geodata', 'Kultur', 'Helse'], departments: [...baseDepts, { id: 'va', name: 'Vann og avløp', relevant_use_cases: ['UC04', 'UC05'] }, { id: 'eiendom', name: 'Eiendom', relevant_use_cases: ['UC17', 'UC18'] }, { id: 'geodata', name: 'Geodata', relevant_use_cases: ['UC23', 'UC24'] }, { id: 'kultur', name: 'Kultur og turisme', relevant_use_cases: ['UC19', 'UC20'] }, { id: 'helse', name: 'Helse og omsorg', relevant_use_cases: ['UC21', 'UC22'] }] };
 }
 
 function getPopulationBracket(pop: number | null): string {
@@ -390,49 +337,35 @@ function getPopulationBracket(pop: number | null): string {
 
 // ── Main handler ─────────────────────────────────────────────────────────
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
     const { municipality_name } = await req.json();
     if (!municipality_name) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Municipality name is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ success: false, error: 'Municipality name is required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const indicators: Array<{ id: string; name: string; value: number; unit: string; year?: string }> = [];
-    let ssbSuccess = false;
     let municipalityCode: string | null = null;
     let areaKm2: number | null = null;
     let source = 'estimated';
 
-    // Normalize name: strip parenthetical disambiguation like "Bø (Nordland)" → "Bø"
     const searchName = municipality_name.replace(/\s*\(.*?\)\s*$/, '').trim();
 
-    // ── Step 1: Resolve municipality code ──────────────────────────────
+    // Step 1: Resolve municipality code
     if (FALLBACK_CODES[municipality_name]) {
       municipalityCode = FALLBACK_CODES[municipality_name];
       areaKm2 = FALLBACK_AREA[municipality_name] || null;
     }
-
-    // Try Kartverket with normalized name, then original if different
     let kartverket = await lookupMunicipality(searchName);
-    if (!kartverket && searchName !== municipality_name) {
-      kartverket = await lookupMunicipality(municipality_name);
-    }
+    if (!kartverket && searchName !== municipality_name) kartverket = await lookupMunicipality(municipality_name);
     if (kartverket) {
       municipalityCode = kartverket.code;
-      if (kartverket.areaKm2 > 0) {
-        areaKm2 = kartverket.areaKm2;
-      }
+      if (kartverket.areaKm2 > 0) areaKm2 = kartverket.areaKm2;
     }
 
-
-
-    // ── Step 2: Fetch population from SSB ──────────────────────────────
+    // Step 2: Fetch population
+    let ssbSuccess = false;
     if (municipalityCode) {
       const ssb = await fetchSSBPopulation(municipalityCode, municipality_name);
       if (ssb) {
@@ -441,9 +374,6 @@ Deno.serve(async (req) => {
         source = 'ssb';
       }
     }
-
-
-    // ── Step 3: Fallback to hardcoded population ───────────────────────
     if (!ssbSuccess && FALLBACK_POP[municipality_name]) {
       indicators.push({ id: 'population', name: 'Folkemengde', value: FALLBACK_POP[municipality_name], unit: 'personer', year: '2024' });
       source = 'fallback';
@@ -453,12 +383,9 @@ Deno.serve(async (req) => {
     const bracket = getPopulationBracket(population);
     const centrality = CENTRALITY[municipality_name] || null;
 
-    // Add area
-    if (areaKm2) {
-      indicators.push({ id: 'area_km2', name: 'Areal', value: areaKm2, unit: 'km²', year: '2024' });
-    }
+    if (areaKm2) indicators.push({ id: 'area_km2', name: 'Areal', value: areaKm2, unit: 'km²', year: '2024' });
 
-    // ── Step 4: Derive drone-relevant metrics ──────────────────────────
+    // Step 3: Derived metrics
     const popDensity = population && areaKm2 ? Math.round(population / areaKm2) : null;
     const estimatedRoadKm = population ? Math.round(population * 0.015) : null;
     const estimatedBuildings = population ? Math.round(population * 0.4) : null;
@@ -475,7 +402,6 @@ Deno.serve(async (req) => {
     const airspace = CONTROLLED_AIRSPACE[municipality_name] || null;
     const protectedAreas = PROTECTED_AREAS[municipality_name] || [];
 
-    // Estimate centrality for unknown municipalities based on population
     let effectiveCentrality = centrality;
     if (!effectiveCentrality && population) {
       if (population > 50000) effectiveCentrality = 2;
@@ -498,6 +424,51 @@ Deno.serve(async (req) => {
       protected_areas: protectedAreas,
     };
 
+    // Step 4: Fetch KOSTRA sector-level expenditure + staffing in parallel
+    const [sectorExpenditure, sectorStaffing] = municipalityCode
+      ? await Promise.all([
+          fetchSectorExpenditure(municipalityCode, municipality_name),
+          fetchSectorStaffing(municipalityCode, municipality_name),
+        ])
+      : [[], {}];
+
+    // Merge staffing into expenditure data
+    const sectorData = sectorExpenditure.map(s => ({
+      ...s,
+      employees_fte: sectorStaffing[s.sector] ?? null,
+    }));
+
+    // Add sectors that have staffing but no expenditure
+    for (const [sector, fte] of Object.entries(sectorStaffing)) {
+      if (!sectorData.find(s => s.sector === sector)) {
+        sectorData.push({ sector, expenditure_1000nok: null, employees_fte: fte, year: '2024', source: 'ssb_11567' });
+      }
+    }
+
+    // Fallback: estimate sector budgets from population if SSB returned nothing
+    const ssbSectorSuccess = sectorData.length > 0;
+    let fallbackSectors: SectorData[] = [];
+    if (!ssbSectorSuccess && population) {
+      const pop = population;
+      const estSectors: Array<{ sector: string; perCapita: number; ftesPer10k: number }> = [
+        { sector: 'Brann', perCapita: pop < 5000 ? 3500 : pop < 20000 ? 2800 : 2400, ftesPer10k: pop < 5000 ? 12 : pop < 20000 ? 8.5 : 7 },
+        { sector: 'Drift/vei', perCapita: pop < 5000 ? 4200 : pop < 20000 ? 3500 : 3000, ftesPer10k: pop < 5000 ? 8 : pop < 20000 ? 6 : 5 },
+        { sector: 'VA', perCapita: pop < 5000 ? 4500 : pop < 20000 ? 3800 : 3200, ftesPer10k: pop < 5000 ? 5 : pop < 20000 ? 4 : 3.5 },
+        { sector: 'Plan', perCapita: pop < 5000 ? 1800 : pop < 20000 ? 1500 : 1200, ftesPer10k: pop < 5000 ? 3 : pop < 20000 ? 2.5 : 2 },
+        { sector: 'Miljø', perCapita: pop < 5000 ? 800 : pop < 20000 ? 700 : 600, ftesPer10k: pop < 5000 ? 1.5 : pop < 20000 ? 1.2 : 1 },
+        { sector: 'Helse', perCapita: pop < 5000 ? 35000 : pop < 20000 ? 32000 : 28000, ftesPer10k: pop < 5000 ? 60 : pop < 20000 ? 55 : 50 },
+      ];
+      fallbackSectors = estSectors.map(e => ({
+        sector: e.sector,
+        expenditure_1000nok: Math.round(pop * e.perCapita / 1000),
+        employees_fte: Math.round(pop / 10000 * e.ftesPer10k * 10) / 10,
+        year: '2024',
+        source: 'estimated',
+      }));
+    }
+
+    const finalSectors = ssbSectorSuccess ? sectorData : fallbackSectors;
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -509,7 +480,8 @@ Deno.serve(async (req) => {
         drone_relevance: droneRelevance,
         services,
         fire_stats: estimateFireStats(population, municipality_name, areaKm2),
-        municipal_economy: await fetchMunicipalEconomy(municipalityCode || '', municipality_name, population),
+        sector_data: finalSectors,
+        sector_data_source: ssbSectorSuccess ? 'ssb' : 'estimated',
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
