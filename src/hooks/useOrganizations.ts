@@ -49,6 +49,6 @@ export function useOrganizations(userId: string | undefined) {
 
   return { orgs, loading, createOrg, refetch: () => {
     if (!userId) return;
-    supabase.from("organizations").select("*").then(({ data }) => setOrgs((data as Organization[]) || []));
+    supabase.from("organizations").select("*").then(({ data }) => setOrgs(castOrgs(data || [])));
   }};
 }
