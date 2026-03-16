@@ -328,12 +328,15 @@ Deno.serve(async (req) => {
 
 
 
-    // ── Step 2: Fetch population + fire stats + economy in parallel ──────
-    const [ssbResult, fireStatsResult, economyResult] = await Promise.all([
-      municipalityCode ? fetchSSBPopulation(municipalityCode, municipality_name) : Promise.resolve(null),
-      municipalityCode ? fetchFireStats(municipalityCode, municipality_name) : Promise.resolve(null),
-      municipalityCode ? fetchMunicipalEconomy(municipalityCode, municipality_name) : Promise.resolve(null),
-    ]);
+    // ── Step 2: Fetch population from SSB ──────────────────────────────
+    if (municipalityCode) {
+      const ssb = await fetchSSBPopulation(municipalityCode, municipality_name);
+      if (ssb) {
+        indicators.push({ id: 'population', name: 'Folkemengde', value: ssb.population, unit: 'personer', year: ssb.year });
+        ssbSuccess = true;
+        source = 'ssb';
+      }
+    }
 
     if (ssbResult) {
       indicators.push({ id: 'population', name: 'Folkemengde', value: ssbResult.population, unit: 'personer', year: ssbResult.year });
