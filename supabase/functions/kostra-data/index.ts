@@ -183,7 +183,7 @@ Deno.serve(async (req) => {
     if (municipalityCode) {
       try {
         // Use v1 POST API for table 07459
-        const ssbUrl = 'https://data.ssb.no/api/v0/no/table/07459';
+        const ssbUrl = 'https://data.ssb.no/api/v0/en/table/07459';
         const query = {
           query: [
             { code: 'Region', selection: { filter: 'item', values: [municipalityCode] } },
