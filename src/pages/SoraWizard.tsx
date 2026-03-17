@@ -12,8 +12,6 @@ import PreStep from "@/components/sora/PreStep";
 import { MunicipalityData } from "@/components/sora/Step1Municipality";
 import Step2FlightArea, { FlightAreaData } from "@/components/sora/Step2FlightArea";
 import Step4Mitigations, { MitigationState } from "@/components/sora/Step4Mitigations";
-import Step5ScenarioForm, { ScenarioFormData } from "@/components/sora/Step5ScenarioForm";
-import Step6OSO from "@/components/sora/Step6OSO";
 import StepRequirements from "@/components/sora/StepRequirements";
 import StepActionPlan from "@/components/sora/StepActionPlan";
 import ContactHaiko from "@/components/sora/ContactHaiko";
