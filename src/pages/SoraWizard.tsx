@@ -385,6 +385,7 @@ export default function SoraWizard() {
             warnings={soraResult.warnings || []}
             groundMitigationTotal={results.groundMitigationTotal}
             airMitigationCount={results.airMitigationCount}
+            hasFlightArea={!!flightAreaData}
           />
         </div>
       </div>

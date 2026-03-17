@@ -16,6 +16,7 @@ interface Props {
   warnings: string[];
   groundMitigationTotal: number;
   airMitigationCount: number;
+  hasFlightArea: boolean;
 }
 
 const SCENARIO_INFO: Record<string, { emoji: string; label: string; shortDesc: string; fullDesc: string; allows: string[]; requires: string[]; submission: string }> = {
