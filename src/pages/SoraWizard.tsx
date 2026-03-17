@@ -14,6 +14,7 @@ import Step2FlightArea, { FlightAreaData } from "@/components/sora/Step2FlightAr
 import Step4Mitigations, { MitigationState } from "@/components/sora/Step4Mitigations";
 import Step5ScenarioForm, { ScenarioFormData } from "@/components/sora/Step5ScenarioForm";
 import Step6OSO from "@/components/sora/Step6OSO";
+import StepRequirements from "@/components/sora/StepRequirements";
 import StepOperationsManual from "@/components/sora/StepOperationsManual";
 import Step7Explanation from "@/components/sora/Step7Explanation";
 import Step8Documents from "@/components/sora/Step8Documents";
@@ -24,11 +25,12 @@ import LiveSoraPanel from "@/components/sora/LiveSoraPanel";
 const STEPS_FULL = [
   { label: 'Adresse & Kart', short: '1', id: 'flight-area' },
   { label: 'Mitigrasjoner', short: '2', id: 'mitigations' },
-  { label: 'Scenario', short: '3', id: 'scenario' },
-  { label: 'OSO', short: '4', id: 'oso' },
-  { label: 'Manual', short: '5', id: 'manual' },
-  { label: 'Forklaring', short: '6', id: 'explanation' },
-  { label: 'Dokumenter', short: '7', id: 'documents' },
+  { label: 'Krav', short: '3', id: 'requirements' },
+  { label: 'Scenario', short: '4', id: 'scenario' },
+  { label: 'OSO', short: '5', id: 'oso' },
+  { label: 'Manual', short: '6', id: 'manual' },
+  { label: 'Forklaring', short: '7', id: 'explanation' },
+  { label: 'Dokumenter', short: '8', id: 'documents' },
 ];
 
 const STEPS_OPEN = [
@@ -252,6 +254,16 @@ export default function SoraWizard() {
         );
       case 'mitigations':
         return <Step4Mitigations mitigations={mitigations} isBVLOS={derivedInputs.operationType === 'BVLOS'} onChange={updateMitigations} />;
+      case 'requirements':
+        return (
+          <StepRequirements
+            scenario={bestScenarioId}
+            sailRoman={results.sailRoman}
+            sail={results.sail}
+            operationType={derivedInputs.operationType}
+            droneName={derivedInputs.droneName}
+          />
+        );
       case 'scenario':
         return (
           <Step5ScenarioForm
