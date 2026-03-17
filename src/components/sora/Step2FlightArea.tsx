@@ -641,8 +641,56 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
         </div>
       )}
 
-      {/* Map */}
-      <div ref={mapContainerRef} className="w-full h-[450px] rounded-xl border border-sora-border" style={{ position: 'relative', zIndex: 1 }} />
+      {/* Map + restricted zones toggle */}
+      <div className="relative">
+        <div ref={mapContainerRef} className="w-full h-[450px] rounded-xl border border-sora-border" style={{ position: 'relative', zIndex: 1 }} />
+        <button
+          onClick={() => setShowRestrictedZones(!showRestrictedZones)}
+          className={`absolute top-3 right-3 z-[500] px-3 py-1.5 rounded-lg text-xs font-medium border backdrop-blur-sm transition-all flex items-center gap-1.5 ${
+            showRestrictedZones ? 'bg-destructive/80 border-destructive text-destructive-foreground' : 'bg-sora-surface/80 border-sora-border text-sora-text-dim'
+          }`}
+        >
+          <ShieldAlert className="w-3.5 h-3.5" strokeWidth={1.5} />
+          {showRestrictedZones ? 'Skjul restriksjoner' : 'Vis restriksjoner'}
+        </button>
+      </div>
+
+      {/* ── Restricted zone warnings ── */}
+      {overlappingZones.length > 0 && (
+        <div className="bg-destructive/10 border-2 border-destructive/50 rounded-xl p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="w-5 h-5 text-destructive shrink-0" strokeWidth={2} />
+            <div>
+              <p className="text-destructive font-bold text-sm">⚠️ Flygeområdet overlapper med restriksjonsområder!</p>
+              <p className="text-sora-text-dim text-xs mt-0.5">Flyvning i disse områdene krever spesiell tillatelse. Kontakt ansvarlig myndighet.</p>
+            </div>
+          </div>
+          <div className="space-y-2">
+            {overlappingZones.map(zone => {
+              const icon = zone.type === 'airport' ? <Plane className="w-4 h-4 shrink-0" strokeWidth={1.5} />
+                : zone.type === 'military' ? <Swords className="w-4 h-4 shrink-0" strokeWidth={1.5} />
+                : <Trees className="w-4 h-4 shrink-0" strokeWidth={1.5} />;
+              const color = ZONE_TYPE_COLORS[zone.type];
+              return (
+                <div key={zone.id} className="bg-sora-surface border border-sora-border rounded-lg p-3 flex items-start gap-3">
+                  <div className="mt-0.5" style={{ color }}>{icon}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sora-text font-semibold text-sm">{zone.name}</p>
+                      <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: color + '20', color }}>{ZONE_TYPE_LABELS[zone.type]}</span>
+                    </div>
+                    <p className="text-sora-text-dim text-xs mt-1">{zone.description}</p>
+                    <p className="text-sora-text text-xs mt-1.5 font-medium">📋 {zone.requirement}</p>
+                    {zone.link && (
+                      <a href={zone.link} target="_blank" rel="noopener noreferrer" className="text-sora-purple hover:underline text-xs mt-1 inline-block">Mer informasjon ↗</a>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Density status bar */}
       {localData?.polygon && (
