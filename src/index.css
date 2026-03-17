@@ -115,7 +115,10 @@
   border-radius: 8px;
   font-family: 'Montserrat', sans-serif;
   font-size: 14px;
-  padding: 10px 14px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  padding-left: 14px;
+  padding-right: 14px;
   background: white;
   color: #1c0059;
   transition: border-color 0.2s, box-shadow 0.2s;
