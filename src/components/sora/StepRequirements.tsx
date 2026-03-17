@@ -169,9 +169,9 @@ export default function StepRequirements({ scenario, sailRoman, sail, operationT
     setHasItem(prev => {
       const next = { ...prev, [id]: !prev[id] };
       if (next[id]) {
-        setCompleted(p => new Set(p).add(id));
+        setCompleted(p => { const n = new Set(p).add(id); onCompletedChange?.(n); return n; });
       } else {
-        setCompleted(p => { const n = new Set(p); n.delete(id); return n; });
+        setCompleted(p => { const n = new Set(p); n.delete(id); onCompletedChange?.(n); return n; });
       }
       return next;
     });
