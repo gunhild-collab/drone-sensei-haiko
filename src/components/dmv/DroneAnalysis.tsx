@@ -6,7 +6,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Loader2, Plane, Shield, GraduationCap, Clock, DollarSign, Users, MapPin,
   ChevronRight, ChevronDown, AlertTriangle, Flame, Route, Droplets,
-  Building2, TreePine, Heart, Map, Leaf, Sparkles, ArrowRight
+  Building2, TreePine, Heart, Map, Leaf, Sparkles, ArrowRight,
+  Info, BookOpen, Siren, Milestone
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
@@ -45,6 +46,7 @@ export interface DroneAnalysisResult {
       covers_use_cases: string[];
       training_description: string;
       estimated_training_days: number;
+      practical_outcome?: string;
     }>;
   };
   drone_fleet: Array<{
@@ -95,6 +97,155 @@ interface Props {
   } | null;
   onContinue: () => void;
   onBack: () => void;
+}
+
+/* ─── Reusable info-box widget ─── */
+function InfoBox({ title, icon, children, variant = "default" }: {
+  title: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+  variant?: "default" | "warning" | "accent";
+}) {
+  const variants = {
+    default: "border-primary/20 bg-primary/[0.03]",
+    warning: "border-chart-3/30 bg-chart-3/[0.04]",
+    accent: "border-accent/30 bg-accent/[0.04]",
+  };
+  const iconColors = {
+    default: "text-primary",
+    warning: "text-chart-3",
+    accent: "text-accent",
+  };
+  return (
+    <Card className={cn("border", variants[variant])}>
+      <CardContent className="pt-4 pb-3 space-y-2">
+        <div className="flex items-center gap-2">
+          <span className={iconColors[variant]}>{icon}</span>
+          <p className="text-sm font-display font-semibold">{title}</p>
+        </div>
+        <div className="text-xs text-muted-foreground leading-relaxed space-y-1.5">{children}</div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ─── "How to read this report" box ─── */
+function HowToReadBox() {
+  return (
+    <InfoBox title="Slik leser du denne rapporten" icon={<BookOpen className="w-4 h-4" />}>
+      <p>Rapporten skiller mellom tre typer innhold:</p>
+      <ul className="list-none space-y-1 ml-0">
+        <li className="flex items-start gap-2">
+          <Badge variant="outline" className="text-[9px] mt-0.5 flex-shrink-0 border-green-500/40 text-green-700">Fakta</Badge>
+          <span>Tekniske data fra produsent og gjeldende EASA/Luftfartstilsynet-regelverk.</span>
+        </li>
+        <li className="flex items-start gap-2">
+          <Badge variant="outline" className="text-[9px] mt-0.5 flex-shrink-0 border-blue-500/40 text-blue-700">Estimat</Badge>
+          <span>Flytimer, kostnader og dekningsområder beregnet av modellen basert på kommunedata — ikke historiske tall eller vedtatte budsjett.</span>
+        </li>
+        <li className="flex items-start gap-2">
+          <Badge variant="outline" className="text-[9px] mt-0.5 flex-shrink-0 border-purple-500/40 text-purple-700">Anbefaling</Badge>
+          <span>Strategiske forslag til implementering, IKS-samarbeid og organisering. Disse er scenarier for vurdering, ikke vedtatte tiltak.</span>
+        </li>
+      </ul>
+    </InfoBox>
+  );
+}
+
+/* ─── Glossary box ─── */
+function GlossaryBox() {
+  const terms = [
+    { term: "VLOS", desc: "Visual Line of Sight — piloten ser dronen hele tiden." },
+    { term: "BVLOS", desc: "Beyond Visual Line of Sight — dronen flyr utenfor synsrekkevidde, f.eks. fra en dronestasjon." },
+    { term: "A1/A3", desc: "Grunnleggende nettkurs for åpen kategori. Gir rett til å fly lette droner (<25 kg) med visuell kontakt." },
+    { term: "A2", desc: "Utvidet sertifikat for åpen kategori — gir rett til å fly nærmere mennesker med droner opp til 4 kg." },
+    { term: "STS-01/STS-02", desc: "Standardscenarier i spesifikk kategori. Krever erklæring, opplæring og operasjonsmanual." },
+    { term: "SORA", desc: "Specific Operations Risk Assessment — en systematisk risikovurdering for droneoperasjoner utenfor standardscenarier." },
+    { term: "PDRA", desc: "Predefined Risk Assessment — forhåndsdefinert risikoscenario som forenkler søknadsprosessen." },
+    { term: "ERP", desc: "Emergency Response Plan — beredskapsplan for uforutsette hendelser under flyging." },
+    { term: "OpAuth", desc: "Operasjonsautorisasjon — godkjenning fra Luftfartstilsynet som gir rett til å fly i spesifikk kategori." },
+    { term: "Spesifikk kategori", desc: "Droneoperasjoner som krever ekstra risikovurdering og tillatelse ut over åpen kategori." },
+  ];
+  return (
+    <InfoBox title="Ordliste — nøkkelbegreper" icon={<BookOpen className="w-4 h-4" />}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
+        {terms.map(t => (
+          <p key={t.term}><span className="font-semibold text-foreground">{t.term}:</span> {t.desc}</p>
+        ))}
+      </div>
+    </InfoBox>
+  );
+}
+
+/* ─── Journey / timeline box ─── */
+function JourneyBox() {
+  const steps = [
+    { n: 1, title: "Start enkelt", desc: "A1/A3-kompetanse + enkel operasjonsmanual + grunnleggende ERP. Fly med mikrodrone (f.eks. DJI Mini 4 Pro) til dokumentasjon og opplæring." },
+    { n: 2, title: "Utvid til STS/A2", desc: "STS-01-erklæring for standardiserte operasjoner. A2-sertifikat gir adgang til mer krevende VLOS-oppdrag nærmere mennesker med tyngre droner." },
+    { n: 3, title: "Spesifikk kategori / BVLOS", desc: "Full SORA-vurdering, komplett operasjonsmanual og utvidet ERP. Søknad om operasjonsautorisasjon (OpAuth) fra Luftfartstilsynet." },
+    { n: 4, title: "Autonome dronestasjoner og IKS", desc: "Etabler permanente dronestasjoner for autonom drift. Vurder samarbeid med nabokommuner for delte ressurser og kostnadsfordeling." },
+  ];
+  return (
+    <InfoBox title="Typisk modningsreise for kommunal dronebruk" icon={<Milestone className="w-4 h-4" />} variant="accent">
+      <div className="space-y-2 mt-1">
+        {steps.map(s => (
+          <div key={s.n} className="flex items-start gap-2.5">
+            <div className="w-5 h-5 rounded-full bg-accent/20 flex items-center justify-center text-accent font-bold text-[10px] flex-shrink-0 mt-0.5">{s.n}</div>
+            <div>
+              <p className="text-xs font-semibold text-foreground">{s.title}</p>
+              <p className="text-[11px]">{s.desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </InfoBox>
+  );
+}
+
+/* ─── Operations manual info box — dynamic ─── */
+function OpsManualBox({ hasSpecific }: { hasSpecific: boolean }) {
+  return (
+    <InfoBox title="Hva er en operasjonsmanual?" icon={<Info className="w-4 h-4" />}>
+      {hasSpecific ? (
+        <>
+          <p>
+            Når operasjoner går ut over åpen kategori (f.eks. STS, PDRA eller SORA-basert BVLOS), kreves en <strong>grundig operasjonsmanual</strong> etter SORA-logikk. Den bør inneholde:
+          </p>
+          <ul className="list-disc ml-4 space-y-0.5">
+            <li>Organisasjon og roller (driftsansvarlig, piloter, observatører)</li>
+            <li>Prosedyrer for normal, unormal og nødssituasjon</li>
+            <li>Teknisk vedlikehold og inspeksjon av droner</li>
+            <li>Opplæringsplan og kompetansekrav</li>
+            <li>Dokumentstyring og versjonskontroll</li>
+            <li>Kontinuerlig forbedring og hendelsesrapportering</li>
+          </ul>
+          <p className="mt-1">Luftfartstilsynet vurderer operasjonsmanualen som en del av søknaden om operasjonsautorisasjon.</p>
+        </>
+      ) : (
+        <p>
+          For operasjoner i åpen kategori (A1/A3) holder det med en <strong>enkel operasjonsmanual (1–2 sider)</strong> som kort beskriver hvem som flyr, hvor det flys, hvordan utstyret brukes, en enkel risikovurdering, og hva man gjør før, under og etter flyging.
+        </p>
+      )}
+    </InfoBox>
+  );
+}
+
+/* ─── ERP info box ─── */
+function ErpBox() {
+  return (
+    <InfoBox title="Emergency Response Plan (ERP)" icon={<Siren className="w-4 h-4" />} variant="warning">
+      <p>
+        En ERP beskriver hva man gjør ved <strong>tap av forbindelse, uforutsette hendelser, skade på tredjepart, brudd på geofencing eller teknisk feil</strong>. Planen definerer tydelige roller og kontaktpunkter.
+      </p>
+      <p className="font-semibold text-foreground mt-1">Slik kan kommunen implementere ERP i praksis:</p>
+      <ul className="list-disc ml-4 space-y-0.5">
+        <li>Koble droneoperasjoner til eksisterende beredskapsplaner og ROS-arbeid.</li>
+        <li>Inkluder dronehendelser som eget punkt i kommunens årlige beredskapsøvelser.</li>
+        <li>Utpek en kontaktperson for dronehendelser (f.eks. beredskapskoordinator).</li>
+        <li>Loggfør alle hendelser og avvik for systematisk læring og forbedring.</li>
+      </ul>
+    </InfoBox>
+  );
 }
 
 export default function DroneAnalysis({
@@ -184,6 +335,16 @@ export default function DroneAnalysis({
 
   if (!analysis) return null;
 
+  // Determine if report has specific-category operations
+  const hasSpecificCategory = analysis.department_analyses.some(d =>
+    d.use_cases.some(uc =>
+      uc.easa_category?.toLowerCase().includes("spesifikk") ||
+      uc.operation_type === "BVLOS" ||
+      uc.pilot_certification?.toLowerCase().includes("sts") ||
+      uc.pilot_certification?.toLowerCase().includes("sora")
+    )
+  );
+
   const priorityColor = (p: string) => {
     if (p === "Høy") return "bg-destructive/10 text-destructive border-destructive/20";
     if (p === "Medium") return "bg-chart-3/10 text-chart-3 border-chart-3/20";
@@ -202,6 +363,11 @@ export default function DroneAnalysis({
             <h1 className="text-2xl font-display font-bold">Mulighetsrom — {municipalityName}</h1>
             <p className="text-sm text-muted-foreground">{analysis.summary}</p>
           </div>
+        </div>
+
+        {/* How to read this report */}
+        <div className="mb-6">
+          <HowToReadBox />
         </div>
 
         {/* Municipality profile summary */}
@@ -316,7 +482,7 @@ export default function DroneAnalysis({
             <CardContent className="pt-4 pb-3 text-center">
               <Clock className="w-5 h-5 mx-auto text-primary mb-1" />
               <p className="text-2xl font-display font-bold">{analysis.total_annual_flight_hours}</p>
-              <p className="text-xs text-muted-foreground">Flytimer/år</p>
+              <p className="text-xs text-muted-foreground">Flytimer/år (estimat)</p>
             </CardContent>
           </Card>
           <Card>
@@ -333,6 +499,16 @@ export default function DroneAnalysis({
               <p className="text-xs text-muted-foreground">Avdelinger</p>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Glossary */}
+        <div className="mb-6">
+          <GlossaryBox />
+        </div>
+
+        {/* Journey / timeline */}
+        <div className="mb-6">
+          <JourneyBox />
         </div>
 
         {/* Department breakdown */}
@@ -352,7 +528,7 @@ export default function DroneAnalysis({
                       <Building2 className="w-5 h-5 text-primary" />
                       <div>
                         <p className="font-medium text-sm">{dept.department}</p>
-                        <p className="text-xs text-muted-foreground">{dept.use_cases.length} operasjoner · {dept.total_annual_hours} timer/år</p>
+                        <p className="text-xs text-muted-foreground">{dept.use_cases.length} operasjoner · {dept.total_annual_hours} timer/år (estimat)</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -442,7 +618,7 @@ export default function DroneAnalysis({
                     </div>
                   </div>
 
-                  {/* Why chosen - the key explanation */}
+                  {/* Why chosen */}
                   {(drone as any).why_chosen && (
                     <div className="bg-primary/5 rounded-lg p-3 border border-primary/10">
                       <p className="text-xs font-medium text-primary mb-1">Hvorfor denne dronen?</p>
@@ -495,20 +671,42 @@ export default function DroneAnalysis({
           </div>
         </div>
 
+        {/* Operations manual info box — placed between fleet and certification */}
+        <div className="mb-6">
+          <OpsManualBox hasSpecific={hasSpecificCategory} />
+        </div>
+
         {/* Certification plan */}
         {analysis.certification_plan && analysis.certification_plan.pilot_groups.length > 0 && (
           <div className="space-y-3 mb-6">
             <h2 className="text-lg font-display font-semibold flex items-center gap-2">
               <GraduationCap className="w-5 h-5 text-primary" /> Sertifiseringsplan
             </h2>
+
+            {/* Cert intro */}
+            <Card className="border-primary/10 bg-primary/[0.02]">
+              <CardContent className="pt-4 pb-3">
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  For de fleste kommuner starter reisen med <strong>A1/A3-kompetanse</strong> og en enkel operasjonsmanual.
+                  Når behovet blir mer avansert (STS, PDRA, BVLOS), øker også kravene til kurs, operasjonsmanual og ERP.
+                  Antall dager oppgitt nedenfor er <strong>foreslåtte opplæringsopplegg</strong>, ikke regulatoriske minstekrav.
+                </p>
+              </CardContent>
+            </Card>
+
             {analysis.certification_plan.pilot_groups.map((group, i) => (
               <Card key={i}>
                 <CardContent className="pt-4 pb-3 space-y-2">
                   <div className="flex items-center justify-between">
                     <p className="font-medium text-sm">{group.group_name}</p>
-                    <Badge variant="secondary" className="text-xs">{group.estimated_training_days} dager</Badge>
+                    <Badge variant="secondary" className="text-xs">~{group.estimated_training_days} dager (foreslått)</Badge>
                   </div>
                   <p className="text-xs font-medium text-primary">{group.certification_path}</p>
+                  {(group as any).practical_outcome && (
+                    <p className="text-xs text-foreground bg-primary/5 rounded-md p-2 border border-primary/10">
+                      <strong>Etter opplæring:</strong> {(group as any).practical_outcome}
+                    </p>
+                  )}
                   <p className="text-xs text-muted-foreground">{group.training_description}</p>
                   <div className="flex flex-wrap gap-1">
                     {group.covers_use_cases.map(uc => (
@@ -520,6 +718,11 @@ export default function DroneAnalysis({
             ))}
           </div>
         )}
+
+        {/* ERP info box — after certification */}
+        <div className="mb-6">
+          <ErpBox />
+        </div>
 
         {/* IKS */}
         {analysis.iks_recommendation && (
@@ -545,7 +748,8 @@ export default function DroneAnalysis({
         {/* Implementation phases */}
         {analysis.implementation_priority.length > 0 && (
           <div className="space-y-3 mb-6">
-            <h2 className="text-lg font-display font-semibold">Implementeringsplan</h2>
+            <h2 className="text-lg font-display font-semibold">Foreslått implementeringsplan</h2>
+            <p className="text-xs text-muted-foreground -mt-1">Fasene nedenfor er strategiske anbefalinger og bør tilpasses kommunens egne forutsetninger og budsjett.</p>
             {analysis.implementation_priority.map((phase) => (
               <Card key={phase.phase}>
                 <CardContent className="pt-4 pb-3">
