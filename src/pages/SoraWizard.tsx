@@ -113,7 +113,6 @@ export default function SoraWizard() {
   const updateInputs = useCallback((updates: Partial<SoraInputs>) => setInputs(prev => ({ ...prev, ...updates })), []);
   const updateOso = useCallback((id: number, text: string) => setOsoTexts(prev => ({ ...prev, [id]: text })), []);
   const updateMitigations = useCallback((updates: Partial<MitigationState>) => setMitigations(prev => ({ ...prev, ...updates })), []);
-  const updateScenarioForm = useCallback((updates: Partial<ScenarioFormData>) => setScenarioFormData(prev => ({ ...prev, ...updates })), []);
 
   const derivedInputs = useMemo(() => {
     // Map granular mitigations to legacy M1/M2 for soraCalculate compatibility
