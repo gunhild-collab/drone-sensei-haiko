@@ -204,6 +204,102 @@ export default function DroneAnalysis({
           </div>
         </div>
 
+        {/* Municipality profile summary */}
+        <Card className="mb-6 border-primary/20 bg-primary/[0.02]">
+          <CardContent className="pt-5 pb-4 space-y-4">
+            <h2 className="text-sm font-display font-semibold text-primary flex items-center gap-2">
+              <MapPin className="w-4 h-4" /> Kommuneprofil
+            </h2>
+
+            {/* Row 1: Topography & demographics */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="bg-background rounded-lg p-3 border border-border">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Topografi</p>
+                <p className="text-sm font-semibold">{terrainType || 'Ukjent'}</p>
+              </div>
+              <div className="bg-background rounded-lg p-3 border border-border">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Innbyggere</p>
+                <p className="text-sm font-semibold">{population?.toLocaleString('nb-NO') || '—'}</p>
+              </div>
+              <div className="bg-background rounded-lg p-3 border border-border">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Areal</p>
+                <p className="text-sm font-semibold">{areaKm2 ? `${Math.round(areaKm2).toLocaleString('nb-NO')} km²` : '—'}</p>
+              </div>
+              <div className="bg-background rounded-lg p-3 border border-border">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Tetthet</p>
+                <p className="text-sm font-semibold">{densityPerKm2 ? `${Math.round(densityPerKm2)} innb/km²` : '—'}</p>
+              </div>
+            </div>
+
+            {/* Row 2: Sector costs from SSB */}
+            {sectorData.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-2">Driftskostnader per sektor (KOSTRA/SSB tabell 12362, 1000 kr)</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {sectorData.filter(s => s.expenditure_1000nok != null).map(s => {
+                    const perCapita = population && s.expenditure_1000nok ? Math.round((s.expenditure_1000nok * 1000) / population) : null;
+                    return (
+                      <div key={s.sector} className="bg-background rounded-lg p-2.5 border border-border">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">{s.sector}</p>
+                        <p className="text-sm font-semibold">{s.expenditure_1000nok!.toLocaleString('nb-NO')}</p>
+                        {perCapita != null && (
+                          <p className="text-[10px] text-muted-foreground">{perCapita.toLocaleString('nb-NO')} kr/innb</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Kilde: {sectorData[0]?.source === 'ssb_12362' ? 'SSB tabell 12362' : 'Estimat'} · År {sectorData[0]?.year || '—'}
+                </p>
+              </div>
+            )}
+
+            {/* Row 3: Active departments */}
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-2">Aktive avdelinger i analysen</p>
+              <div className="flex flex-wrap gap-1.5">
+                {departments.filter(d => d.enabled).map(d => (
+                  <Badge key={d.id} variant="secondary" className="text-xs gap-1">
+                    {d.name}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            {/* Row 4: Fire department structure */}
+            {fireDeptName && (
+              <div className="bg-background rounded-lg p-3 border border-border">
+                <p className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1.5">
+                  <Flame className="w-3.5 h-3.5" /> Brannvesenstruktur
+                </p>
+                <p className="text-sm font-semibold">{fireDeptName} <span className="text-muted-foreground font-normal">({fireDeptType || 'ukjent type'})</span></p>
+                {iksPartners.length > 0 && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Partnerkommuner: {iksPartners.join(', ')}
+                  </p>
+                )}
+                {alarmSentralName && (
+                  <p className="text-xs text-muted-foreground">110-sentral: {alarmSentralName}</p>
+                )}
+                {fireStats?.fire_expenditure_1000nok != null && (
+                  <p className="text-xs mt-1">
+                    Brannbudsjett: <span className="font-semibold">{fireStats.fire_expenditure_1000nok.toLocaleString('nb-NO')}</span> (1000 kr)
+                    {population && <span className="text-muted-foreground"> · {Math.round((fireStats.fire_expenditure_1000nok * 1000) / population).toLocaleString('nb-NO')} kr/innb</span>}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Infrastructure quick stats */}
+            <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+              {roadKm && <span className="flex items-center gap-1"><Route className="w-3 h-3" /> {roadKm.toLocaleString('nb-NO')} km vei</span>}
+              {vaKm && <span className="flex items-center gap-1"><Droplets className="w-3 h-3" /> {vaKm.toLocaleString('nb-NO')} km VA</span>}
+              {buildings && <span className="flex items-center gap-1"><Building2 className="w-3 h-3" /> {buildings.toLocaleString('nb-NO')} bygninger</span>}
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Key metrics */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           <Card>
