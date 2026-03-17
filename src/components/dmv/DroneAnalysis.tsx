@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Loader2, Plane, Shield, GraduationCap, Clock, DollarSign, Users,
+  Loader2, Plane, Shield, GraduationCap, Clock, DollarSign, Users, MapPin,
   ChevronRight, ChevronDown, AlertTriangle, Flame, Route, Droplets,
   Building2, TreePine, Heart, Map, Leaf, Sparkles, ArrowRight
 } from "lucide-react";
