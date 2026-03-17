@@ -108,10 +108,22 @@ const KOSTRA_FGK: Record<string, { code: string; label: string }> = {
 };
 
 const KOSTRA_12362_ART_EXPENDITURE = 'AGD10';
-const KOSTRA_12362_ART_WAGES = 'AGD1';
 const KOSTRA_12362_CONTENT = 'KOSbelop0000';
 const KOSTRA_12362_YEAR_DEPTH = 3;
-const AVG_MUNICIPAL_SALARY_NOK = 650; // Average municipal salary in 1000 NOK for FTE estimation
+
+// Sector-specific wage share of total expenditure (KOSTRA norms) and avg salary per FTE
+// Source: KOSTRA national averages — wage share varies significantly by sector
+const SECTOR_WAGE_SHARE: Record<string, number> = {
+  'Brann': 0.65,      // 65% of fire dept spend is wages
+  'Drift/vei': 0.35,  // Road maintenance: more material/contractor costs
+  'VA': 0.25,         // VA: capital-intensive, low wage share
+  'Plan': 0.75,       // Planning: mostly personnel
+  'Helse': 0.72,      // Health/care: labor-intensive
+  'Eiendom': 0.30,    // Property: maintenance/contracts
+  'Kultur': 0.60,     // Culture: mixed
+  'Næring': 0.55,     // Business development: mixed
+};
+const AVG_MUNICIPAL_SALARY_1000NOK = 700; // Average annual cost per FTE incl. social costs
 
 function getJsonStatValue(dataset: JsonStatDataset, selections: Record<string, string>): number | null {
   const ids = dataset.id || Object.keys(dataset.dimension || {});
