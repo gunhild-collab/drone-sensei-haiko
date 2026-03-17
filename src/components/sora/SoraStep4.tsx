@@ -1,4 +1,4 @@
-import { SoraResults, getGroupRobustness, sailToRoman } from "@/lib/soraCalculations";
+import { SoraResults, getGroupRobustness, sailToRoman, getContainmentRequirements } from "@/lib/soraCalculations";
 
 interface Props {
   results: SoraResults;
@@ -16,18 +16,19 @@ function sailBg(sail: number): string {
   return 'from-red-500/10 to-red-500/5';
 }
 
+// SORA 2.5 exact per-GRC-row SAIL matrix
 const SAIL_MATRIX_DISPLAY = [
-  { label: 'GRC ≤ 2', values: ['I', 'I', 'II', 'IV'] },
-  { label: 'GRC 3–4', values: ['II', 'II', 'IV', 'V'] },
-  { label: 'GRC 5–6', values: ['III', 'IV', 'V', 'VI'] },
-  { label: 'GRC ≥ 7', values: ['IV', 'V', 'VI', 'VI'] },
+  { label: 'GRC = 1', values: ['I', 'I', 'I', 'II'] },
+  { label: 'GRC = 2', values: ['I', 'I', 'II', 'II'] },
+  { label: 'GRC = 3', values: ['I', 'II', 'II', 'III'] },
+  { label: 'GRC = 4', values: ['II', 'II', 'III', 'IV'] },
+  { label: 'GRC = 5', values: ['II', 'III', 'III', 'V'] },
+  { label: 'GRC = 6', values: ['III', 'IV', 'V', 'VI'] },
+  { label: 'GRC = 7', values: ['IV', 'V', 'VI', 'VI'] },
 ];
 
 function getActiveRow(grc: number): number {
-  if (grc <= 2) return 0;
-  if (grc <= 4) return 1;
-  if (grc <= 6) return 2;
-  return 3;
+  return Math.min(Math.max(grc, 1), 7) - 1;
 }
 
 function getActiveCol(arc: string): number {
@@ -109,6 +110,22 @@ export default function SoraStep4({ results }: Props) {
           ))}
         </div>
       </div>
+
+      {/* Containment Requirements (SORA 2.5 Annex E) */}
+      {results.sail >= 2 && (() => {
+        const cont = getContainmentRequirements(results.sail);
+        return (
+          <div className="bg-[#1a1a2e] rounded-xl p-5 border border-[#2a2a3e]">
+            <h3 className="text-white font-semibold mb-3">Containment-krav (SAIL {results.sailRoman})</h3>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div><span className="text-gray-400">Bakke:</span> <span className="text-gray-200">{cont.groundTech}</span></div>
+              <div><span className="text-gray-400">Vertikal:</span> <span className="text-gray-200">{cont.vertical}</span></div>
+              <div><span className="text-gray-400">Lateral:</span> <span className="text-gray-200">{cont.lateral}</span></div>
+              <div><span className="text-gray-400">Evidens:</span> <span className="text-gray-200">{cont.evidenceLevel}</span></div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Recommendation */}
       <div className="bg-[#1a1a2e] rounded-xl p-5 border border-[#7c3aed]/30">

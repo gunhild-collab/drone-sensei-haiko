@@ -1,27 +1,43 @@
-// SORA 2.5 Calculation Engine — Exact Appendix F implementation
+// SORA 2.5 Calculation Engine — Based on ED Decision 2025/018/R, Amendment 3
 
 export type OperationType = 'VLOS' | 'EVLOS' | 'BVLOS';
 export type PopulationClass = 'controlled' | 'sparsely' | 'populated' | 'gathering';
 export type SizeClass = 'S' | 'M' | 'L' | 'XL';
 export type ArcLevel = 'ARC-a' | 'ARC-b' | 'ARC-c' | 'ARC-d';
 export type SailRoman = 'I' | 'II' | 'III' | 'IV' | 'V' | 'VI';
+export type RobustnessLevel = 'O' | 'L' | 'M' | 'H';
+export type MitigationRobustness = 'none' | 'low' | 'medium' | 'high';
 
 export interface SoraInputs {
   droneName: string;
   mtom: number;
   characteristicDimension: number;
+  maxSpeed: number;
   operationType: OperationType;
   dayNight: 'day' | 'night' | 'both';
   maxAltitude: number;
   populationDensity: PopulationClass;
-  // GRC mitigations
+  // Ground risk mitigations (SORA 2.5 M1A/M1B/M1C/M2)
+  m1a_sheltering: MitigationRobustness;
+  m1b_restrictions: MitigationRobustness;
+  m1c_ground_observers: boolean;
+  m2_impact: MitigationRobustness;
+  // Legacy compat
   m1: 0 | -1 | -2;
   m2: 0 | -1;
-  // ARC — new fields
+  // ARC inputs
   nearAirport: boolean;
+  ctrDistanceKm: number;
+  isUrbanArea: boolean;
+  // Strategic air mitigations (MS1-MS5)
+  ms1_segregation: MitigationRobustness;
+  ms2_time_windows: boolean;
+  ms3_visual_observers: MitigationRobustness;
+  ms4_airspace_coord: boolean;
+  ms5_boundaries: MitigationRobustness;
+  // Legacy
   hasTransponder: boolean;
   hasAirspaceObservers: boolean;
-  // Legacy compatibility — still used by some older step components
   airspaceClass?: 'uncontrolled_low' | 'uncontrolled_high' | 'class_e' | 'controlled';
 }
 
@@ -34,9 +50,11 @@ export interface SoraResults {
   sail: number;
   sailRoman: SailRoman;
   scenario: string | null;
+  airMitigationCount: number;
+  groundMitigationTotal: number;
 }
 
-// PART 2a — Drone size class from characteristic dimension
+// ── Size class ──
 export function getSizeClass(dim: number): SizeClass {
   if (dim < 1) return 'S';
   if (dim <= 3) return 'M';
@@ -44,7 +62,7 @@ export function getSizeClass(dim: number): SizeClass {
   return 'XL';
 }
 
-// PART 2c — Intrinsic GRC lookup table (SORA 2.5 Appendix F)
+// ── Intrinsic GRC (SORA 2.5 Table 1) ──
 const GRC_TABLE: Record<SizeClass, Record<PopulationClass, number>> = {
   S:  { controlled: 1, sparsely: 2, populated: 3, gathering: 4 },
   M:  { controlled: 2, sparsely: 3, populated: 4, gathering: 5 },
@@ -58,18 +76,61 @@ export function calculateIntrinsicGrc(dim: number, pop: PopulationClass): number
 }
 
 export function calculateFinalGrc(intrinsicGrc: number, m1: number, m2: number): number {
-  return Math.max(1, intrinsicGrc + m1 + m2); // m1, m2 are negative or zero
+  return Math.max(1, Math.min(7, intrinsicGrc + m1 + m2));
 }
 
-// PART 3 — ARC based on airspace class
+// ── Ground mitigation reduction (SORA 2.5 M1A/M1B/M1C/M2) ──
+export function calculateGroundMitigationReduction(
+  m1a: MitigationRobustness,
+  m1b: MitigationRobustness,
+  m1c: boolean,
+  m2: MitigationRobustness,
+): number {
+  const robMap: Record<MitigationRobustness, number> = { none: 0, low: 0, medium: 1, high: 2 };
+  const m1aR = robMap[m1a];
+  const m1bR = robMap[m1b];
+  const m1cR = m1c ? 1 : 0; // Low robustness only
+  const m2R = robMap[m2];
+  return m1aR + m1bR + m1cR + m2R;
+}
+
+// ── Initial ARC (SORA 2.5 AMC S.4.4.2, Annex C) ──
 const ARC_ORDER: ArcLevel[] = ['ARC-a', 'ARC-b', 'ARC-c', 'ARC-d'];
 
-export function getInitialARC(altitudeAGL: number, operationType: OperationType, nearAirport: boolean): ArcLevel {
-  if (nearAirport) return 'ARC-d';
-  if (operationType === 'BVLOS' && altitudeAGL > 60) return 'ARC-c';
-  if (operationType === 'BVLOS') return 'ARC-b';
-  if (altitudeAGL <= 30) return 'ARC-a';
-  return 'ARC-b';
+export function getInitialARC(
+  altitudeAGL: number,
+  operationType: OperationType,
+  nearAirport: boolean,
+  ctrDistanceKm: number = 10,
+  isUrbanArea: boolean = false,
+): ArcLevel {
+  const effectiveDist = nearAirport ? Math.min(ctrDistanceKm, 5) : ctrDistanceKm;
+
+  if (effectiveDist < 1) return 'ARC-d';
+  if (effectiveDist < 3 || isUrbanArea || altitudeAGL > 300) return 'ARC-c';
+  if (effectiveDist < 5 || altitudeAGL > 120) return 'ARC-b';
+
+  // BVLOS minimum ARC-b
+  if (operationType === 'BVLOS' || operationType === 'EVLOS') return 'ARC-b';
+
+  return 'ARC-a';
+}
+
+// ── Strategic Air Mitigations (MS1-MS5, SORA 2.5 AMC S.4.4.3) ──
+export function calculateStrategicAirMitigations(
+  ms1: MitigationRobustness,
+  ms2: boolean,
+  ms3: MitigationRobustness,
+  ms4: boolean,
+  ms5: MitigationRobustness,
+): number {
+  let count = 0;
+  if (ms1 === 'medium' || ms1 === 'high') count++;
+  if (ms2) count++;
+  if (ms3 === 'high') count++;
+  if (ms4) count++;
+  if (ms5 === 'medium' || ms5 === 'high') count++;
+  return count;
 }
 
 export function calculateResidualArc(initialArc: ArcLevel, hasTransponder: boolean, hasObservers: boolean, isBvlos: boolean): ArcLevel {
@@ -79,13 +140,19 @@ export function calculateResidualArc(initialArc: ArcLevel, hasTransponder: boole
   return ARC_ORDER[idx];
 }
 
-// PART 4 — SAIL matrix (SORA 2.5 Step 6) — exact per-GRC rows
+export function applyStrategicAirMitigations(initialArc: ArcLevel, mitigationCount: number): ArcLevel {
+  let idx = ARC_ORDER.indexOf(initialArc);
+  idx = Math.max(0, idx - mitigationCount);
+  return ARC_ORDER[idx];
+}
+
+// ── SAIL matrix (SORA 2.5 Step 7, per-GRC-row, AMC Annex E) ──
 const SAIL_MATRIX: Record<number, Record<ArcLevel, SailRoman>> = {
-  1: { 'ARC-a': 'I',   'ARC-b': 'II',  'ARC-c': 'III', 'ARC-d': 'IV' },
-  2: { 'ARC-a': 'I',   'ARC-b': 'II',  'ARC-c': 'III', 'ARC-d': 'IV' },
-  3: { 'ARC-a': 'II',  'ARC-b': 'III', 'ARC-c': 'IV',  'ARC-d': 'V' },
-  4: { 'ARC-a': 'II',  'ARC-b': 'III', 'ARC-c': 'IV',  'ARC-d': 'V' },
-  5: { 'ARC-a': 'III', 'ARC-b': 'IV',  'ARC-c': 'V',   'ARC-d': 'VI' },
+  1: { 'ARC-a': 'I',   'ARC-b': 'I',   'ARC-c': 'I',   'ARC-d': 'II' },
+  2: { 'ARC-a': 'I',   'ARC-b': 'I',   'ARC-c': 'II',  'ARC-d': 'II' },
+  3: { 'ARC-a': 'I',   'ARC-b': 'II',  'ARC-c': 'II',  'ARC-d': 'III' },
+  4: { 'ARC-a': 'II',  'ARC-b': 'II',  'ARC-c': 'III', 'ARC-d': 'IV' },
+  5: { 'ARC-a': 'II',  'ARC-b': 'III', 'ARC-c': 'III', 'ARC-d': 'V' },
   6: { 'ARC-a': 'III', 'ARC-b': 'IV',  'ARC-c': 'V',   'ARC-d': 'VI' },
   7: { 'ARC-a': 'IV',  'ARC-b': 'V',   'ARC-c': 'VI',  'ARC-d': 'VI' },
 };
@@ -101,7 +168,7 @@ export function sailToNumber(roman: SailRoman): number {
   return ROMAN_TO_NUM[roman];
 }
 
-// PART 5 — Scenario matching
+// ── Scenario matching ──
 export function matchScenario(
   sailRoman: SailRoman,
   operationType: OperationType,
@@ -112,34 +179,43 @@ export function matchScenario(
   const sail = sailToNumber(sailRoman);
   const hasCLabel = cClass.startsWith('C');
 
-  // Open category
   if (mtom < 0.25 && sail === 1) return 'A1';
   if (mtom <= 4 && sail === 1 && operationType === 'VLOS') return 'A2';
   if (mtom <= 25 && sail <= 2 && operationType === 'VLOS' && populationClass === 'sparsely') return 'A3';
 
-  // STS — only if drone has C5/C6 label
   if (hasCLabel && cClass === 'C5' && operationType === 'VLOS' && sail <= 3) return 'STS-01';
   if (hasCLabel && cClass === 'C6' && operationType === 'BVLOS' && sail <= 3) return 'STS-02';
 
-  // PDRA
   if (mtom <= 10 && operationType === 'VLOS' && populationClass === 'sparsely') return 'PDRA-G01';
   if (mtom <= 25 && operationType === 'VLOS' && populationClass === 'sparsely') return 'PDRA-G02';
   if (mtom <= 25 && operationType === 'BVLOS' && populationClass === 'controlled') return 'PDRA-G05';
   if (mtom <= 10 && operationType === 'VLOS' && populationClass === 'populated') return 'PDRA-S01';
   if (mtom <= 25 && operationType === 'BVLOS') return 'PDRA-S02';
 
-  // Everything else → full SORA
   if (sail <= 4) return 'SORA-III-IV';
   return 'SORA-V-VI';
 }
 
-// Master calculation
+// ── Master calculation ──
 export function calculateAll(inputs: SoraInputs): SoraResults {
   const sizeClass = getSizeClass(inputs.characteristicDimension);
   const intrinsicGrc = calculateIntrinsicGrc(inputs.characteristicDimension, inputs.populationDensity);
-  const finalGrc = calculateFinalGrc(intrinsicGrc, inputs.m1, inputs.m2);
-  const initialArc = getInitialARC(inputs.maxAltitude, inputs.operationType, inputs.nearAirport);
-  const residualArc = calculateResidualArc(initialArc, inputs.hasTransponder, inputs.hasAirspaceObservers, inputs.operationType === 'BVLOS');
+
+  // Ground mitigations
+  const groundReduction = calculateGroundMitigationReduction(
+    inputs.m1a_sheltering, inputs.m1b_restrictions,
+    inputs.m1c_ground_observers, inputs.m2_impact,
+  );
+  const finalGrc = Math.max(1, Math.min(7, intrinsicGrc - groundReduction));
+
+  // Air risk
+  const initialArc = getInitialARC(inputs.maxAltitude, inputs.operationType, inputs.nearAirport, inputs.ctrDistanceKm, inputs.isUrbanArea);
+  const airMitigationCount = calculateStrategicAirMitigations(
+    inputs.ms1_segregation, inputs.ms2_time_windows,
+    inputs.ms3_visual_observers, inputs.ms4_airspace_coord, inputs.ms5_boundaries,
+  );
+  const residualArc = applyStrategicAirMitigations(initialArc, airMitigationCount);
+
   const sailRoman = calculateSail(finalGrc, residualArc);
   const sail = sailToNumber(sailRoman);
 
@@ -151,18 +227,17 @@ export function calculateAll(inputs: SoraInputs): SoraResults {
     residualArc,
     sail,
     sailRoman,
-    scenario: null, // set externally with full drone info
+    scenario: null,
+    airMitigationCount,
+    groundMitigationTotal: groundReduction,
   };
 }
 
-// OSO robustness matrix per SAIL level
-// O = not applicable, L = low, M = medium, H = high
-export type RobustnessLevel = 'O' | 'L' | 'M' | 'H';
-
+// ── OSO definitions (24 OSOs per SORA 2.5 AMC Annex E) ──
 export interface OsoDefinition {
   id: number;
   description: string;
-  robustness: RobustnessLevel[]; // indexed by SAIL 1-6
+  robustness: RobustnessLevel[];
   template: string;
 }
 
@@ -205,13 +280,41 @@ export const OSO_GROUPS = [
   { name: 'Sikker operasjon (OSO 13–16)', osos: [13, 14, 15, 16] },
 ];
 
-// Legacy alias
+// ── Containment requirements (SORA 2.5 Annex E criterion 3) ──
+export interface ContainmentSpec {
+  groundTech: string;
+  vertical: string;
+  lateral: string;
+  evidenceLevel: string;
+}
+
+export function getContainmentRequirements(sail: number): ContainmentSpec {
+  if (sail <= 2) return {
+    groundTech: 'Standardprosedyre',
+    vertical: 'Høydebegrensning i flykontroller',
+    lateral: 'Bakkerisikobuffer (GRB)',
+    evidenceLevel: 'Operatørattest',
+  };
+  if (sail <= 3) return {
+    groundTech: 'Fallskjerm ELLER trent mannskap',
+    vertical: 'Dobbel høydebegrensning',
+    lateral: '1.5× buffer',
+    evidenceLevel: 'Prosedyre + testdata',
+  };
+  return {
+    groundTech: 'Sertifisert fallskjerm',
+    vertical: 'Sertifisert dobbel begrensning',
+    lateral: '2× buffer + overvåkning',
+    evidenceLevel: 'EASA DVR-dokumentasjon',
+  };
+}
+
+// Legacy aliases
 export function sailToRoman(sail: number): string {
   const map: Record<number, string> = { 1: 'I', 2: 'II', 3: 'III', 4: 'IV', 5: 'V', 6: 'VI' };
   return map[sail] || String(sail);
 }
 
-// Legacy alias for old ARC calculation
 export function calculateInitialArc(airspaceClass: string): ArcLevel {
   const map: Record<string, ArcLevel> = {
     uncontrolled_low: 'ARC-a',

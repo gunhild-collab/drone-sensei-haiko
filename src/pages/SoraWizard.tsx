@@ -42,25 +42,43 @@ const defaultInputs: SoraInputs = {
   droneName: '',
   mtom: 0,
   characteristicDimension: 0,
+  maxSpeed: 25,
   operationType: 'VLOS',
   dayNight: 'day',
   maxAltitude: 120,
   populationDensity: 'sparsely',
+  m1a_sheltering: 'none',
+  m1b_restrictions: 'none',
+  m1c_ground_observers: false,
+  m2_impact: 'none',
   m1: 0,
   m2: 0,
   nearAirport: false,
+  ctrDistanceKm: 10,
+  isUrbanArea: false,
+  ms1_segregation: 'none',
+  ms2_time_windows: false,
+  ms3_visual_observers: 'none',
+  ms4_airspace_coord: false,
+  ms5_boundaries: 'none',
   airspaceClass: 'uncontrolled_low',
   hasTransponder: false,
   hasAirspaceObservers: false,
 };
 
 const defaultMitigations: MitigationState = {
-  areaControlled: false,
-  hasWrittenProcedure: false,
-  hasParachute: false,
+  m1a_sheltering: 'none',
+  m1b_restrictions: 'none',
+  m1c_ground_observers: false,
+  m2_impact: 'none',
   hasTransponder: false,
   dayNight: 'day',
   hasObservers: false,
+  ms1_segregation: 'none',
+  ms2_time_windows: false,
+  ms3_visual_observers: 'none',
+  ms4_airspace_coord: false,
+  ms5_boundaries: 'none',
 };
 
 const defaultScenarioForm: ScenarioFormData = {
@@ -103,15 +121,27 @@ export default function SoraWizard() {
   const updateScenarioForm = useCallback((updates: Partial<ScenarioFormData>) => setScenarioFormData(prev => ({ ...prev, ...updates })), []);
 
   const derivedInputs = useMemo(() => {
-    const m1 = mitigations.areaControlled ? (mitigations.hasWrittenProcedure ? -2 : -1) : 0;
-    const m2 = mitigations.hasParachute ? -1 : 0;
+    // Map granular mitigations to legacy M1/M2 for soraCalculate compatibility
+    const m1Total = ({ none: 0, low: 0, medium: 1, high: 2 }[mitigations.m1a_sheltering] ?? 0)
+      + ({ none: 0, low: 0, medium: 1, high: 2 }[mitigations.m1b_restrictions] ?? 0)
+      + (mitigations.m1c_ground_observers ? 1 : 0);
+    const m2Total = { none: 0, low: 0, medium: 1, high: 2 }[mitigations.m2_impact] ?? 0;
     return {
       ...inputs,
-      m1: m1 as SoraInputs['m1'],
-      m2: m2 as SoraInputs['m2'],
+      m1: Math.min(2, m1Total) as SoraInputs['m1'],
+      m2: m2Total >= 1 ? -1 as const : 0 as const,
       hasTransponder: mitigations.hasTransponder,
       hasAirspaceObservers: mitigations.hasObservers,
       dayNight: mitigations.dayNight,
+      m1a_sheltering: mitigations.m1a_sheltering,
+      m1b_restrictions: mitigations.m1b_restrictions,
+      m1c_ground_observers: mitigations.m1c_ground_observers,
+      m2_impact: mitigations.m2_impact,
+      ms1_segregation: mitigations.ms1_segregation,
+      ms2_time_windows: mitigations.ms2_time_windows,
+      ms3_visual_observers: mitigations.ms3_visual_observers,
+      ms4_airspace_coord: mitigations.ms4_airspace_coord,
+      ms5_boundaries: mitigations.ms5_boundaries,
     };
   }, [inputs, mitigations]);
 
@@ -120,11 +150,25 @@ export default function SoraWizard() {
   const soraResult = useMemo(() => soraCalculate({
     mtom_kg: derivedInputs.mtom,
     characteristic_dimension: derivedInputs.characteristicDimension,
-    max_speed_ms: selectedDrone?.maxSpeed ?? 25,
+    max_speed_ms: selectedDrone?.maxSpeed ?? derivedInputs.maxSpeed ?? 25,
     operationType: derivedInputs.operationType,
     populationDensity: popMap[derivedInputs.populationDensity] || derivedInputs.populationDensity,
     altitude_m: derivedInputs.maxAltitude,
     nearControlledAirspace: derivedInputs.nearAirport,
+    ctr_distance_km: derivedInputs.ctrDistanceKm,
+    isUrbanArea: derivedInputs.isUrbanArea,
+    // Granular ground mitigations
+    m1a_robustness: derivedInputs.m1a_sheltering,
+    m1b_robustness: derivedInputs.m1b_restrictions,
+    m1c_ground_observers: derivedInputs.m1c_ground_observers,
+    m2_robustness: derivedInputs.m2_impact,
+    // Strategic air mitigations
+    ms1_segregation: derivedInputs.ms1_segregation,
+    ms2_time_windows: derivedInputs.ms2_time_windows,
+    ms3_visual_observers: derivedInputs.ms3_visual_observers,
+    ms4_airspace_coord: derivedInputs.ms4_airspace_coord,
+    ms5_boundaries: derivedInputs.ms5_boundaries,
+    // Legacy compat
     m1Reduction: Math.abs(derivedInputs.m1),
     m2Parachute: derivedInputs.m2 === -1,
     c_class: selectedDrone?.categoryClass || 'none',
@@ -135,11 +179,13 @@ export default function SoraWizard() {
     sizeClass: soraResult.droneClass as SoraResults['sizeClass'],
     intrinsicGrc: soraResult.intrinsicGRC,
     finalGrc: soraResult.finalGRC,
-    initialArc: `ARC-${soraResult.arc}` as SoraResults['initialArc'],
+    initialArc: `ARC-${soraResult.iARC || soraResult.arc}` as SoraResults['initialArc'],
     residualArc: `ARC-${soraResult.arc}` as SoraResults['residualArc'],
     sail: ROMAN_TO_NUM[soraResult.sail] || 1,
     sailRoman: soraResult.sail as SoraResults['sailRoman'],
     scenario: soraResult.scenario,
+    airMitigationCount: soraResult.airMitigationCount || 0,
+    groundMitigationTotal: soraResult.m1Reduction + soraResult.m2Reduction,
   }), [soraResult]);
 
   const bestScenarioId = soraResult.scenario;
