@@ -1,4 +1,4 @@
-import { SoraResults, getGroupRobustness, sailToRoman } from "@/lib/soraCalculations";
+import { SoraResults, getGroupRobustness, sailToRoman, getContainmentRequirements } from "@/lib/soraCalculations";
 
 interface Props {
   results: SoraResults;
