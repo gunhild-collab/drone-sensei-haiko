@@ -171,9 +171,21 @@ ${region_municipalities && region_municipalities.length > 0 ? `Totalt ${region_m
     const sectorCostLines = Array.isArray(sector_data) && sector_data.length > 0
       ? sector_data
           .filter((sector: any) => sector?.expenditure_1000nok != null)
-          .map((sector: any) => `- ${sector.sector}: ${sector.expenditure_1000nok} (1000 kr, år ${sector.year || 'ukjent'}, kilde ${sector.source || 'ukjent'})`)
+          .map((sector: any) => {
+            const fteLine = sector.employees_fte != null ? `, estimert ${sector.employees_fte} årsverk` : '';
+            return `- ${sector.sector}: ${sector.expenditure_1000nok} (1000 kr${fteLine}, år ${sector.year || 'ukjent'}, kilde ${sector.source || 'ukjent'})`;
+          })
           .join('\n')
       : '- Ingen sektorkostnader tilgjengelig fra SSB tabell 12362.';
+
+    const sectorStaffingLines = Array.isArray(sector_data) && sector_data.length > 0
+      ? sector_data
+          .filter((sector: any) => sector?.employees_fte != null)
+          .map((sector: any) => `- ${sector.sector}: ~${sector.employees_fte} årsverk (estimert fra lønnskostnader)`)
+          .join('\n')
+      : '- Ingen årsverkdata tilgjengelig.';
+
+    const distances = estimateMaxMissionDistance(area_km2, road_km, population);
 
     const fireBudgetLine = fire_stats?.fire_expenditure_1000nok != null
       ? `- Brann/ulykkesvern: ${fire_stats.fire_expenditure_1000nok} (1000 kr, år ${fire_stats.year || 'ukjent'}, kilde ${fire_stats.source || 'ukjent'})`
