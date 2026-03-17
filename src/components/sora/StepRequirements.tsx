@@ -181,7 +181,7 @@ export default function StepRequirements({ scenario, sailRoman, sail, operationT
     const file = e.target.files?.[0];
     if (file) {
       setUploadedFiles(prev => ({ ...prev, [id]: file.name }));
-      setCompleted(prev => new Set(prev).add(id));
+      setCompleted(prev => { const n = new Set(prev).add(id); onCompletedChange?.(n); return n; });
     }
   };
 
