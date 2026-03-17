@@ -67,12 +67,18 @@ const defaultInputs: SoraInputs = {
 };
 
 const defaultMitigations: MitigationState = {
-  areaControlled: false,
-  hasWrittenProcedure: false,
-  hasParachute: false,
+  m1a_sheltering: 'none',
+  m1b_restrictions: 'none',
+  m1c_ground_observers: false,
+  m2_impact: 'none',
   hasTransponder: false,
   dayNight: 'day',
   hasObservers: false,
+  ms1_segregation: 'none',
+  ms2_time_windows: false,
+  ms3_visual_observers: 'none',
+  ms4_airspace_coord: false,
+  ms5_boundaries: 'none',
 };
 
 const defaultScenarioForm: ScenarioFormData = {
