@@ -255,7 +255,7 @@ ${iksContext}
 
 TILGJENGELIG DRONEDATABASE (velg fra disse basert på behov):
 ${JSON.stringify(DRONE_CATALOG.map(d => ({
-  id: d.id, name: d.name, type: d.type, range_km: d.max_range_km, flight_time_min: d.max_flight_time_min,
+  id: d.id, name: d.name, type: d.type, flight_time_min: d.max_flight_time_min,
   thermal: d.has_thermal, rtk: d.has_rtk, lidar: d.has_lidar, payload_kg: d.payload_kg,
   autonomous_dock: d.autonomous_dock, price_nok: d.price_nok, best_for: d.best_for, description_no: d.description_no,
 })), null, 1)}
