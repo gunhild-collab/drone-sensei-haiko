@@ -121,15 +121,27 @@ export default function SoraWizard() {
   const updateScenarioForm = useCallback((updates: Partial<ScenarioFormData>) => setScenarioFormData(prev => ({ ...prev, ...updates })), []);
 
   const derivedInputs = useMemo(() => {
-    const m1 = mitigations.areaControlled ? (mitigations.hasWrittenProcedure ? -2 : -1) : 0;
-    const m2 = mitigations.hasParachute ? -1 : 0;
+    // Map granular mitigations to legacy M1/M2 for soraCalculate compatibility
+    const m1Total = ({ none: 0, low: 0, medium: 1, high: 2 }[mitigations.m1a_sheltering] ?? 0)
+      + ({ none: 0, low: 0, medium: 1, high: 2 }[mitigations.m1b_restrictions] ?? 0)
+      + (mitigations.m1c_ground_observers ? 1 : 0);
+    const m2Total = { none: 0, low: 0, medium: 1, high: 2 }[mitigations.m2_impact] ?? 0;
     return {
       ...inputs,
-      m1: m1 as SoraInputs['m1'],
-      m2: m2 as SoraInputs['m2'],
+      m1: Math.min(2, m1Total) as SoraInputs['m1'],
+      m2: m2Total >= 1 ? -1 as const : 0 as const,
       hasTransponder: mitigations.hasTransponder,
       hasAirspaceObservers: mitigations.hasObservers,
       dayNight: mitigations.dayNight,
+      m1a_sheltering: mitigations.m1a_sheltering,
+      m1b_restrictions: mitigations.m1b_restrictions,
+      m1c_ground_observers: mitigations.m1c_ground_observers,
+      m2_impact: mitigations.m2_impact,
+      ms1_segregation: mitigations.ms1_segregation,
+      ms2_time_windows: mitigations.ms2_time_windows,
+      ms3_visual_observers: mitigations.ms3_visual_observers,
+      ms4_airspace_coord: mitigations.ms4_airspace_coord,
+      ms5_boundaries: mitigations.ms5_boundaries,
     };
   }, [inputs, mitigations]);
 
