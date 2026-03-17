@@ -65,6 +65,22 @@ export default function Step4Mitigations({ mitigations, isBVLOS, onChange }: Pro
         <p className="text-sora-text-muted text-sm">Tiltak som reduserer risikoen. Svarene påvirker GRC, ARC og endelig SAIL.</p>
       </div>
 
+      {/* Beginner explanation */}
+      <div className="bg-sora-purple/5 border border-sora-purple/20 rounded-xl p-4 space-y-2">
+        <div className="flex items-start gap-2">
+          <Info className="w-5 h-5 text-sora-purple shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sora-text font-semibold text-sm">Hva er mitigasjoner?</p>
+            <p className="text-sora-text-muted text-xs mt-1 leading-relaxed">
+              Mitigasjoner er <strong>sikkerhetstiltak</strong> du gjør for å redusere risikoen ved droneflygingen. Jo bedre tiltak, jo lavere risiko — og jo enklere blir søknadsprosessen.
+            </p>
+            <p className="text-sora-text-muted text-xs mt-1 leading-relaxed">
+              Det er to typer: <strong>Bakkemitigasjoner</strong> (beskytter folk på bakken) og <strong>Luftmitigasjoner</strong> (reduserer risiko for kollisjon med andre luftfartøy). Hvert tiltak senker GRC eller ARC, som igjen senker SAIL-nivået ditt.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* ── GROUND RISK MITIGATIONS ── */}
       <div className="space-y-4">
         <h3 className={sectionTitle}><Shield className="w-5 h-5 text-sora-purple" /> Bakkemitigasjoner (M1/M2)</h3>

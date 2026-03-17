@@ -19,6 +19,7 @@ import Step7Explanation from "@/components/sora/Step7Explanation";
 import Step8Documents from "@/components/sora/Step8Documents";
 import ContactHaiko from "@/components/sora/ContactHaiko";
 import HaikoLogo from "@/components/sora/HaikoLogo";
+import LiveSoraPanel from "@/components/sora/LiveSoraPanel";
 
 const STEPS_FULL = [
   { label: 'Adresse & Kart', short: '1', id: 'flight-area' },
@@ -360,13 +361,31 @@ export default function SoraWizard() {
       </div>
 
       {/* Main content */}
-      <div className="max-w-6xl mx-auto px-6 py-8 flex gap-8 pb-24">
+      <div className="max-w-7xl mx-auto px-6 py-8 flex gap-6 pb-24">
         <div className="flex-1 min-w-0">
           <AnimatePresence mode="wait">
             <motion.div key={currentStepId} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
               {renderStepContent()}
             </motion.div>
           </AnimatePresence>
+        </div>
+        {/* Live risk panel */}
+        <div className="hidden lg:block w-72 shrink-0">
+          <LiveSoraPanel
+            drone={selectedDrone}
+            scenario={bestScenarioId}
+            sailRoman={results.sailRoman}
+            sail={results.sail}
+            intrinsicGrc={results.intrinsicGrc}
+            finalGrc={results.finalGrc}
+            initialArc={results.initialArc}
+            residualArc={results.residualArc}
+            operationType={derivedInputs.operationType}
+            populationDensity={derivedInputs.populationDensity}
+            warnings={soraResult.warnings || []}
+            groundMitigationTotal={results.groundMitigationTotal}
+            airMitigationCount={results.airMitigationCount}
+          />
         </div>
       </div>
 
