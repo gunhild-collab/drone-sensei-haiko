@@ -150,11 +150,25 @@ export default function SoraWizard() {
   const soraResult = useMemo(() => soraCalculate({
     mtom_kg: derivedInputs.mtom,
     characteristic_dimension: derivedInputs.characteristicDimension,
-    max_speed_ms: selectedDrone?.maxSpeed ?? 25,
+    max_speed_ms: selectedDrone?.maxSpeed ?? derivedInputs.maxSpeed ?? 25,
     operationType: derivedInputs.operationType,
     populationDensity: popMap[derivedInputs.populationDensity] || derivedInputs.populationDensity,
     altitude_m: derivedInputs.maxAltitude,
     nearControlledAirspace: derivedInputs.nearAirport,
+    ctr_distance_km: derivedInputs.ctrDistanceKm,
+    isUrbanArea: derivedInputs.isUrbanArea,
+    // Granular ground mitigations
+    m1a_robustness: derivedInputs.m1a_sheltering,
+    m1b_robustness: derivedInputs.m1b_restrictions,
+    m1c_ground_observers: derivedInputs.m1c_ground_observers,
+    m2_robustness: derivedInputs.m2_impact,
+    // Strategic air mitigations
+    ms1_segregation: derivedInputs.ms1_segregation,
+    ms2_time_windows: derivedInputs.ms2_time_windows,
+    ms3_visual_observers: derivedInputs.ms3_visual_observers,
+    ms4_airspace_coord: derivedInputs.ms4_airspace_coord,
+    ms5_boundaries: derivedInputs.ms5_boundaries,
+    // Legacy compat
     m1Reduction: Math.abs(derivedInputs.m1),
     m2Parachute: derivedInputs.m2 === -1,
     c_class: selectedDrone?.categoryClass || 'none',
