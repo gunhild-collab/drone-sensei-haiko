@@ -239,8 +239,8 @@ KOMMUNEDATA:
 - Bygninger: ${buildings || 'ukjent'}
 - Terreng: ${terrain_type || 'ukjent'}
 - Befolkningstetthet: ${density_per_km2 || 'ukjent'} innb/km²
-- Estimert maks multirotor-oppdrag (tur-retur): ~${distances.multirotor_km.toFixed(0)} km
-- Estimert maks fixed-wing oppdrag: ~${distances.fixedwing_km.toFixed(0)} km
+- Typisk dekningsområde multirotor (estimat basert på flytid og sikkerhetsmarginer): ~${distances.multirotor_km.toFixed(0)} km fra stasjon
+- Typisk dekningsområde fixed-wing (estimat basert på flytid og sikkerhetsmarginer): ~${distances.fixedwing_km.toFixed(0)} km fra stasjon
 
 KOSTRA/SSB KOSTNADSDATA (tabell 12362):
 ${sectorCostLines}
