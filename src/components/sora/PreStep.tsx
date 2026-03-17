@@ -107,7 +107,7 @@ export default function PreStep({
                 {brregLoading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sora-purple animate-spin" />}
                 <input
                   type="text"
-                  className="haiko-input w-full pl-10"
+                  className="haiko-input w-full !pl-10"
                   placeholder="Søk i Brønnøysundregistrene..."
                   value={brregQuery || applicantName}
                   onChange={e => { setBrregQuery(e.target.value); onChangeName(e.target.value); setBrregOpen(true); }}
@@ -155,7 +155,7 @@ export default function PreStep({
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sora-text-dim" strokeWidth={1.5} />
                 <input
                   type="text"
-                  className="haiko-input w-full pl-10"
+                  className="haiko-input w-full !pl-10"
                   placeholder="Søk etter drone..."
                   value={droneSearch}
                   onChange={e => { setDroneSearch(e.target.value); setDroneDropdownOpen(true); }}
