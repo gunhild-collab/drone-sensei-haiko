@@ -477,6 +477,7 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
     setManualRequired(false);
     setHighDensityValue(null);
     onUpdate(data);
+    checkOverlap(latlngs);
     await runDensityQuery(latlngs, data);
   }, [municipality, drone, grbDistance, cvDistance, onUpdate, localData?.operationType]);
 
