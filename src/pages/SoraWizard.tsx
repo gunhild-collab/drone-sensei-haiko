@@ -237,6 +237,7 @@ export default function SoraWizard() {
             sail={results.sail}
             operationType={derivedInputs.operationType}
             droneName={derivedInputs.droneName}
+            onCompletedChange={setCompletedRequirements}
           />
         );
       case 'action-plan':
