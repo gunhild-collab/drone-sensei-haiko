@@ -823,6 +823,8 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
         .route-tooltip::before { display: none !important; }
         .map-buffer-label { background: rgba(15,15,23,0.8) !important; border: 1px solid rgba(42,42,62,0.8) !important; color: #e5e7eb !important; font-size: 10px !important; padding: 2px 6px !important; border-radius: 4px !important; }
         .map-buffer-label::before { display: none !important; }
+        .restricted-tooltip { background: rgba(15,15,23,0.9) !important; border: 1px solid rgba(239,68,68,0.5) !important; color: #e5e7eb !important; font-size: 11px !important; padding: 4px 10px !important; border-radius: 6px !important; max-width: 250px !important; }
+        .restricted-tooltip::before { display: none !important; }
       `}</style>
     </div>
   );
