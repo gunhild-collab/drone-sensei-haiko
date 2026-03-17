@@ -412,7 +412,7 @@ INSTRUKSJONER:
                     properties: {
                       can_share: { type: "boolean" },
                       shared_resources: { type: "array", items: { type: "string" } },
-                      recommendation: { type: "string" },
+                      recommendation: { type: "string", description: "Bruk ord som 'foreslås' eller 'anbefales' — dette er en anbefaling, ikke vedtatt praksis" },
                       partner_municipalities: { type: "array", items: { type: "string" } },
                     },
                     required: ["can_share", "recommendation"],
