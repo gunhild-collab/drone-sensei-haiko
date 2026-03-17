@@ -19,6 +19,7 @@ import Step7Explanation from "@/components/sora/Step7Explanation";
 import Step8Documents from "@/components/sora/Step8Documents";
 import ContactHaiko from "@/components/sora/ContactHaiko";
 import HaikoLogo from "@/components/sora/HaikoLogo";
+import LiveSoraPanel from "@/components/sora/LiveSoraPanel";
 
 const STEPS_FULL = [
   { label: 'Adresse & Kart', short: '1', id: 'flight-area' },
