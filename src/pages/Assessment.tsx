@@ -35,6 +35,7 @@ type Step = "intro" | "data" | "analysis" | "questions";
 
 export default function Assessment() {
   const navigate = useNavigate();
+  const { requestCollapse, requestExpand } = useLayoutSidebar();
   const {
     answers, setAnswer, currentDimension, setCurrentDimension,
     municipalityName, setMunicipalityName, assessorName, setAssessorName,
@@ -42,6 +43,15 @@ export default function Assessment() {
   } = useAssessment();
 
   const [step, setStep] = useState<Step>("intro");
+
+  // Auto-collapse Layout sidebar when report is shown, expand when leaving
+  useEffect(() => {
+    if (step === "analysis") {
+      requestCollapse();
+    } else {
+      requestExpand();
+    }
+  }, [step, requestCollapse, requestExpand]);
   const [kostra, setKostra] = useState<KostraData | null>(null);
   const [kostraLoading, setKostraLoading] = useState(false);
   const [departments, setDepartments] = useState<ActiveDepartment[]>([]);
