@@ -18,7 +18,7 @@ const DRONE_ARCHETYPES = {
     type: "Fixed-wing drone-in-a-box",
     example: "Robot Aviation FX10",
     costNok: 1200000,
-    features: ["Lang rekkevidde (>50 km)", "2+ timer flygetid", "Autonom BVLOS", "Stor arealdekning", "RTK/PPK"],
+    features: ["Opptil ca. 2 timer flytid per oppdrag", "Autonom BVLOS", "Stor arealdekning", "RTK/PPK"],
   },
 };
 
