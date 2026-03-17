@@ -441,6 +441,9 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
       setLocalData(data);
       onUpdate(data);
 
+      // Check restricted zones
+      checkOverlap([from, to, ...corridorPoly]);
+
       // Query density
       runDensityQuery(corridorPoly, data);
     }
