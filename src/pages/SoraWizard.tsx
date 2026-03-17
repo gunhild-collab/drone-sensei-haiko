@@ -14,6 +14,7 @@ import Step2FlightArea, { FlightAreaData } from "@/components/sora/Step2FlightAr
 import Step4Mitigations, { MitigationState } from "@/components/sora/Step4Mitigations";
 import Step5ScenarioForm, { ScenarioFormData } from "@/components/sora/Step5ScenarioForm";
 import Step6OSO from "@/components/sora/Step6OSO";
+import StepRequirements from "@/components/sora/StepRequirements";
 import StepOperationsManual from "@/components/sora/StepOperationsManual";
 import Step7Explanation from "@/components/sora/Step7Explanation";
 import Step8Documents from "@/components/sora/Step8Documents";
