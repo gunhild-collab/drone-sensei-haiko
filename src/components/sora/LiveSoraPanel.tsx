@@ -74,21 +74,23 @@ export default function LiveSoraPanel({ drone, scenario, sailRoman, sail, intrin
         </div>
       )}
 
-      {/* Risk metrics */}
-      <div className="bg-sora-surface border border-sora-border rounded-xl p-3 space-y-2">
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-sora-text-dim flex items-center gap-1"><Shield className="w-3 h-3" /> GRC</span>
-          <span className="text-sora-text font-mono font-bold">{intrinsicGrc} → {finalGrc} <span className="text-sora-text-dim font-normal">({groundMitigationTotal > 0 ? `−${groundMitigationTotal}` : 'ingen reduksjon'})</span></span>
+      {/* Risk metrics - only show when flight area selected */}
+      {hasFlightArea && (
+        <div className="bg-sora-surface border border-sora-border rounded-xl p-3 space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-sora-text-dim flex items-center gap-1"><Shield className="w-3 h-3" /> GRC</span>
+            <span className="text-sora-text font-mono font-bold">{intrinsicGrc} → {finalGrc} <span className="text-sora-text-dim font-normal">({groundMitigationTotal > 0 ? `−${groundMitigationTotal}` : 'ingen reduksjon'})</span></span>
+          </div>
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-sora-text-dim flex items-center gap-1"><Plane className="w-3 h-3" /> ARC</span>
+            <span className="text-sora-text font-mono font-bold">{initialArc} → {residualArc} <span className="text-sora-text-dim font-normal">({airMitigationCount > 0 ? `−${airMitigationCount}` : 'ingen reduksjon'})</span></span>
+          </div>
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-sora-text-dim flex items-center gap-1"><Target className="w-3 h-3" /> Type</span>
+            <span className="text-sora-text font-bold">{operationType || '—'} · {POP_LABELS[populationDensity] || populationDensity}</span>
+          </div>
         </div>
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-sora-text-dim flex items-center gap-1"><Plane className="w-3 h-3" /> ARC</span>
-          <span className="text-sora-text font-mono font-bold">{initialArc} → {residualArc} <span className="text-sora-text-dim font-normal">({airMitigationCount > 0 ? `−${airMitigationCount}` : 'ingen reduksjon'})</span></span>
-        </div>
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-sora-text-dim flex items-center gap-1"><Target className="w-3 h-3" /> Type</span>
-          <span className="text-sora-text font-bold">{operationType || '—'} · {POP_LABELS[populationDensity] || populationDensity}</span>
-        </div>
-      </div>
+      )}
 
       {/* Drone limitations */}
       {drone && (
