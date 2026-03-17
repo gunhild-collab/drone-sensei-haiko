@@ -70,10 +70,10 @@ async function fetchSSBPopulation(code: string, name: string): Promise<{ populat
   } catch { return null; }
 }
 
-// ── SSB Table 12362: Sector-level KOSTRA expenditure & staffing ─────────
-// Table 12362 dimensions: Region, Funksjon, ArtGruppe (type), ContentsCode, Tid
-// ArtGruppe values: BDR (gross operating expenditure), LONN (wages excl sick pay)
-// ContentsCode: KOSbelop0000 (Sum NOK 1000)
+// ── SSB Table 12362: Sector-level KOSTRA expenditure ────────────────────
+// Table 12362 dimensions: art, year, region, statistic variable, function
+// We query municipality codes directly and fall back to the latest non-null year
+// because some municipalities lag one publication year behind others.
 
 interface SectorData {
   sector: string;
@@ -83,8 +83,19 @@ interface SectorData {
   source: string;
 }
 
-// Use pre-aggregated KOSTRA function groups (FGK) from table 12362
-// These are sector-level aggregates that SSB provides directly
+interface JsonStatDataset {
+  id?: string[];
+  size?: number[];
+  value?: Array<number | null>;
+  dimension?: Record<string, {
+    category?: {
+      index?: Record<string, number>;
+      label?: Record<string, string>;
+    };
+  }>;
+}
+
+// Use pre-aggregated KOSTRA function groups (FGK) from table 12362.
 const KOSTRA_FGK: Record<string, { code: string; label: string }> = {
   'Brann': { code: 'FGK17', label: 'Brann og ulykkesvern' },
   'Drift/vei': { code: 'FGK5', label: 'Samferdsel' },
@@ -96,75 +107,100 @@ const KOSTRA_FGK: Record<string, { code: string; label: string }> = {
   'Næring': { code: 'FGK4', label: 'Næringsforvaltning' },
 };
 
-async function fetchSectorData(code: string, name: string): Promise<Record<string, number>> {
-  const fgkCodes = Object.values(KOSTRA_FGK).map(s => s.code);
+const KOSTRA_12362_ART = 'AGD10';
+const KOSTRA_12362_CONTENT = 'KOSbelop0000';
+const KOSTRA_12362_YEAR_DEPTH = 3;
+
+function getJsonStatValue(dataset: JsonStatDataset, selections: Record<string, string>): number | null {
+  const ids = dataset.id || Object.keys(dataset.dimension || {});
+  const sizes = dataset.size || ids.map((id) => Object.keys(dataset.dimension?.[id]?.category?.index || {}).length);
+
+  let flatIndex = 0;
+  let stride = 1;
+
+  for (let i = ids.length - 1; i >= 0; i--) {
+    const dimensionId = ids[i];
+    const selectedCode = selections[dimensionId];
+    const categoryIndex = dataset.dimension?.[dimensionId]?.category?.index?.[selectedCode];
+    if (categoryIndex === undefined) return null;
+    flatIndex += categoryIndex * stride;
+    stride *= sizes[i] || 1;
+  }
+
+  const value = dataset.value?.[flatIndex];
+  return typeof value === 'number' ? value : null;
+}
+
+async function fetchSectorData(code: string, name: string): Promise<SectorData[]> {
+  const fgkCodes = Object.values(KOSTRA_FGK).map((sector) => sector.code);
+
   try {
-    // Use per-capita amount (NOK) - no art dimension needed
     const resp = await fetch('https://data.ssb.no/api/v0/no/table/12362', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         query: [
+          { code: 'KOKart0000', selection: { filter: 'item', values: [KOSTRA_12362_ART] } },
+          { code: 'Tid', selection: { filter: 'top', values: [String(KOSTRA_12362_YEAR_DEPTH)] } },
           { code: 'KOKkommuneregion0000', selection: { filter: 'item', values: [code] } },
+          { code: 'ContentsCode', selection: { filter: 'item', values: [KOSTRA_12362_CONTENT] } },
           { code: 'KOKfunksjon0000', selection: { filter: 'item', values: fgkCodes } },
-          { code: 'ContentsCode', selection: { filter: 'item', values: ['KOSbelop0000'] } },
-          { code: 'Tid', selection: { filter: 'top', values: ['1'] } },
         ],
         response: { format: 'json-stat2' },
       }),
       signal: AbortSignal.timeout(10000),
     });
+
     if (!resp.ok) {
       const errText = await resp.text().catch(() => '');
       console.log(`SSB 12362 failed ${resp.status} for ${name}: ${errText.substring(0, 300)}`);
-      return {};
+      return [];
     }
-    const data = await resp.json();
-    if (!data.value || !data.dimension) return {};
-    // Find function dimension
-    const dimKeys = Object.keys(data.dimension);
-    const funDimKey = dimKeys.find(k => k.toLowerCase().includes('funksjon')) || dimKeys[1];
-    const funDim = data.dimension[funDimKey];
-    const funCodes = funDim?.category?.index ? Object.keys(funDim.category.index) : [];
-    // First half of values = KOSbelop0000 (total 1000 NOK), second = per capita
-    const result: Record<string, number> = {};
-    funCodes.forEach((fc: string, i: number) => {
-      const val = data.value[i]; // KOSbelop0000
-      if (val !== null && val !== undefined) result[fc] = val;
-    });
-    console.log(`SSB 12362 for ${name}: ${JSON.stringify(result)}`);
-    return result;
-  } catch (e) {
-    console.log(`SSB 12362 fetch failed:`, e);
-    return {};
-  }
-}
 
-function mapFgkToSectors(valueByFgk: Record<string, number>): Record<string, number> {
-  const result: Record<string, number> = {};
-  for (const [sector, cfg] of Object.entries(KOSTRA_FGK)) {
-    if (valueByFgk[cfg.code] !== undefined) result[sector] = valueByFgk[cfg.code];
+    const data = await resp.json() as JsonStatDataset;
+    const yearIndex = data.dimension?.Tid?.category?.index || {};
+    const years = Object.entries(yearIndex)
+      .sort(([, a], [, b]) => a - b)
+      .map(([year]) => year);
+
+    if (!data.value?.length || years.length === 0) return [];
+
+    const sectors: SectorData[] = [];
+
+    for (const [sector, cfg] of Object.entries(KOSTRA_FGK)) {
+      for (const year of years) {
+        const value = getJsonStatValue(data, {
+          KOKart0000: KOSTRA_12362_ART,
+          Tid: year,
+          KOKkommuneregion0000: code,
+          ContentsCode: KOSTRA_12362_CONTENT,
+          KOKfunksjon0000: cfg.code,
+        });
+
+        if (value !== null) {
+          sectors.push({
+            sector,
+            expenditure_1000nok: Math.round(value),
+            employees_fte: null,
+            year,
+            source: 'ssb_12362',
+          });
+          break;
+        }
+      }
+    }
+
+    console.log(`SSB 12362 for ${name}: ${JSON.stringify(sectors.map(({ sector, expenditure_1000nok, year }) => ({ sector, expenditure_1000nok, year })))}`);
+    return sectors;
+  } catch (e) {
+    console.log('SSB 12362 fetch failed:', e);
+    return [];
   }
-  return result;
 }
 
 async function fetchAllSectorData(code: string, name: string): Promise<{ sectors: SectorData[]; source: string }> {
-  const raw = await fetchSectorData(code, name);
-  const expBySector = mapFgkToSectors(raw);
-
-  if (Object.keys(expBySector).length === 0) return { sectors: [], source: 'none' };
-
-  const sectors: SectorData[] = [];
-  for (const [sector, val] of Object.entries(expBySector)) {
-    sectors.push({
-      sector,
-      expenditure_1000nok: Math.round(val),
-      employees_fte: null,
-      year: '2024',
-      source: 'ssb_12362',
-    });
-  }
-  return { sectors, source: 'ssb' };
+  const sectors = await fetchSectorData(code, name);
+  return { sectors, source: sectors.length > 0 ? 'ssb' : 'none' };
 }
 
 // ── Fire stats estimates (fallback) ──────────────────────────────────────
