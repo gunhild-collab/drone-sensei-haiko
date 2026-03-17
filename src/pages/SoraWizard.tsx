@@ -25,11 +25,12 @@ import LiveSoraPanel from "@/components/sora/LiveSoraPanel";
 const STEPS_FULL = [
   { label: 'Adresse & Kart', short: '1', id: 'flight-area' },
   { label: 'Mitigrasjoner', short: '2', id: 'mitigations' },
-  { label: 'Scenario', short: '3', id: 'scenario' },
-  { label: 'OSO', short: '4', id: 'oso' },
-  { label: 'Manual', short: '5', id: 'manual' },
-  { label: 'Forklaring', short: '6', id: 'explanation' },
-  { label: 'Dokumenter', short: '7', id: 'documents' },
+  { label: 'Krav', short: '3', id: 'requirements' },
+  { label: 'Scenario', short: '4', id: 'scenario' },
+  { label: 'OSO', short: '5', id: 'oso' },
+  { label: 'Manual', short: '6', id: 'manual' },
+  { label: 'Forklaring', short: '7', id: 'explanation' },
+  { label: 'Dokumenter', short: '8', id: 'documents' },
 ];
 
 const STEPS_OPEN = [
