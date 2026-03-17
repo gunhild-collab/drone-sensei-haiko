@@ -328,7 +328,7 @@ INSTRUKSJONER:
               parameters: {
                 type: "object",
                 properties: {
-                  summary: { type: "string", description: "Kort oppsummering (2-3 setninger) SPESIFIKT for denne kommunen" },
+                  summary: { type: "string", description: "Kort oppsummering (2-3 setninger) SPESIFIKT for denne kommunen. Bruk ord som 'anbefales' og 'foreslås' — dette er en strategisk vurdering, ikke et vedtatt tiltak." },
                   department_analyses: {
                     type: "array",
                     items: {
