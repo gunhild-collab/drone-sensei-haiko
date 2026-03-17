@@ -1,11 +1,52 @@
-import { useState, useMemo } from "react";
-import { ArrowRight, CalendarIcon, Search, Plane, Check } from "lucide-react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import { ArrowRight, CalendarIcon, Search, Plane, Check, Building2, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DroneSpec, DRONE_DATABASE } from "@/data/droneDatabase";
 import HaikoLogo from "./HaikoLogo";
+
+interface BrregUnit {
+  organisasjonsnummer: string;
+  navn: string;
+  organisasjonsform?: { kode: string; beskrivelse: string };
+  forretningsadresse?: { kommune?: string; poststed?: string };
+}
+
+function useBrregSearch(query: string) {
+  const [results, setResults] = useState<BrregUnit[]>([]);
+  const [loading, setLoading] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    if (query.trim().length < 2) { setResults([]); return; }
+    abortRef.current?.abort();
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+    setLoading(true);
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `https://data.brreg.no/enhetsregisteret/api/enheter?navn=${encodeURIComponent(query.trim())}&size=8`,
+          { signal: ctrl.signal }
+        );
+        if (!res.ok) throw new Error('BRREG error');
+        const data = await res.json();
+        setResults((data._embedded?.enheter ?? []) as BrregUnit[]);
+      } catch (e: any) {
+        if (e.name !== 'AbortError') setResults([]);
+      } finally {
+        if (!ctrl.signal.aborted) setLoading(false);
+      }
+    }, 300);
+
+    return () => { clearTimeout(timer); ctrl.abort(); };
+  }, [query]);
+
+  return { results, loading };
+}
 
 interface Props {
   applicantName: string;
@@ -29,6 +70,9 @@ export default function PreStep({
   const [droneSearch, setDroneSearch] = useState('');
   const [droneDropdownOpen, setDroneDropdownOpen] = useState(false);
   const selectedDate = flightDate ? new Date(flightDate) : undefined;
+  const [brregQuery, setBrregQuery] = useState('');
+  const [brregOpen, setBrregOpen] = useState(false);
+  const { results: brregResults, loading: brregLoading } = useBrregSearch(brregQuery);
 
   const handleDateSelect = (date: Date | undefined) => {
     if (date) onChangeFlightDate(format(date, 'yyyy-MM-dd'));
@@ -57,7 +101,45 @@ export default function PreStep({
 
           <div>
             <label className="haiko-label block mb-2">Søkers navn / bedriftsnavn *</label>
-            <input type="text" className="haiko-input w-full" placeholder="Navn eller bedrift" value={applicantName} onChange={e => onChangeName(e.target.value)} />
+            <div className="relative">
+              <div className="relative">
+                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sora-text-dim" strokeWidth={1.5} />
+                {brregLoading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sora-purple animate-spin" />}
+                <input
+                  type="text"
+                  className="haiko-input w-full pl-10"
+                  placeholder="Søk i Brønnøysundregistrene..."
+                  value={brregQuery || applicantName}
+                  onChange={e => { setBrregQuery(e.target.value); onChangeName(e.target.value); setBrregOpen(true); }}
+                  onFocus={() => brregQuery.length >= 2 && setBrregOpen(true)}
+                />
+              </div>
+              {brregOpen && brregResults.length > 0 && (
+                <div className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto bg-white border border-sora-border rounded-lg shadow-lg">
+                  {brregResults.map(unit => (
+                    <button
+                      key={unit.organisasjonsnummer}
+                      onClick={() => {
+                        onChangeName(unit.navn);
+                        setBrregQuery(unit.navn);
+                        setBrregOpen(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-sora-light transition-colors text-sm"
+                    >
+                      <Building2 className="w-4 h-4 text-sora-purple shrink-0" strokeWidth={1.5} />
+                      <div className="min-w-0">
+                        <p className="text-sora-text font-medium truncate">{unit.navn}</p>
+                        <p className="text-sora-text-dim text-xs">
+                          Org.nr {unit.organisasjonsnummer}
+                          {unit.organisasjonsform && ` · ${unit.organisasjonsform.beskrivelse}`}
+                          {unit.forretningsadresse?.poststed && ` · ${unit.forretningsadresse.poststed}`}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           <div>
