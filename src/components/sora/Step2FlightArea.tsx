@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
-import { MapPin, AlertTriangle, Loader2, ChevronDown, Info, Search, Route, Hexagon, Navigation } from "lucide-react";
+import { MapPin, AlertTriangle, Loader2, ChevronDown, Info, Search, Route, Hexagon, Navigation, ShieldAlert, Plane, Trees, Swords } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet-draw";
 import "leaflet-draw/dist/leaflet.draw.css";
 import { DroneSpec } from "@/data/droneDatabase";
 import { queryWorldPopDensity, PopulationDensityClass, WorldPopResult } from "@/lib/worldPopDensity";
+import { RESTRICTED_ZONES, RestrictedZone, RestrictedZoneType, ZONE_TYPE_COLORS, ZONE_TYPE_LABELS, checkPolygonRestrictedZones } from "@/data/norwegianRestrictedZones";
 
 // ── Types ──
 interface NominatimResult {
@@ -224,6 +225,7 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
   const routeLineRef = useRef<L.Polyline | null>(null);
   const corridorLayerRef = useRef<L.Polygon | null>(null);
   const drawControlRef = useRef<L.Control.Draw | null>(null);
+  const restrictedLayersRef = useRef<L.LayerGroup>(new L.LayerGroup());
 
   const [flightMode, setFlightMode] = useState<FlightMode>(flightAreaData?.flightMode || 'area');
   const [localData, setLocalData] = useState<FlightAreaData | null>(flightAreaData);
@@ -231,6 +233,8 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
   const [overrideOpen, setOverrideOpen] = useState(false);
   const [manualRequired, setManualRequired] = useState(false);
   const [highDensityValue, setHighDensityValue] = useState<number | null>(null);
+  const [overlappingZones, setOverlappingZones] = useState<RestrictedZone[]>([]);
+  const [showRestrictedZones, setShowRestrictedZones] = useState(true);
 
   // Route mode state
   const [takeoffAddress, setTakeoffAddress] = useState('');
@@ -252,7 +256,10 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
     const map = L.map(mapContainerRef.current).setView(coords, 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
     map.addLayer(drawnItemsRef.current);
+    map.addLayer(restrictedLayersRef.current);
     mapRef.current = map;
+    // Draw restricted zones on map
+    drawRestrictedZones(map);
     return () => { map.remove(); mapRef.current = null; };
   }, [municipality]);
 
@@ -308,6 +315,56 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
     drawRoute(map, takeoffCoords, landingCoords);
   }, [takeoffCoords, landingCoords, flightMode, drone, maxAltitude]);
 
+  function drawRestrictedZones(map: L.Map) {
+    restrictedLayersRef.current.clearLayers();
+    if (!showRestrictedZones) return;
+    const bounds = map.getBounds();
+    for (const zone of RESTRICTED_ZONES) {
+      // Only render if roughly visible
+      const zoneLatLng = L.latLng(zone.lat, zone.lng);
+      const radiusDeg = zone.radiusKm / 111;
+      const zoneBounds = L.latLngBounds(
+        [zone.lat - radiusDeg, zone.lng - radiusDeg / Math.cos(zone.lat * Math.PI / 180)],
+        [zone.lat + radiusDeg, zone.lng + radiusDeg / Math.cos(zone.lat * Math.PI / 180)]
+      );
+      if (!bounds.intersects(zoneBounds) && map.getZoom() > 7) continue;
+
+      const color = ZONE_TYPE_COLORS[zone.type];
+      const circle = L.circle(zoneLatLng, {
+        radius: zone.radiusKm * 1000,
+        color,
+        weight: 1.5,
+        fillColor: color,
+        fillOpacity: 0.08,
+        dashArray: '6,4',
+        interactive: true,
+      });
+      circle.bindTooltip(`<strong>${zone.name}</strong><br/><span style="font-size:11px">${ZONE_TYPE_LABELS[zone.type]} — ${zone.radiusKm} km radius</span>`, { direction: 'top', className: 'restricted-tooltip' });
+      restrictedLayersRef.current.addLayer(circle);
+    }
+  }
+
+  // Redraw zones when map moves
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const handler = () => drawRestrictedZones(map);
+    map.on('moveend', handler);
+    map.on('zoomend', handler);
+    return () => { map.off('moveend', handler); map.off('zoomend', handler); };
+  }, [showRestrictedZones]);
+
+  // Toggle visibility
+  useEffect(() => {
+    if (mapRef.current) drawRestrictedZones(mapRef.current);
+  }, [showRestrictedZones]);
+
+  function checkOverlap(polygon: L.LatLng[] | { lat: number; lng: number }[]) {
+    const zones = checkPolygonRestrictedZones(polygon);
+    setOverlappingZones(zones);
+    return zones;
+  }
+
   function clearAllLayers(map: L.Map) {
     drawnItemsRef.current.clearLayers();
     removeBufferLayers(map);
@@ -316,6 +373,7 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
     if (takeoffMarkerRef.current) { map.removeLayer(takeoffMarkerRef.current); takeoffMarkerRef.current = null; }
     if (landingMarkerRef.current) { map.removeLayer(landingMarkerRef.current); landingMarkerRef.current = null; }
     setLocalData(null);
+    setOverlappingZones([]);
   }
 
   function removeBufferLayers(map: L.Map) {
@@ -383,6 +441,9 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
       setLocalData(data);
       onUpdate(data);
 
+      // Check restricted zones
+      checkOverlap([from, to, ...corridorPoly]);
+
       // Query density
       runDensityQuery(corridorPoly, data);
     }
@@ -416,6 +477,7 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
     setManualRequired(false);
     setHighDensityValue(null);
     onUpdate(data);
+    checkOverlap(latlngs);
     await runDensityQuery(latlngs, data);
   }, [municipality, drone, grbDistance, cvDistance, onUpdate, localData?.operationType]);
 
@@ -579,8 +641,56 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
         </div>
       )}
 
-      {/* Map */}
-      <div ref={mapContainerRef} className="w-full h-[450px] rounded-xl border border-sora-border" style={{ position: 'relative', zIndex: 1 }} />
+      {/* Map + restricted zones toggle */}
+      <div className="relative">
+        <div ref={mapContainerRef} className="w-full h-[450px] rounded-xl border border-sora-border" style={{ position: 'relative', zIndex: 1 }} />
+        <button
+          onClick={() => setShowRestrictedZones(!showRestrictedZones)}
+          className={`absolute top-3 right-3 z-[500] px-3 py-1.5 rounded-lg text-xs font-medium border backdrop-blur-sm transition-all flex items-center gap-1.5 ${
+            showRestrictedZones ? 'bg-destructive/80 border-destructive text-destructive-foreground' : 'bg-sora-surface/80 border-sora-border text-sora-text-dim'
+          }`}
+        >
+          <ShieldAlert className="w-3.5 h-3.5" strokeWidth={1.5} />
+          {showRestrictedZones ? 'Skjul restriksjoner' : 'Vis restriksjoner'}
+        </button>
+      </div>
+
+      {/* ── Restricted zone warnings ── */}
+      {overlappingZones.length > 0 && (
+        <div className="bg-destructive/10 border-2 border-destructive/50 rounded-xl p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="w-5 h-5 text-destructive shrink-0" strokeWidth={2} />
+            <div>
+              <p className="text-destructive font-bold text-sm">⚠️ Flygeområdet overlapper med restriksjonsområder!</p>
+              <p className="text-sora-text-dim text-xs mt-0.5">Flyvning i disse områdene krever spesiell tillatelse. Kontakt ansvarlig myndighet.</p>
+            </div>
+          </div>
+          <div className="space-y-2">
+            {overlappingZones.map(zone => {
+              const icon = zone.type === 'airport' ? <Plane className="w-4 h-4 shrink-0" strokeWidth={1.5} />
+                : zone.type === 'military' ? <Swords className="w-4 h-4 shrink-0" strokeWidth={1.5} />
+                : <Trees className="w-4 h-4 shrink-0" strokeWidth={1.5} />;
+              const color = ZONE_TYPE_COLORS[zone.type];
+              return (
+                <div key={zone.id} className="bg-sora-surface border border-sora-border rounded-lg p-3 flex items-start gap-3">
+                  <div className="mt-0.5" style={{ color }}>{icon}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sora-text font-semibold text-sm">{zone.name}</p>
+                      <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: color + '20', color }}>{ZONE_TYPE_LABELS[zone.type]}</span>
+                    </div>
+                    <p className="text-sora-text-dim text-xs mt-1">{zone.description}</p>
+                    <p className="text-sora-text text-xs mt-1.5 font-medium">📋 {zone.requirement}</p>
+                    {zone.link && (
+                      <a href={zone.link} target="_blank" rel="noopener noreferrer" className="text-sora-purple hover:underline text-xs mt-1 inline-block">Mer informasjon ↗</a>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Density status bar */}
       {localData?.polygon && (
@@ -713,6 +823,8 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
         .route-tooltip::before { display: none !important; }
         .map-buffer-label { background: rgba(15,15,23,0.8) !important; border: 1px solid rgba(42,42,62,0.8) !important; color: #e5e7eb !important; font-size: 10px !important; padding: 2px 6px !important; border-radius: 4px !important; }
         .map-buffer-label::before { display: none !important; }
+        .restricted-tooltip { background: rgba(15,15,23,0.9) !important; border: 1px solid rgba(239,68,68,0.5) !important; color: #e5e7eb !important; font-size: 11px !important; padding: 4px 10px !important; border-radius: 6px !important; max-width: 250px !important; }
+        .restricted-tooltip::before { display: none !important; }
       `}</style>
     </div>
   );
