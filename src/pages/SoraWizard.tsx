@@ -24,11 +24,7 @@ const STEPS_FULL = [
   { label: 'Adresse & Kart', short: '1', id: 'flight-area' },
   { label: 'Mitigrasjoner', short: '2', id: 'mitigations' },
   { label: 'Krav', short: '3', id: 'requirements' },
-  { label: 'Scenario', short: '4', id: 'scenario' },
-  { label: 'OSO', short: '5', id: 'oso' },
-  { label: 'Manual', short: '6', id: 'manual' },
-  { label: 'Forklaring', short: '7', id: 'explanation' },
-  { label: 'Dokumenter', short: '8', id: 'documents' },
+  { label: 'Handlingsplan', short: '4', id: 'action-plan' },
 ];
 
 const STEPS_OPEN = [
