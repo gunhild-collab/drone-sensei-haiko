@@ -76,20 +76,6 @@ const defaultMitigations: MitigationState = {
   ms5_boundaries: 'none',
 };
 
-const defaultScenarioForm: ScenarioFormData = {
-  pilotCertNumber: '',
-  atoName: '',
-  insuranceCompany: '',
-  insuranceNumber: '',
-  operationsManualRef: '',
-  conopsDescription: '',
-  maxFlightAltitude: '120',
-  contingencyBuffer: '50',
-  grbMeters: '30',
-  terrain: '',
-  nearestAirport: '',
-  restrictions: '',
-};
 
 export default function SoraWizard() {
   const [started, setStarted] = useState(false);
