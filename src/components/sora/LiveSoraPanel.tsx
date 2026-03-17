@@ -50,21 +50,29 @@ function sailBg(sail: number): string {
   return 'bg-red-500/10 border-red-500/30';
 }
 
-export default function LiveSoraPanel({ drone, scenario, sailRoman, sail, intrinsicGrc, finalGrc, initialArc, residualArc, operationType, populationDensity, warnings, groundMitigationTotal, airMitigationCount }: Props) {
+export default function LiveSoraPanel({ drone, scenario, sailRoman, sail, intrinsicGrc, finalGrc, initialArc, residualArc, operationType, populationDensity, warnings, groundMitigationTotal, airMitigationCount, hasFlightArea }: Props) {
   const [expanded, setExpanded] = useState(true);
   const info = SCENARIO_INFO[scenario] || SCENARIO_INFO['SORA-III-IV'];
 
   return (
     <div className="sticky top-4 space-y-3">
       {/* Scenario card */}
-      <div className={`rounded-xl border p-4 ${sailBg(sail)}`}>
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-2xl">{info.emoji}</span>
-          <span className={`text-3xl font-bold font-mono ${sailColor(sail)}`}>{sailRoman || '—'}</span>
+      {!hasFlightArea ? (
+        <div className="rounded-xl border border-sora-border bg-sora-surface p-4 text-center">
+          <Target className="w-6 h-6 text-sora-text-dim mx-auto mb-2" />
+          <p className="text-sora-text text-sm font-bold">Velg flyområde i kart</p>
+          <p className="text-sora-text-dim text-xs mt-1">Tegn et flyområde for å se anbefalt flykategori og SAIL-nivå</p>
         </div>
-        <p className="text-sora-text font-bold text-sm">{info.label}</p>
-        <p className="text-sora-text-dim text-xs mt-0.5">{info.shortDesc}</p>
-      </div>
+      ) : (
+        <div className={`rounded-xl border p-4 ${sailBg(sail)}`}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-2xl">{info.emoji}</span>
+            <span className={`text-3xl font-bold font-mono ${sailColor(sail)}`}>{sailRoman || '—'}</span>
+          </div>
+          <p className="text-sora-text font-bold text-sm">{info.label}</p>
+          <p className="text-sora-text-dim text-xs mt-0.5">{info.shortDesc}</p>
+        </div>
+      )}
 
       {/* Risk metrics */}
       <div className="bg-sora-surface border border-sora-border rounded-xl p-3 space-y-2">
