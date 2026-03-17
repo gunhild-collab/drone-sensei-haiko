@@ -16,6 +16,7 @@ interface Props {
   warnings: string[];
   groundMitigationTotal: number;
   airMitigationCount: number;
+  hasFlightArea: boolean;
 }
 
 const SCENARIO_INFO: Record<string, { emoji: string; label: string; shortDesc: string; fullDesc: string; allows: string[]; requires: string[]; submission: string }> = {
@@ -49,37 +50,47 @@ function sailBg(sail: number): string {
   return 'bg-red-500/10 border-red-500/30';
 }
 
-export default function LiveSoraPanel({ drone, scenario, sailRoman, sail, intrinsicGrc, finalGrc, initialArc, residualArc, operationType, populationDensity, warnings, groundMitigationTotal, airMitigationCount }: Props) {
+export default function LiveSoraPanel({ drone, scenario, sailRoman, sail, intrinsicGrc, finalGrc, initialArc, residualArc, operationType, populationDensity, warnings, groundMitigationTotal, airMitigationCount, hasFlightArea }: Props) {
   const [expanded, setExpanded] = useState(true);
   const info = SCENARIO_INFO[scenario] || SCENARIO_INFO['SORA-III-IV'];
 
   return (
     <div className="sticky top-4 space-y-3">
       {/* Scenario card */}
-      <div className={`rounded-xl border p-4 ${sailBg(sail)}`}>
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-2xl">{info.emoji}</span>
-          <span className={`text-3xl font-bold font-mono ${sailColor(sail)}`}>{sailRoman || '—'}</span>
+      {!hasFlightArea ? (
+        <div className="rounded-xl border border-sora-border bg-sora-surface p-4 text-center">
+          <Target className="w-6 h-6 text-sora-text-dim mx-auto mb-2" />
+          <p className="text-sora-text text-sm font-bold">Velg flyområde i kart</p>
+          <p className="text-sora-text-dim text-xs mt-1">Tegn et flyområde for å se anbefalt flykategori og SAIL-nivå</p>
         </div>
-        <p className="text-sora-text font-bold text-sm">{info.label}</p>
-        <p className="text-sora-text-dim text-xs mt-0.5">{info.shortDesc}</p>
-      </div>
+      ) : (
+        <div className={`rounded-xl border p-4 ${sailBg(sail)}`}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-2xl">{info.emoji}</span>
+            <span className={`text-3xl font-bold font-mono ${sailColor(sail)}`}>{sailRoman || '—'}</span>
+          </div>
+          <p className="text-sora-text font-bold text-sm">{info.label}</p>
+          <p className="text-sora-text-dim text-xs mt-0.5">{info.shortDesc}</p>
+        </div>
+      )}
 
-      {/* Risk metrics */}
-      <div className="bg-sora-surface border border-sora-border rounded-xl p-3 space-y-2">
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-sora-text-dim flex items-center gap-1"><Shield className="w-3 h-3" /> GRC</span>
-          <span className="text-sora-text font-mono font-bold">{intrinsicGrc} → {finalGrc} <span className="text-sora-text-dim font-normal">({groundMitigationTotal > 0 ? `−${groundMitigationTotal}` : 'ingen reduksjon'})</span></span>
+      {/* Risk metrics - only show when flight area selected */}
+      {hasFlightArea && (
+        <div className="bg-sora-surface border border-sora-border rounded-xl p-3 space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-sora-text-dim flex items-center gap-1"><Shield className="w-3 h-3" /> GRC</span>
+            <span className="text-sora-text font-mono font-bold">{intrinsicGrc} → {finalGrc} <span className="text-sora-text-dim font-normal">({groundMitigationTotal > 0 ? `−${groundMitigationTotal}` : 'ingen reduksjon'})</span></span>
+          </div>
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-sora-text-dim flex items-center gap-1"><Plane className="w-3 h-3" /> ARC</span>
+            <span className="text-sora-text font-mono font-bold">{initialArc} → {residualArc} <span className="text-sora-text-dim font-normal">({airMitigationCount > 0 ? `−${airMitigationCount}` : 'ingen reduksjon'})</span></span>
+          </div>
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-sora-text-dim flex items-center gap-1"><Target className="w-3 h-3" /> Type</span>
+            <span className="text-sora-text font-bold">{operationType || '—'} · {POP_LABELS[populationDensity] || populationDensity}</span>
+          </div>
         </div>
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-sora-text-dim flex items-center gap-1"><Plane className="w-3 h-3" /> ARC</span>
-          <span className="text-sora-text font-mono font-bold">{initialArc} → {residualArc} <span className="text-sora-text-dim font-normal">({airMitigationCount > 0 ? `−${airMitigationCount}` : 'ingen reduksjon'})</span></span>
-        </div>
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-sora-text-dim flex items-center gap-1"><Target className="w-3 h-3" /> Type</span>
-          <span className="text-sora-text font-bold">{operationType || '—'} · {POP_LABELS[populationDensity] || populationDensity}</span>
-        </div>
-      </div>
+      )}
 
       {/* Drone limitations */}
       {drone && (
@@ -110,36 +121,38 @@ export default function LiveSoraPanel({ drone, scenario, sailRoman, sail, intrin
         </div>
       )}
 
-      {/* Scenario explanation */}
-      <button onClick={() => setExpanded(!expanded)} className="w-full bg-sora-surface border border-sora-border rounded-xl p-3 text-left hover:bg-sora-surface-hover transition-colors">
-        <div className="flex items-center justify-between">
-          <p className="text-sora-text-dim text-[10px] font-semibold uppercase tracking-wider flex items-center gap-1"><BookOpen className="w-3 h-3" /> Hvorfor dette scenariet?</p>
-          {expanded ? <ChevronUp className="w-3 h-3 text-sora-text-dim" /> : <ChevronDown className="w-3 h-3 text-sora-text-dim" />}
-        </div>
-        {expanded && (
-          <div className="mt-2 space-y-2">
-            <p className="text-sora-text text-xs leading-relaxed">{info.fullDesc}</p>
-            <div>
-              <p className="text-green-400 text-[10px] font-semibold mb-0.5">✓ Dette lar deg:</p>
-              <ul className="text-sora-text-dim text-[11px] space-y-0.5 pl-3">
-                {info.allows.map((a, i) => <li key={i}>• {a}</li>)}
-              </ul>
-            </div>
-            <div>
-              <p className="text-sora-warning text-[10px] font-semibold mb-0.5">📋 Du trenger:</p>
-              <ul className="text-sora-text-dim text-[11px] space-y-0.5 pl-3">
-                {info.requires.map((r, i) => <li key={i}>• {r}</li>)}
-              </ul>
-            </div>
-            <div className="pt-1 border-t border-sora-border">
-              <p className="text-sora-text-dim text-[10px]">📤 <strong>Innsending:</strong> {info.submission}</p>
-            </div>
+      {/* Scenario explanation - only when flight area selected */}
+      {hasFlightArea && (
+        <button onClick={() => setExpanded(!expanded)} className="w-full bg-sora-surface border border-sora-border rounded-xl p-3 text-left hover:bg-sora-surface-hover transition-colors">
+          <div className="flex items-center justify-between">
+            <p className="text-sora-text-dim text-[10px] font-semibold uppercase tracking-wider flex items-center gap-1"><BookOpen className="w-3 h-3" /> Hvorfor dette scenariet?</p>
+            {expanded ? <ChevronUp className="w-3 h-3 text-sora-text-dim" /> : <ChevronDown className="w-3 h-3 text-sora-text-dim" />}
           </div>
-        )}
-      </button>
+          {expanded && (
+            <div className="mt-2 space-y-2">
+              <p className="text-sora-text text-xs leading-relaxed">{info.fullDesc}</p>
+              <div>
+                <p className="text-sora-success text-[10px] font-semibold mb-0.5">✓ Dette lar deg:</p>
+                <ul className="text-sora-text-dim text-[11px] space-y-0.5 pl-3">
+                  {info.allows.map((a, i) => <li key={i}>• {a}</li>)}
+                </ul>
+              </div>
+              <div>
+                <p className="text-sora-warning text-[10px] font-semibold mb-0.5">📋 Du trenger:</p>
+                <ul className="text-sora-text-dim text-[11px] space-y-0.5 pl-3">
+                  {info.requires.map((r, i) => <li key={i}>• {r}</li>)}
+                </ul>
+              </div>
+              <div className="pt-1 border-t border-sora-border">
+                <p className="text-sora-text-dim text-[10px]">📤 <strong>Innsending:</strong> {info.submission}</p>
+              </div>
+            </div>
+          )}
+        </button>
+      )}
 
       {/* Warnings */}
-      {warnings.length > 0 && (
+      {hasFlightArea && warnings.length > 0 && (
         <div className="bg-sora-surface border border-sora-border rounded-xl p-3 space-y-1.5">
           <p className="text-sora-warning text-[10px] font-semibold flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Advarsler</p>
           {warnings.map((w, i) => (
