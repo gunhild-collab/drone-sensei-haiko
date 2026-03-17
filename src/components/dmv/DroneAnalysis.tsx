@@ -245,12 +245,15 @@ export default function DroneAnalysis({
                         {perCapita != null && (
                           <p className="text-[10px] text-muted-foreground">{perCapita.toLocaleString('nb-NO')} kr/innb</p>
                         )}
+                        {s.employees_fte != null && (
+                          <p className="text-[10px] text-muted-foreground">~{s.employees_fte} årsverk</p>
+                        )}
                       </div>
                     );
                   })}
                 </div>
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  Kilde: {sectorData[0]?.source === 'ssb_12362' ? 'SSB tabell 12362' : 'Estimat'} · År {sectorData[0]?.year || '—'}
+                  Kilde: {sectorData[0]?.source === 'ssb_12362' ? 'SSB tabell 12362' : 'Estimat'} · År {sectorData[0]?.year || '—'} · Årsverk estimert fra lønnskostnader
                 </p>
               </div>
             )}
