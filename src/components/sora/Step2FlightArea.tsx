@@ -315,6 +315,56 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
     drawRoute(map, takeoffCoords, landingCoords);
   }, [takeoffCoords, landingCoords, flightMode, drone, maxAltitude]);
 
+  function drawRestrictedZones(map: L.Map) {
+    restrictedLayersRef.current.clearLayers();
+    if (!showRestrictedZones) return;
+    const bounds = map.getBounds();
+    for (const zone of RESTRICTED_ZONES) {
+      // Only render if roughly visible
+      const zoneLatLng = L.latLng(zone.lat, zone.lng);
+      const radiusDeg = zone.radiusKm / 111;
+      const zoneBounds = L.latLngBounds(
+        [zone.lat - radiusDeg, zone.lng - radiusDeg / Math.cos(zone.lat * Math.PI / 180)],
+        [zone.lat + radiusDeg, zone.lng + radiusDeg / Math.cos(zone.lat * Math.PI / 180)]
+      );
+      if (!bounds.intersects(zoneBounds) && map.getZoom() > 7) continue;
+
+      const color = ZONE_TYPE_COLORS[zone.type];
+      const circle = L.circle(zoneLatLng, {
+        radius: zone.radiusKm * 1000,
+        color,
+        weight: 1.5,
+        fillColor: color,
+        fillOpacity: 0.08,
+        dashArray: '6,4',
+        interactive: true,
+      });
+      circle.bindTooltip(`<strong>${zone.name}</strong><br/><span style="font-size:11px">${ZONE_TYPE_LABELS[zone.type]} — ${zone.radiusKm} km radius</span>`, { direction: 'top', className: 'restricted-tooltip' });
+      restrictedLayersRef.current.addLayer(circle);
+    }
+  }
+
+  // Redraw zones when map moves
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const handler = () => drawRestrictedZones(map);
+    map.on('moveend', handler);
+    map.on('zoomend', handler);
+    return () => { map.off('moveend', handler); map.off('zoomend', handler); };
+  }, [showRestrictedZones]);
+
+  // Toggle visibility
+  useEffect(() => {
+    if (mapRef.current) drawRestrictedZones(mapRef.current);
+  }, [showRestrictedZones]);
+
+  function checkOverlap(polygon: L.LatLng[] | { lat: number; lng: number }[]) {
+    const zones = checkPolygonRestrictedZones(polygon);
+    setOverlappingZones(zones);
+    return zones;
+  }
+
   function clearAllLayers(map: L.Map) {
     drawnItemsRef.current.clearLayers();
     removeBufferLayers(map);
@@ -323,6 +373,7 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
     if (takeoffMarkerRef.current) { map.removeLayer(takeoffMarkerRef.current); takeoffMarkerRef.current = null; }
     if (landingMarkerRef.current) { map.removeLayer(landingMarkerRef.current); landingMarkerRef.current = null; }
     setLocalData(null);
+    setOverlappingZones([]);
   }
 
   function removeBufferLayers(map: L.Map) {
