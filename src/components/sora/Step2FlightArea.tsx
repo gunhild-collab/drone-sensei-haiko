@@ -225,6 +225,7 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
   const routeLineRef = useRef<L.Polyline | null>(null);
   const corridorLayerRef = useRef<L.Polygon | null>(null);
   const drawControlRef = useRef<L.Control.Draw | null>(null);
+  const restrictedLayersRef = useRef<L.LayerGroup>(new L.LayerGroup());
 
   const [flightMode, setFlightMode] = useState<FlightMode>(flightAreaData?.flightMode || 'area');
   const [localData, setLocalData] = useState<FlightAreaData | null>(flightAreaData);
@@ -232,6 +233,8 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
   const [overrideOpen, setOverrideOpen] = useState(false);
   const [manualRequired, setManualRequired] = useState(false);
   const [highDensityValue, setHighDensityValue] = useState<number | null>(null);
+  const [overlappingZones, setOverlappingZones] = useState<RestrictedZone[]>([]);
+  const [showRestrictedZones, setShowRestrictedZones] = useState(true);
 
   // Route mode state
   const [takeoffAddress, setTakeoffAddress] = useState('');
