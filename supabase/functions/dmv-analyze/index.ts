@@ -239,14 +239,26 @@ KOMMUNEDATA:
 - Bygninger: ${buildings || 'ukjent'}
 - Terreng: ${terrain_type || 'ukjent'}
 - Befolkningstetthet: ${density_per_km2 || 'ukjent'} innb/km²
+- Estimert maks multirotor-oppdrag (tur-retur): ~${distances.multirotor_km.toFixed(0)} km
+- Estimert maks fixed-wing oppdrag: ~${distances.fixedwing_km.toFixed(0)} km
 
 KOSTRA/SSB KOSTNADSDATA (tabell 12362):
 ${sectorCostLines}
 ${fireBudgetLine}
 
+ÅRSVERK PER SEKTOR (estimert fra lønnskostnader, SSB 12362):
+${sectorStaffingLines}
+
 AKTIVE AVDELINGER: ${JSON.stringify(deptNames)}
 
 ${iksContext}
+
+TILGJENGELIG DRONEDATABASE (velg fra disse basert på behov):
+${JSON.stringify(DRONE_CATALOG.map(d => ({
+  id: d.id, name: d.name, type: d.type, range_km: d.max_range_km, flight_time_min: d.max_flight_time_min,
+  thermal: d.has_thermal, rtk: d.has_rtk, lidar: d.has_lidar, payload_kg: d.payload_kg,
+  autonomous_dock: d.autonomous_dock, price_nok: d.price_nok, best_for: d.best_for, description_no: d.description_no,
+})), null, 1)}
 
 VERIFISERT USE CASE-DATABASE (velg KUN fra disse):
 ${JSON.stringify(relevantUCs, null, 1)}
@@ -258,20 +270,23 @@ INSTRUKSJONER:
    - "rør_km × 0.2" med rør_km = ${va_km || 'ukjent'}
    - "areal_km2 × 0.002" med areal = ${area_km2 || 'ukjent'}
    - Faste timer brukes som de er (f.eks. "30 timer/år flat")
-3. Når du omtaler avdelingsøkonomi eller brannøkonomi, bruk tallene over fra SSB tabell 12362 og ikke generaliser mellom kommuner.
+3. Når du omtaler avdelingsøkonomi eller brannøkonomi, bruk tallene over fra SSB tabell 12362 inkludert årsverk og ikke generaliser mellom kommuner.
 4. Hvis kostnadsdata mangler, si eksplisitt at data mangler i stedet for å finne på tall.
 5. For HVER operasjon: bruk NØYAKTIG operationType, easaCategory og certRequirement fra databasen
-6. DRONEFLÅTE: Beregn antall multirotorer og fixed-wing basert på totale flytimer per type.
-   - MULTIROTOR: 1 stk med mindre timer overstiger 400t/år — da 2
-   - FIXED-WING: 1 stk med mindre timer overstiger 400t/år — kun inkluder om det er UC-er som krever den
-   - Bruk modellnavnene: "${DRONE_ARCHETYPES.multirotor.example}" og "${DRONE_ARCHETYPES.fixedWing.example}"
+6. DRONEFLÅTE — VELG SPESIFIKKE DRONER FRA DATABASEN:
+   - Vurder maks avstand fra dronestasjon til ytterste oppdrag (tur-retur). Multirotor: ~${distances.multirotor_km.toFixed(0)} km, Fixed-wing: ~${distances.fixedwing_km.toFixed(0)} km.
+   - Match utstyrbehov: Trenger operasjonene termisk? RTK? LiDAR? Payload?
+   - Vurder autonom drift: Beredskapsoperasjoner krever dronestasjon. Planlagte oppdrag kan bruke manuell drone.
+   - Vurder sambruk: Hvilke avdelinger kan dele same drone basert på overlappende behov?
+   - Velg den billigste dronen som dekker behovet — ikke anbefal dyrere enn nødvendig.
+   - For HVER drone: forklar HVORFOR den er valgt (distanse, utstyr, bruksområder).
 7. ${fire_dept_type === 'IKS'
     ? `For IKS-brannvesenet ${fire_dept_name}: vurder om dronestasjonen kan dekke hele IKS-området med partnerkommuner: ${(iks_partners || []).join(', ')}`
     : fire_dept_name
     ? `Brannvesenet er et ${fire_dept_type}: ${fire_dept_name}. Dronestasjonen dekker kun ${municipality_name}.`
     : 'Ingen brannveseninfo.'}
 8. Gi én sertifiseringsvei per pilot — ALDRI bland åpen og spesifikk kategori
-9. Estimer totalkostnad basert på antall dronestasjoner × enhetspris`;
+9. Estimer totalkostnad basert på valgte droner`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
