@@ -274,12 +274,13 @@ INSTRUKSJONER:
 4. Hvis kostnadsdata mangler, si eksplisitt at data mangler i stedet for å finne på tall.
 5. For HVER operasjon: bruk NØYAKTIG operationType, easaCategory og certRequirement fra databasen
 6. DRONEFLÅTE — VELG SPESIFIKKE DRONER FRA DATABASEN:
-   - Vurder maks avstand fra dronestasjon til ytterste oppdrag (tur-retur). Multirotor: ~${distances.multirotor_km.toFixed(0)} km, Fixed-wing: ~${distances.fixedwing_km.toFixed(0)} km.
+   - Bruk produsentens oppgitte maksimale flytid som referanse — IKKE oppgi km-rekkevidde som produsentdata.
+   - Hvis du vil omtale typisk dekningsområde, bruk formuleringer som "typisk dekningsområde i denne analysen er X–Y km fra stasjonen basert på flytid og sikkerhetsmarginer" — tydelig merket som scenario/estimat.
    - Match utstyrbehov: Trenger operasjonene termisk? RTK? LiDAR? Payload?
    - Vurder autonom drift: Beredskapsoperasjoner krever dronestasjon. Planlagte oppdrag kan bruke manuell drone.
    - Vurder sambruk: Hvilke avdelinger kan dele same drone basert på overlappende behov?
    - Velg den billigste dronen som dekker behovet — ikke anbefal dyrere enn nødvendig.
-   - For HVER drone: forklar HVORFOR den er valgt (distanse, utstyr, bruksområder).
+   - For HVER drone: forklar HVORFOR den er valgt (flytid, utstyr, bruksområder). ALDRI bruk formuleringer som "rekkevidde på ~X km".
 7. ${fire_dept_type === 'IKS'
     ? `For IKS-brannvesenet ${fire_dept_name}: vurder om dronestasjonen kan dekke hele IKS-området med partnerkommuner: ${(iks_partners || []).join(', ')}`
     : fire_dept_name
