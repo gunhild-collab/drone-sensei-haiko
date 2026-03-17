@@ -107,9 +107,11 @@ const KOSTRA_FGK: Record<string, { code: string; label: string }> = {
   'Næring': { code: 'FGK4', label: 'Næringsforvaltning' },
 };
 
-const KOSTRA_12362_ART = 'AGD10';
+const KOSTRA_12362_ART_EXPENDITURE = 'AGD10';
+const KOSTRA_12362_ART_WAGES = 'AGD1';
 const KOSTRA_12362_CONTENT = 'KOSbelop0000';
 const KOSTRA_12362_YEAR_DEPTH = 3;
+const AVG_MUNICIPAL_SALARY_NOK = 650; // Average municipal salary in 1000 NOK for FTE estimation
 
 function getJsonStatValue(dataset: JsonStatDataset, selections: Record<string, string>): number | null {
   const ids = dataset.id || Object.keys(dataset.dimension || {});
