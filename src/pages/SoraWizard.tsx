@@ -254,6 +254,16 @@ export default function SoraWizard() {
         );
       case 'mitigations':
         return <Step4Mitigations mitigations={mitigations} isBVLOS={derivedInputs.operationType === 'BVLOS'} onChange={updateMitigations} />;
+      case 'requirements':
+        return (
+          <StepRequirements
+            scenario={bestScenarioId}
+            sailRoman={results.sailRoman}
+            sail={results.sail}
+            operationType={derivedInputs.operationType}
+            droneName={derivedInputs.droneName}
+          />
+        );
       case 'scenario':
         return (
           <Step5ScenarioForm
