@@ -343,6 +343,8 @@ export default function Assessment() {
         fireDeptType={fireDept?.type || null}
         alarmSentralName={alarmSentral?.name || null}
         regionMunicipalities={regionMunicipalities}
+        sectorData={kostra?.sector_data || []}
+        fireStats={kostra?.fire_stats || null}
         onContinue={() => setStep("questions")}
         onBack={() => setStep("data")}
       />

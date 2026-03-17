@@ -113,35 +113,47 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { 
-      municipality_name, population, area_km2, road_km, va_km, buildings, 
+    const {
+      municipality_name, population, area_km2, road_km, va_km, buildings,
       terrain_type, density_per_km2, departments, iks_partners,
-      fire_dept_name, fire_dept_type, alarm_sentral_name, region_municipalities
+      fire_dept_name, fire_dept_type, alarm_sentral_name, region_municipalities,
+      sector_data, fire_stats,
     } = await req.json();
-    
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
     // Filter use cases to only those matching active departments — PRECISE matching
     const deptNames = (departments || []) as string[];
-    
-    const relevantUCs = VERIFIED_USE_CASES.filter(uc => 
+
+    const relevantUCs = VERIFIED_USE_CASES.filter((uc) =>
       matchDepartments(uc.department, deptNames)
     );
 
     console.log(`[${municipality_name}] Active depts: ${JSON.stringify(deptNames)}`);
     console.log(`[${municipality_name}] Matched ${relevantUCs.length}/${VERIFIED_USE_CASES.length} use cases`);
-    console.log(`[${municipality_name}] Matched UC IDs: ${relevantUCs.map(uc => uc.id).join(', ')}`);
+    console.log(`[${municipality_name}] Matched UC IDs: ${relevantUCs.map((uc) => uc.id).join(', ')}`);
 
     // Build IKS/fire department context
-    const iksContext = fire_dept_name 
+    const iksContext = fire_dept_name
       ? `BRANNVESEN: ${fire_dept_name} (type: ${fire_dept_type || 'ukjent'})
-${iks_partners && iks_partners.length > 0 
+${iks_partners && iks_partners.length > 0
   ? `Partnerkommuner i brannvesenet: ${iks_partners.join(', ')}. Dronestasjonen kan stasjoneres sentralt for hele ${fire_dept_type === 'IKS' ? 'IKS-et' : 'distriktet'}.`
   : `Enkeltkommunalt brannvesen — ingen delte ressurser.`}
 ${alarm_sentral_name ? `110-sentral: ${alarm_sentral_name}` : ''}
 ${region_municipalities && region_municipalities.length > 0 ? `Totalt ${region_municipalities.length} kommuner under samme 110-region.` : ''}`
       : 'Ingen brannvesendata tilgjengelig.';
+
+    const sectorCostLines = Array.isArray(sector_data) && sector_data.length > 0
+      ? sector_data
+          .filter((sector: any) => sector?.expenditure_1000nok != null)
+          .map((sector: any) => `- ${sector.sector}: ${sector.expenditure_1000nok} (1000 kr, år ${sector.year || 'ukjent'}, kilde ${sector.source || 'ukjent'})`)
+          .join('\n')
+      : '- Ingen sektorkostnader tilgjengelig fra SSB tabell 12362.';
+
+    const fireBudgetLine = fire_stats?.fire_expenditure_1000nok != null
+      ? `- Brann/ulykkesvern: ${fire_stats.fire_expenditure_1000nok} (1000 kr, år ${fire_stats.year || 'ukjent'}, kilde ${fire_stats.source || 'ukjent'})`
+      : '- Brannkostnad ikke tilgjengelig.';
 
     const systemPrompt = `Du er en ekspert på kommunal dronebruk i Norge med dyp kunnskap om EASA-regelverk, SORA-metodikk og norsk luftfartslovgivning.
 
@@ -192,6 +204,10 @@ KOMMUNEDATA:
 - Terreng: ${terrain_type || 'ukjent'}
 - Befolkningstetthet: ${density_per_km2 || 'ukjent'} innb/km²
 
+KOSTRA/SSB KOSTNADSDATA (tabell 12362):
+${sectorCostLines}
+${fireBudgetLine}
+
 AKTIVE AVDELINGER: ${JSON.stringify(deptNames)}
 
 ${iksContext}
@@ -206,18 +222,20 @@ INSTRUKSJONER:
    - "rør_km × 0.2" med rør_km = ${va_km || 'ukjent'}
    - "areal_km2 × 0.002" med areal = ${area_km2 || 'ukjent'}
    - Faste timer brukes som de er (f.eks. "30 timer/år flat")
-3. For HVER operasjon: bruk NØYAKTIG operationType, easaCategory og certRequirement fra databasen
-4. DRONEFLÅTE: Beregn antall multirotorer og fixed-wing basert på totale flytimer per type.
+3. Når du omtaler avdelingsøkonomi eller brannøkonomi, bruk tallene over fra SSB tabell 12362 og ikke generaliser mellom kommuner.
+4. Hvis kostnadsdata mangler, si eksplisitt at data mangler i stedet for å finne på tall.
+5. For HVER operasjon: bruk NØYAKTIG operationType, easaCategory og certRequirement fra databasen
+6. DRONEFLÅTE: Beregn antall multirotorer og fixed-wing basert på totale flytimer per type.
    - MULTIROTOR: 1 stk med mindre timer overstiger 400t/år — da 2
    - FIXED-WING: 1 stk med mindre timer overstiger 400t/år — kun inkluder om det er UC-er som krever den
    - Bruk modellnavnene: "${DRONE_ARCHETYPES.multirotor.example}" og "${DRONE_ARCHETYPES.fixedWing.example}"
-5. ${fire_dept_type === 'IKS' 
-    ? `For IKS-brannvesenet ${fire_dept_name}: vurder om dronestasjonen kan dekke hele IKS-området med partnerkommuner: ${(iks_partners || []).join(', ')}` 
-    : fire_dept_name 
+7. ${fire_dept_type === 'IKS'
+    ? `For IKS-brannvesenet ${fire_dept_name}: vurder om dronestasjonen kan dekke hele IKS-området med partnerkommuner: ${(iks_partners || []).join(', ')}`
+    : fire_dept_name
     ? `Brannvesenet er et ${fire_dept_type}: ${fire_dept_name}. Dronestasjonen dekker kun ${municipality_name}.`
     : 'Ingen brannveseninfo.'}
-6. Gi én sertifiseringsvei per pilot — ALDRI bland åpen og spesifikk kategori
-7. Estimer totalkostnad basert på antall dronestasjoner × enhetspris`;
+8. Gi én sertifiseringsvei per pilot — ALDRI bland åpen og spesifikk kategori
+9. Estimer totalkostnad basert på antall dronestasjoner × enhetspris`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
