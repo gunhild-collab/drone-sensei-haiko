@@ -19,6 +19,7 @@ interface Props {
   sail: number;
   operationType: string;
   droneName: string;
+  onCompletedChange?: (completed: Set<string>) => void;
 }
 
 interface Requirement {
