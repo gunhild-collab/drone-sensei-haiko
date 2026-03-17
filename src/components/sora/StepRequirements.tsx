@@ -19,6 +19,7 @@ interface Props {
   sail: number;
   operationType: string;
   droneName: string;
+  onCompletedChange?: (completed: Set<string>) => void;
 }
 
 interface Requirement {
@@ -147,7 +148,7 @@ function getRequirements(scenario: string, sail: number, operationType: string):
   return reqs;
 }
 
-export default function StepRequirements({ scenario, sailRoman, sail, operationType, droneName }: Props) {
+export default function StepRequirements({ scenario, sailRoman, sail, operationType, droneName, onCompletedChange }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set(["ops-manual"]));
   const [completed, setCompleted] = useState<Set<string>>(new Set());
   const [hasItem, setHasItem] = useState<Record<string, boolean>>({});
@@ -168,9 +169,9 @@ export default function StepRequirements({ scenario, sailRoman, sail, operationT
     setHasItem(prev => {
       const next = { ...prev, [id]: !prev[id] };
       if (next[id]) {
-        setCompleted(p => new Set(p).add(id));
+        setCompleted(p => { const n = new Set(p).add(id); onCompletedChange?.(n); return n; });
       } else {
-        setCompleted(p => { const n = new Set(p); n.delete(id); return n; });
+        setCompleted(p => { const n = new Set(p); n.delete(id); onCompletedChange?.(n); return n; });
       }
       return next;
     });
@@ -180,7 +181,7 @@ export default function StepRequirements({ scenario, sailRoman, sail, operationT
     const file = e.target.files?.[0];
     if (file) {
       setUploadedFiles(prev => ({ ...prev, [id]: file.name }));
-      setCompleted(prev => new Set(prev).add(id));
+      setCompleted(prev => { const n = new Set(prev).add(id); onCompletedChange?.(n); return n; });
     }
   };
 

@@ -12,12 +12,8 @@ import PreStep from "@/components/sora/PreStep";
 import { MunicipalityData } from "@/components/sora/Step1Municipality";
 import Step2FlightArea, { FlightAreaData } from "@/components/sora/Step2FlightArea";
 import Step4Mitigations, { MitigationState } from "@/components/sora/Step4Mitigations";
-import Step5ScenarioForm, { ScenarioFormData } from "@/components/sora/Step5ScenarioForm";
-import Step6OSO from "@/components/sora/Step6OSO";
 import StepRequirements from "@/components/sora/StepRequirements";
-import StepOperationsManual from "@/components/sora/StepOperationsManual";
-import Step7Explanation from "@/components/sora/Step7Explanation";
-import Step8Documents from "@/components/sora/Step8Documents";
+import StepActionPlan from "@/components/sora/StepActionPlan";
 import ContactHaiko from "@/components/sora/ContactHaiko";
 import HaikoLogo from "@/components/sora/HaikoLogo";
 import LiveSoraPanel from "@/components/sora/LiveSoraPanel";
@@ -26,11 +22,7 @@ const STEPS_FULL = [
   { label: 'Adresse & Kart', short: '1', id: 'flight-area' },
   { label: 'Mitigrasjoner', short: '2', id: 'mitigations' },
   { label: 'Krav', short: '3', id: 'requirements' },
-  { label: 'Scenario', short: '4', id: 'scenario' },
-  { label: 'OSO', short: '5', id: 'oso' },
-  { label: 'Manual', short: '6', id: 'manual' },
-  { label: 'Forklaring', short: '7', id: 'explanation' },
-  { label: 'Dokumenter', short: '8', id: 'documents' },
+  { label: 'Handlingsplan', short: '4', id: 'action-plan' },
 ];
 
 const STEPS_OPEN = [
@@ -84,20 +76,6 @@ const defaultMitigations: MitigationState = {
   ms5_boundaries: 'none',
 };
 
-const defaultScenarioForm: ScenarioFormData = {
-  pilotCertNumber: '',
-  atoName: '',
-  insuranceCompany: '',
-  insuranceNumber: '',
-  operationsManualRef: '',
-  conopsDescription: '',
-  maxFlightAltitude: '120',
-  contingencyBuffer: '50',
-  grbMeters: '30',
-  terrain: '',
-  nearestAirport: '',
-  restrictions: '',
-};
 
 export default function SoraWizard() {
   const [started, setStarted] = useState(false);
@@ -108,10 +86,8 @@ export default function SoraWizard() {
   const [step, setStep] = useState(0);
   const [inputs, setInputs] = useState<SoraInputs>(defaultInputs);
   const [osoTexts, setOsoTexts] = useState<Record<number, string>>({});
-  const [manualTexts, setManualTexts] = useState<Record<string, string>>({});
-  const updateManualText = useCallback((key: string, value: string) => setManualTexts(prev => ({ ...prev, [key]: value })), []);
   const [mitigations, setMitigations] = useState<MitigationState>(defaultMitigations);
-  const [scenarioFormData, setScenarioFormData] = useState<ScenarioFormData>(defaultScenarioForm);
+  const [completedRequirements, setCompletedRequirements] = useState<Set<string>>(new Set());
 
   const [municipality, setMunicipality] = useState('');
   const [municipalityData, setMunicipalityData] = useState<MunicipalityData | null>(null);
@@ -121,7 +97,6 @@ export default function SoraWizard() {
   const updateInputs = useCallback((updates: Partial<SoraInputs>) => setInputs(prev => ({ ...prev, ...updates })), []);
   const updateOso = useCallback((id: number, text: string) => setOsoTexts(prev => ({ ...prev, [id]: text })), []);
   const updateMitigations = useCallback((updates: Partial<MitigationState>) => setMitigations(prev => ({ ...prev, ...updates })), []);
-  const updateScenarioForm = useCallback((updates: Partial<ScenarioFormData>) => setScenarioFormData(prev => ({ ...prev, ...updates })), []);
 
   const derivedInputs = useMemo(() => {
     // Map granular mitigations to legacy M1/M2 for soraCalculate compatibility
@@ -262,61 +237,19 @@ export default function SoraWizard() {
             sail={results.sail}
             operationType={derivedInputs.operationType}
             droneName={derivedInputs.droneName}
+            onCompletedChange={setCompletedRequirements}
           />
         );
-      case 'scenario':
+      case 'action-plan':
         return (
-          <Step5ScenarioForm
-            matchedScenario={bestScenario} sailLevel={results.sail} formData={scenarioFormData}
-            applicantName={applicantName} municipality={municipality} droneName={derivedInputs.droneName}
-            operationType={derivedInputs.operationType} flightDate={flightDate} onChange={updateScenarioForm}
+          <StepActionPlan
+            scenario={bestScenarioId}
+            sailRoman={results.sailRoman}
+            sail={results.sail}
+            operationType={derivedInputs.operationType}
+            droneName={derivedInputs.droneName}
+            completedRequirements={completedRequirements}
           />
-        );
-      case 'oso':
-        return (
-          <Step6OSO
-            sail={results.sail} osoTexts={osoTexts} onOsoChange={updateOso}
-            applicantName={applicantName} droneName={derivedInputs.droneName} municipality={municipality}
-            operationType={derivedInputs.operationType} dayNight={derivedInputs.dayNight}
-            flightAreaDescription={flightAreaData?.flightDescription || ''}
-          />
-        );
-      case 'manual':
-        return (
-          <StepOperationsManual
-            applicantName={applicantName} applicantEmail={applicantEmail} flightDate={flightDate}
-            municipality={municipality} selectedDrone={selectedDrone} results={results}
-            flightAreaData={flightAreaData} derivedInputs={derivedInputs} scenario={bestScenarioId}
-            manualTexts={manualTexts} onManualTextChange={updateManualText}
-          />
-        );
-      case 'explanation':
-        return (
-          <>
-            {isOpenCategory && (
-              <div className="mb-6 p-4 bg-sora-light border-l-[3px] border-sora-purple rounded-lg flex items-start gap-3">
-                <Info className="w-5 h-5 text-sora-purple shrink-0 mt-0.5" strokeWidth={1.5} />
-                <p className="text-sora-text text-[14px] font-sora">
-                  Du opererer i åpen kategori ({bestScenarioId}). Ingen søknad eller operasjonsmanual er påkrevd.
-                </p>
-              </div>
-            )}
-            <Step7Explanation sailLevel={results.sail} matchedScenario={bestScenario} />
-          </>
-        );
-      case 'documents':
-        return (
-          <>
-            {isOpenCategory && (
-              <div className="mb-6 p-4 bg-sora-light border-l-[3px] border-sora-purple rounded-lg flex items-start gap-3">
-                <Info className="w-5 h-5 text-sora-purple shrink-0 mt-0.5" strokeWidth={1.5} />
-                <p className="text-sora-text text-[14px] font-sora">
-                  Du opererer i åpen kategori ({bestScenarioId}). Ingen søknad eller operasjonsmanual er påkrevd.
-                </p>
-              </div>
-            )}
-            <Step8Documents scenario={bestScenarioId} />
-          </>
         );
       default:
         return null;
