@@ -156,7 +156,43 @@ ${region_municipalities && region_municipalities.length > 0 ? `Totalt ${region_m
       : '- Brannkostnad ikke tilgjengelig.';
 
     const systemPrompt = `Du er en ekspert på kommunal dronebruk i Norge med dyp kunnskap om EASA-regelverk, SORA-metodikk og norsk luftfartslovgivning.
-...
+
+GRUNNLEGGENDE PREMISS — AUTONOME BVLOS-OPERASJONER FRA SENTRAL:
+Nesten ALLE operasjoner skal gjøres autonomt BVLOS fra en sentral dronestasjon for å gi økonomisk vinning.
+Kommunen drifter droner fra en eller flere faste dronestasjoner — dronen starter, flyr oppdraget og lander automatisk.
+Kun et fåtall unntaksoperasjoner (broinspeksjon, tunnelportal, vernebygninger) krever manuell VLOS.
+
+DET FINNES KUN TO DRONETYPER:
+1. MULTIROTOR (autonom BVLOS fra dronestasjon): Kompakt multirotor med dock (f.eks. DJI Dock 2 + Matrice 4T).
+   - Brukes til: lokale inspeksjoner, termisk, SAR, beredskap, bygningsdokumentasjon
+   - Rekkevidde: opptil ~15 km radius fra stasjon
+   - Pris ca. ${DRONE_ARCHETYPES.multirotor.costNok.toLocaleString('nb-NO')} NOK per enhet
+
+2. FIXED-WING DRONE-IN-A-BOX (f.eks. Robot Aviation FX10):
+   - Brukes til: lange korridorflyginger (vei, rør), stor arealdekning (skog, natur, kartlegging), vilttelling
+   - Rekkevidde: 50+ km, 2+ timer flygetid
+   - Pris ca. ${DRONE_ARCHETYPES.fixedWing.costNok.toLocaleString('nb-NO')} NOK per enhet
+
+${CERT_RULES}
+
+VIKTIG — DIFFERENSIER ANALYSEN BASERT PÅ KOMMUNEDATA:
+- Bruk REELLE tall for beregninger (vei_km, innbyggere, areal osv.). 
+- Ikke bruk faste timer for variable formler — beregn fra kommunedata.
+- En liten kommune (5000 innb., 50 km vei) skal få VESENTLIG lavere flytimer og færre droner enn en stor (50000 innb., 500 km vei).
+- Små kommuner (<10000 innb.) trenger typisk 1 multirotor og muligens 0 fixed-wing.
+- Mellomstore kommuner (10000-30000) trenger 1-2 multirotorer og muligens 1 fixed-wing.
+- Store kommuner (>30000) kan trenge 2+ multirotorer og 1 fixed-wing.
+
+Du har tilgang til en VERIFISERT database med ${relevantUCs.length} bruksområder som matcher kommunens aktive avdelinger. 
+Du skal KUN velge fra disse — ALDRI finne opp nye.
+Hvert use case har et fast felt 'droneArchetype' som er enten 'multirotor' eller 'fixedWing' — bruk dette.
+
+VIKTIG: Ikke inkluder use cases som åpenbart er irrelevante for kommunen.
+- UC-020 (kystsonekartlegging): Kun for kystkommuner.
+- UC-004/UC-021 (skogbrann/skogovervåkning): Kun for kommuner med vesentlig skogareal.
+- UC-025/UC-026 (medisinlevering/AED): Mest relevant for distriktskommuner.
+`;
+
     const userPrompt = `Analyser dronemulighetene for ${municipality_name} kommune.
 
 KOMMUNEDATA:
