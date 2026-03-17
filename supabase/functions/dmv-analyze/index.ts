@@ -428,7 +428,7 @@ INSTRUKSJONER:
                         phase: { type: "number" },
                         title: { type: "string" },
                         departments: { type: "array", items: { type: "string" } },
-                        description: { type: "string" },
+                        description: { type: "string", description: "Bruk 'foreslås', 'anbefales' eller 'konseptuelt opplegg' — ikke formuleringer som antyder vedtatt praksis" },
                       },
                       required: ["phase", "title", "departments", "description"],
                     },
