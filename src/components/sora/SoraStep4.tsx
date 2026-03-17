@@ -111,6 +111,22 @@ export default function SoraStep4({ results }: Props) {
         </div>
       </div>
 
+      {/* Containment Requirements (SORA 2.5 Annex E) */}
+      {results.sail >= 2 && (() => {
+        const cont = getContainmentRequirements(results.sail);
+        return (
+          <div className="bg-[#1a1a2e] rounded-xl p-5 border border-[#2a2a3e]">
+            <h3 className="text-white font-semibold mb-3">Containment-krav (SAIL {results.sailRoman})</h3>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div><span className="text-gray-400">Bakke:</span> <span className="text-gray-200">{cont.groundTech}</span></div>
+              <div><span className="text-gray-400">Vertikal:</span> <span className="text-gray-200">{cont.vertical}</span></div>
+              <div><span className="text-gray-400">Lateral:</span> <span className="text-gray-200">{cont.lateral}</span></div>
+              <div><span className="text-gray-400">Evidens:</span> <span className="text-gray-200">{cont.evidenceLevel}</span></div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Recommendation */}
       <div className="bg-[#1a1a2e] rounded-xl p-5 border border-[#7c3aed]/30">
         <h3 className="text-white font-semibold mb-2">Anbefalt neste steg</h3>
