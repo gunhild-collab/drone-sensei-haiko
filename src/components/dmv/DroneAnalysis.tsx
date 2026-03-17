@@ -11,66 +11,9 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import type { KostraSectorData } from "@/lib/evaluationApi";
 import type { ActiveDepartment } from "./DepartmentEditor";
-
-const iconMap: Record<string, React.ComponentType<any>> = {
-  Flame, Route, Droplets, Building2, TreePine, Heart, Map, Leaf,
-};
-
-export interface DroneAnalysisResult {
-  summary: string;
-  department_analyses: Array<{
-    department: string;
-    use_cases: Array<{
-      name: string;
-      description: string;
-      operation_type: string;
-      easa_category: string;
-      required_permit: string;
-      pilot_certification: string;
-      drone_type: string;
-      priority: string;
-      annual_flight_hours: number;
-      calculation_basis?: string;
-      needs_thermal?: boolean;
-      needs_rtk?: boolean;
-    }>;
-    total_annual_hours: number;
-  }>;
-  certification_plan?: {
-    pilot_groups: Array<{
-      group_name: string;
-      certification_path: string;
-      covers_use_cases: string[];
-      training_description: string;
-      estimated_training_days: number;
-    }>;
-  };
-  drone_fleet: Array<{
-    drone_type: string;
-    recommended_model: string;
-    quantity: number;
-    shared_between: string[];
-    estimated_cost_nok: number;
-    key_features?: string[];
-  }>;
-  iks_recommendation: {
-    can_share: boolean;
-    shared_resources?: string[];
-    recommendation: string;
-    partner_municipalities?: string[];
-  };
-  total_drones_needed: number;
-  total_annual_cost_nok: number;
-  total_annual_flight_hours: number;
-  implementation_priority: Array<{
-    phase: number;
-    title: string;
-    departments: string[];
-    description: string;
-  }>;
-}
-
+...
 interface Props {
   municipalityName: string;
   population: number;
@@ -86,6 +29,12 @@ interface Props {
   fireDeptType: string | null;
   alarmSentralName: string | null;
   regionMunicipalities: string[];
+  sectorData: KostraSectorData[];
+  fireStats: {
+    fire_expenditure_1000nok?: number;
+    year?: string;
+    source?: string;
+  } | null;
   onContinue: () => void;
   onBack: () => void;
 }
@@ -94,7 +43,7 @@ export default function DroneAnalysis({
   municipalityName, population, areaKm2, roadKm, vaKm, buildings,
   terrainType, densityPerKm2, departments, iksPartners,
   fireDeptName, fireDeptType, alarmSentralName, regionMunicipalities,
-  onContinue, onBack
+  sectorData, fireStats, onContinue, onBack
 }: Props) {
   const [analysis, setAnalysis] = useState<DroneAnalysisResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -125,6 +74,8 @@ export default function DroneAnalysis({
             fire_dept_type: fireDeptType,
             alarm_sentral_name: alarmSentralName,
             region_municipalities: regionMunicipalities,
+            sector_data: sectorData,
+            fire_stats: fireStats,
           },
         });
         if (fnError) throw new Error(fnError.message);
@@ -137,7 +88,7 @@ export default function DroneAnalysis({
       }
     };
     run();
-  }, [municipalityName, population, areaKm2, roadKm, vaKm, buildings, terrainType, densityPerKm2, departments, iksPartners, fireDeptName, fireDeptType]);
+  }, [municipalityName, population, areaKm2, roadKm, vaKm, buildings, terrainType, densityPerKm2, departments, iksPartners, fireDeptName, fireDeptType, alarmSentralName, regionMunicipalities, sectorData, fireStats]);
 
   if (loading) {
     return (

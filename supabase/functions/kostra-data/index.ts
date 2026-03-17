@@ -383,7 +383,7 @@ Deno.serve(async (req) => {
       protected_areas: protectedAreas,
     };
 
-    // Step 4: Fetch KOSTRA sector-level expenditure + staffing
+    // Step 4: Fetch KOSTRA sector-level expenditure
     const ssbResult = municipalityCode
       ? await fetchAllSectorData(municipalityCode, municipality_name)
       : { sectors: [], source: 'none' };
@@ -411,6 +411,23 @@ Deno.serve(async (req) => {
       sectorSource = 'estimated';
     }
 
+    const estimatedFireStats = estimateFireStats(population, municipality_name, areaKm2);
+    const fireSector = finalSectors.find((sector) => sector.sector === 'Brann' && sector.expenditure_1000nok != null);
+    const fireStats = estimatedFireStats
+      ? {
+          ...estimatedFireStats,
+          fire_expenditure_1000nok: fireSector?.expenditure_1000nok ?? estimatedFireStats.fire_expenditure_1000nok,
+          year: fireSector?.year ?? estimatedFireStats.year,
+          source: fireSector?.source === 'ssb_12362' ? 'ssb_12362' : estimatedFireStats.source,
+        }
+      : fireSector
+      ? {
+          fire_expenditure_1000nok: fireSector.expenditure_1000nok,
+          year: fireSector.year,
+          source: fireSector.source,
+        }
+      : null;
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -421,7 +438,7 @@ Deno.serve(async (req) => {
         indicators,
         drone_relevance: droneRelevance,
         services,
-        fire_stats: estimateFireStats(population, municipality_name, areaKm2),
+        fire_stats: fireStats,
         sector_data: finalSectors,
         sector_data_source: sectorSource,
       }),
