@@ -16,18 +16,19 @@ function sailBg(sail: number): string {
   return 'from-red-500/10 to-red-500/5';
 }
 
+// SORA 2.5 exact per-GRC-row SAIL matrix
 const SAIL_MATRIX_DISPLAY = [
-  { label: 'GRC ≤ 2', values: ['I', 'I', 'II', 'IV'] },
-  { label: 'GRC 3–4', values: ['II', 'II', 'IV', 'V'] },
-  { label: 'GRC 5–6', values: ['III', 'IV', 'V', 'VI'] },
-  { label: 'GRC ≥ 7', values: ['IV', 'V', 'VI', 'VI'] },
+  { label: 'GRC = 1', values: ['I', 'I', 'I', 'II'] },
+  { label: 'GRC = 2', values: ['I', 'I', 'II', 'II'] },
+  { label: 'GRC = 3', values: ['I', 'II', 'II', 'III'] },
+  { label: 'GRC = 4', values: ['II', 'II', 'III', 'IV'] },
+  { label: 'GRC = 5', values: ['II', 'III', 'III', 'V'] },
+  { label: 'GRC = 6', values: ['III', 'IV', 'V', 'VI'] },
+  { label: 'GRC = 7', values: ['IV', 'V', 'VI', 'VI'] },
 ];
 
 function getActiveRow(grc: number): number {
-  if (grc <= 2) return 0;
-  if (grc <= 4) return 1;
-  if (grc <= 6) return 2;
-  return 3;
+  return Math.min(Math.max(grc, 1), 7) - 1;
 }
 
 function getActiveCol(arc: string): number {
