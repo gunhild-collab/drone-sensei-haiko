@@ -136,43 +136,56 @@ function getJsonStatValue(dataset: JsonStatDataset, selections: Record<string, s
 async function fetchSectorData(code: string, name: string): Promise<SectorData[]> {
   const fgkCodes = Object.values(KOSTRA_FGK).map((sector) => sector.code);
 
-  try {
-    const resp = await fetch('https://data.ssb.no/api/v0/no/table/12362', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query: [
-          { code: 'KOKart0000', selection: { filter: 'item', values: [KOSTRA_12362_ART] } },
-          { code: 'Tid', selection: { filter: 'top', values: [String(KOSTRA_12362_YEAR_DEPTH)] } },
-          { code: 'KOKkommuneregion0000', selection: { filter: 'item', values: [code] } },
-          { code: 'ContentsCode', selection: { filter: 'item', values: [KOSTRA_12362_CONTENT] } },
-          { code: 'KOKfunksjon0000', selection: { filter: 'item', values: fgkCodes } },
-        ],
-        response: { format: 'json-stat2' },
-      }),
-      signal: AbortSignal.timeout(10000),
-    });
+  // Fetch both expenditure (AGD10) and wages (AGD1) in parallel
+  const makeQuery = (artCode: string) => fetch('https://data.ssb.no/api/v0/no/table/12362', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      query: [
+        { code: 'KOKart0000', selection: { filter: 'item', values: [artCode] } },
+        { code: 'Tid', selection: { filter: 'top', values: [String(KOSTRA_12362_YEAR_DEPTH)] } },
+        { code: 'KOKkommuneregion0000', selection: { filter: 'item', values: [code] } },
+        { code: 'ContentsCode', selection: { filter: 'item', values: [KOSTRA_12362_CONTENT] } },
+        { code: 'KOKfunksjon0000', selection: { filter: 'item', values: fgkCodes } },
+      ],
+      response: { format: 'json-stat2' },
+    }),
+    signal: AbortSignal.timeout(10000),
+  });
 
-    if (!resp.ok) {
-      const errText = await resp.text().catch(() => '');
-      console.log(`SSB 12362 failed ${resp.status} for ${name}: ${errText.substring(0, 300)}`);
+  try {
+    const [expendResp, wageResp] = await Promise.all([
+      makeQuery(KOSTRA_12362_ART_EXPENDITURE),
+      makeQuery(KOSTRA_12362_ART_WAGES).catch(() => null),
+    ]);
+
+    if (!expendResp.ok) {
+      const errText = await expendResp.text().catch(() => '');
+      console.log(`SSB 12362 failed ${expendResp.status} for ${name}: ${errText.substring(0, 300)}`);
       return [];
     }
 
-    const data = await resp.json() as JsonStatDataset;
-    const yearIndex = data.dimension?.Tid?.category?.index || {};
+    const expendData = await expendResp.json() as JsonStatDataset;
+
+    // Parse wage data for FTE estimation
+    let wageData: JsonStatDataset | null = null;
+    if (wageResp && wageResp.ok) {
+      wageData = await wageResp.json() as JsonStatDataset;
+    }
+
+    const yearIndex = expendData.dimension?.Tid?.category?.index || {};
     const years = Object.entries(yearIndex)
       .sort(([, a], [, b]) => a - b)
       .map(([year]) => year);
 
-    if (!data.value?.length || years.length === 0) return [];
+    if (!expendData.value?.length || years.length === 0) return [];
 
     const sectors: SectorData[] = [];
 
     for (const [sector, cfg] of Object.entries(KOSTRA_FGK)) {
       for (const year of years) {
-        const value = getJsonStatValue(data, {
-          KOKart0000: KOSTRA_12362_ART,
+        const value = getJsonStatValue(expendData, {
+          KOKart0000: KOSTRA_12362_ART_EXPENDITURE,
           Tid: year,
           KOKkommuneregion0000: code,
           ContentsCode: KOSTRA_12362_CONTENT,
@@ -180,10 +193,25 @@ async function fetchSectorData(code: string, name: string): Promise<SectorData[]
         });
 
         if (value !== null) {
+          // Estimate FTEs from wage costs for the same sector/year
+          let estimatedFte: number | null = null;
+          if (wageData) {
+            const wageValue = getJsonStatValue(wageData, {
+              KOKart0000: KOSTRA_12362_ART_WAGES,
+              Tid: year,
+              KOKkommuneregion0000: code,
+              ContentsCode: KOSTRA_12362_CONTENT,
+              KOKfunksjon0000: cfg.code,
+            });
+            if (wageValue !== null && wageValue > 0) {
+              estimatedFte = Math.round((wageValue / AVG_MUNICIPAL_SALARY_NOK) * 10) / 10;
+            }
+          }
+
           sectors.push({
             sector,
             expenditure_1000nok: Math.round(value),
-            employees_fte: null,
+            employees_fte: estimatedFte,
             year,
             source: 'ssb_12362',
           });
@@ -192,7 +220,7 @@ async function fetchSectorData(code: string, name: string): Promise<SectorData[]
       }
     }
 
-    console.log(`SSB 12362 for ${name}: ${JSON.stringify(sectors.map(({ sector, expenditure_1000nok, year }) => ({ sector, expenditure_1000nok, year })))}`);
+    console.log(`SSB 12362 for ${name}: ${JSON.stringify(sectors.map(({ sector, expenditure_1000nok, employees_fte, year }) => ({ sector, expenditure_1000nok, employees_fte, year })))}`);
     return sectors;
   } catch (e) {
     console.log('SSB 12362 fetch failed:', e);
