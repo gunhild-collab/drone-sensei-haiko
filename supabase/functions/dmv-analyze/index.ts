@@ -303,8 +303,9 @@ INSTRUKSJONER:
     : fire_dept_name
     ? `Brannvesenet er et ${fire_dept_type}: ${fire_dept_name}. Dronestasjonen dekker kun ${municipality_name}.`
     : 'Ingen brannveseninfo.'}
-8. Gi én sertifiseringsvei per pilot — ALDRI bland åpen og spesifikk kategori
-9. Estimer totalkostnad basert på valgte droner`;
+8. Gi én sertifiseringsvei per pilot — ALDRI bland åpen og spesifikk kategori. Følg reglene i punkt 4-6 i CERT_RULES nøye.
+9. Estimer totalkostnad basert på valgte droner
+10. Bruk ord som "foreslås", "anbefales", "konseptuelt opplegg" for implementeringsplaner, IKS-samarbeid og use case-struktur. Leseren skal forstå hva som er fakta vs. anbefaling.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
