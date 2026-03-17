@@ -255,59 +255,16 @@ export default function SoraWizard() {
             droneName={derivedInputs.droneName}
           />
         );
-      case 'scenario':
+      case 'action-plan':
         return (
-          <Step5ScenarioForm
-            matchedScenario={bestScenario} sailLevel={results.sail} formData={scenarioFormData}
-            applicantName={applicantName} municipality={municipality} droneName={derivedInputs.droneName}
-            operationType={derivedInputs.operationType} flightDate={flightDate} onChange={updateScenarioForm}
+          <StepActionPlan
+            scenario={bestScenarioId}
+            sailRoman={results.sailRoman}
+            sail={results.sail}
+            operationType={derivedInputs.operationType}
+            droneName={derivedInputs.droneName}
+            completedRequirements={completedRequirements}
           />
-        );
-      case 'oso':
-        return (
-          <Step6OSO
-            sail={results.sail} osoTexts={osoTexts} onOsoChange={updateOso}
-            applicantName={applicantName} droneName={derivedInputs.droneName} municipality={municipality}
-            operationType={derivedInputs.operationType} dayNight={derivedInputs.dayNight}
-            flightAreaDescription={flightAreaData?.flightDescription || ''}
-          />
-        );
-      case 'manual':
-        return (
-          <StepOperationsManual
-            applicantName={applicantName} applicantEmail={applicantEmail} flightDate={flightDate}
-            municipality={municipality} selectedDrone={selectedDrone} results={results}
-            flightAreaData={flightAreaData} derivedInputs={derivedInputs} scenario={bestScenarioId}
-            manualTexts={manualTexts} onManualTextChange={updateManualText}
-          />
-        );
-      case 'explanation':
-        return (
-          <>
-            {isOpenCategory && (
-              <div className="mb-6 p-4 bg-sora-light border-l-[3px] border-sora-purple rounded-lg flex items-start gap-3">
-                <Info className="w-5 h-5 text-sora-purple shrink-0 mt-0.5" strokeWidth={1.5} />
-                <p className="text-sora-text text-[14px] font-sora">
-                  Du opererer i åpen kategori ({bestScenarioId}). Ingen søknad eller operasjonsmanual er påkrevd.
-                </p>
-              </div>
-            )}
-            <Step7Explanation sailLevel={results.sail} matchedScenario={bestScenario} />
-          </>
-        );
-      case 'documents':
-        return (
-          <>
-            {isOpenCategory && (
-              <div className="mb-6 p-4 bg-sora-light border-l-[3px] border-sora-purple rounded-lg flex items-start gap-3">
-                <Info className="w-5 h-5 text-sora-purple shrink-0 mt-0.5" strokeWidth={1.5} />
-                <p className="text-sora-text text-[14px] font-sora">
-                  Du opererer i åpen kategori ({bestScenarioId}). Ingen søknad eller operasjonsmanual er påkrevd.
-                </p>
-              </div>
-            )}
-            <Step8Documents scenario={bestScenarioId} />
-          </>
         );
       default:
         return null;
