@@ -121,36 +121,38 @@ export default function LiveSoraPanel({ drone, scenario, sailRoman, sail, intrin
         </div>
       )}
 
-      {/* Scenario explanation */}
-      <button onClick={() => setExpanded(!expanded)} className="w-full bg-sora-surface border border-sora-border rounded-xl p-3 text-left hover:bg-sora-surface-hover transition-colors">
-        <div className="flex items-center justify-between">
-          <p className="text-sora-text-dim text-[10px] font-semibold uppercase tracking-wider flex items-center gap-1"><BookOpen className="w-3 h-3" /> Hvorfor dette scenariet?</p>
-          {expanded ? <ChevronUp className="w-3 h-3 text-sora-text-dim" /> : <ChevronDown className="w-3 h-3 text-sora-text-dim" />}
-        </div>
-        {expanded && (
-          <div className="mt-2 space-y-2">
-            <p className="text-sora-text text-xs leading-relaxed">{info.fullDesc}</p>
-            <div>
-              <p className="text-green-400 text-[10px] font-semibold mb-0.5">✓ Dette lar deg:</p>
-              <ul className="text-sora-text-dim text-[11px] space-y-0.5 pl-3">
-                {info.allows.map((a, i) => <li key={i}>• {a}</li>)}
-              </ul>
-            </div>
-            <div>
-              <p className="text-sora-warning text-[10px] font-semibold mb-0.5">📋 Du trenger:</p>
-              <ul className="text-sora-text-dim text-[11px] space-y-0.5 pl-3">
-                {info.requires.map((r, i) => <li key={i}>• {r}</li>)}
-              </ul>
-            </div>
-            <div className="pt-1 border-t border-sora-border">
-              <p className="text-sora-text-dim text-[10px]">📤 <strong>Innsending:</strong> {info.submission}</p>
-            </div>
+      {/* Scenario explanation - only when flight area selected */}
+      {hasFlightArea && (
+        <button onClick={() => setExpanded(!expanded)} className="w-full bg-sora-surface border border-sora-border rounded-xl p-3 text-left hover:bg-sora-surface-hover transition-colors">
+          <div className="flex items-center justify-between">
+            <p className="text-sora-text-dim text-[10px] font-semibold uppercase tracking-wider flex items-center gap-1"><BookOpen className="w-3 h-3" /> Hvorfor dette scenariet?</p>
+            {expanded ? <ChevronUp className="w-3 h-3 text-sora-text-dim" /> : <ChevronDown className="w-3 h-3 text-sora-text-dim" />}
           </div>
-        )}
-      </button>
+          {expanded && (
+            <div className="mt-2 space-y-2">
+              <p className="text-sora-text text-xs leading-relaxed">{info.fullDesc}</p>
+              <div>
+                <p className="text-sora-success text-[10px] font-semibold mb-0.5">✓ Dette lar deg:</p>
+                <ul className="text-sora-text-dim text-[11px] space-y-0.5 pl-3">
+                  {info.allows.map((a, i) => <li key={i}>• {a}</li>)}
+                </ul>
+              </div>
+              <div>
+                <p className="text-sora-warning text-[10px] font-semibold mb-0.5">📋 Du trenger:</p>
+                <ul className="text-sora-text-dim text-[11px] space-y-0.5 pl-3">
+                  {info.requires.map((r, i) => <li key={i}>• {r}</li>)}
+                </ul>
+              </div>
+              <div className="pt-1 border-t border-sora-border">
+                <p className="text-sora-text-dim text-[10px]">📤 <strong>Innsending:</strong> {info.submission}</p>
+              </div>
+            </div>
+          )}
+        </button>
+      )}
 
       {/* Warnings */}
-      {warnings.length > 0 && (
+      {hasFlightArea && warnings.length > 0 && (
         <div className="bg-sora-surface border border-sora-border rounded-xl p-3 space-y-1.5">
           <p className="text-sora-warning text-[10px] font-semibold flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Advarsler</p>
           {warnings.map((w, i) => (
