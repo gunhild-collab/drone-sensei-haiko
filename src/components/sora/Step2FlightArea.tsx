@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
-import { MapPin, AlertTriangle, Loader2, ChevronDown, Info, Search, Route, Hexagon, Navigation } from "lucide-react";
+import { MapPin, AlertTriangle, Loader2, ChevronDown, Info, Search, Route, Hexagon, Navigation, ShieldAlert, Plane, Trees, Swords } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet-draw";
 import "leaflet-draw/dist/leaflet.draw.css";
 import { DroneSpec } from "@/data/droneDatabase";
 import { queryWorldPopDensity, PopulationDensityClass, WorldPopResult } from "@/lib/worldPopDensity";
+import { RESTRICTED_ZONES, RestrictedZone, RestrictedZoneType, ZONE_TYPE_COLORS, ZONE_TYPE_LABELS, checkPolygonRestrictedZones } from "@/data/norwegianRestrictedZones";
 
 // ── Types ──
 interface NominatimResult {
