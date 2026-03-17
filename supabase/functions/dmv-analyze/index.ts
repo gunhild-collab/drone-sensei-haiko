@@ -6,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// === DRONE ARCHETYPES ===
+// === DRONE ARCHETYPES (for use case matching) ===
 const DRONE_ARCHETYPES = {
   multirotor: {
     type: "Multirotor (autonom BVLOS fra dronestasjon)",
@@ -21,6 +21,30 @@ const DRONE_ARCHETYPES = {
     features: ["Lang rekkevidde (>50 km)", "2+ timer flygetid", "Autonom BVLOS", "Stor arealdekning", "RTK/PPK"],
   },
 };
+
+// === REAL DRONE DATABASE ===
+// Used for specific hardware recommendations based on mission requirements
+const DRONE_CATALOG = [
+  { id: 'dji-dock-2-m4t', name: 'DJI Dock 2 + Matrice 4T', type: 'Multirotor med dronestasjon', manufacturer: 'DJI', mtom_kg: 3.7, max_range_km: 15, max_flight_time_min: 48, has_thermal: true, has_rtk: true, has_lidar: false, payload_kg: 0, ip_rating: 'IP55', max_wind_ms: 12, price_nok: 450000, autonomous_dock: true, best_for: ['Beredskap/brann', 'Termisk inspeksjon', 'SAR', 'Bygningsinspeksjon', 'Situasjonsbevissthet'], not_for: ['Lang rekkevidde', 'Stor arealdekning'], description_no: 'Kompakt dronestasjon med Matrice 4T. Automatisk start, oppdrag og landing. Termisk + visuelt kamera. Ideell for lokal autonom overvåkning innenfor 15 km radius.' },
+  { id: 'dji-dock-2-m4e', name: 'DJI Dock 2 + Matrice 4E', type: 'Multirotor med dronestasjon', manufacturer: 'DJI', mtom_kg: 3.7, max_range_km: 15, max_flight_time_min: 48, has_thermal: false, has_rtk: true, has_lidar: false, payload_kg: 0, ip_rating: 'IP55', max_wind_ms: 12, price_nok: 380000, autonomous_dock: true, best_for: ['Kartlegging', 'Bygningsdokumentasjon', 'Plan og regulering', 'Fremdriftskontroll'], not_for: ['Termisk inspeksjon', 'SAR', 'Beredskap'], description_no: 'Samme dock-plattform uten termisk kamera. Lavere pris. Egnet for planlagt kartlegging og dokumentasjon der termisk ikke trengs.' },
+  { id: 'dji-m350-rtk-l2', name: 'DJI Matrice 350 RTK + Zenmuse L2', type: 'Multirotor (manuell/planlagt)', manufacturer: 'DJI', mtom_kg: 6.47, max_range_km: 8, max_flight_time_min: 50, has_thermal: true, has_rtk: true, has_lidar: true, payload_kg: 2.7, ip_rating: 'IP55', max_wind_ms: 15, price_nok: 350000, autonomous_dock: false, best_for: ['LiDAR-kartlegging', 'Detaljert 3D-modellering', 'Broinspeksjon', 'Kulturminnedokumentasjon'], not_for: ['Autonom beredskap', 'Lang rekkevidde'], description_no: 'Kraftig multirotor med LiDAR og termisk. Brukes manuelt av pilot for detaljerte oppdrag som bro- og bygningsinspeksjon, 3D-punktsky.' },
+  { id: 'dji-m30t', name: 'DJI Matrice 30T', type: 'Multirotor (feltdrone)', manufacturer: 'DJI', mtom_kg: 3.77, max_range_km: 8, max_flight_time_min: 48, has_thermal: true, has_rtk: false, has_lidar: false, payload_kg: 0, ip_rating: 'IP55', max_wind_ms: 15, price_nok: 180000, autonomous_dock: false, best_for: ['Feltberedskap', 'SAR', 'Termisk lekkasjedeteksjon', 'Rask innsats'], not_for: ['Autonom drift', 'Kartlegging'], description_no: 'Robust feltdrone med zoom + termisk + laser-rangefinder. Enkel å transportere. Backup for beredskap når dronestasjon ikke dekker.' },
+  { id: 'robot-aviation-fx10', name: 'Robot Aviation FX10', type: 'Fixed-wing drone-in-a-box', manufacturer: 'Robot Aviation', mtom_kg: 12, max_range_km: 80, max_flight_time_min: 150, has_thermal: true, has_rtk: true, has_lidar: false, payload_kg: 2, ip_rating: 'IP54', max_wind_ms: 18, price_nok: 1200000, autonomous_dock: true, best_for: ['Veiinspeksjon', 'Rørtrasé', 'Skogbrannpatrulje', 'Arealdekkende kartlegging', 'Vilttelling', 'Kystsonekartlegging'], not_for: ['Lokal inspeksjon', 'Bygningsinspeksjon'], description_no: 'Autonom fixed-wing med 80+ km rekkevidde og 2.5 timer flygetid. Tar av og lander fra kompakt stasjon. Perfekt for lange korridorer og stor arealdekning.' },
+  { id: 'wingtra-one-gen-ii', name: 'WingtraOne GEN II', type: 'VTOL fixed-wing (manuell)', manufacturer: 'Wingtra', mtom_kg: 3.7, max_range_km: 30, max_flight_time_min: 42, has_thermal: false, has_rtk: true, has_lidar: false, payload_kg: 0, ip_rating: 'IP43', max_wind_ms: 12, price_nok: 280000, autonomous_dock: false, best_for: ['Fotogrammetri', 'Ortofoto', 'Storskala kartlegging', 'Landbruk'], not_for: ['Beredskap', 'Termisk'], description_no: 'VTOL fixed-wing for presis kartlegging. Vertikal start/landing uten landingsbane. Brukes manuelt av pilot for planlagte kartleggingsoppdrag.' },
+  { id: 'sensefly-ebee-x', name: 'senseFly eBee X', type: 'Fixed-wing (manuell)', manufacturer: 'senseFly', mtom_kg: 1.6, max_range_km: 25, max_flight_time_min: 24, has_thermal: false, has_rtk: true, has_lidar: false, payload_kg: 0, ip_rating: 'IP43', max_wind_ms: 12, price_nok: 220000, autonomous_dock: false, best_for: ['Kartlegging', 'Jordbruk', 'Ortofoto'], not_for: ['Beredskap', 'Termisk', 'Tung payload'], description_no: 'Lett fixed-wing for mellomstore kartleggingsområder. Enkel håndkast-start. God for landbruk og plankartlegging.' },
+  { id: 'skydio-x10', name: 'Skydio X10', type: 'Multirotor (autonom)', manufacturer: 'Skydio', mtom_kg: 1.5, max_range_km: 6, max_flight_time_min: 50, has_thermal: true, has_rtk: false, has_lidar: false, payload_kg: 0, ip_rating: 'IP55', max_wind_ms: 12, price_nok: 150000, autonomous_dock: true, best_for: ['Autonom inspeksjon', 'Byggeinspeksjon', 'Hindernavigasjon'], not_for: ['Lang rekkevidde', 'Kartlegging'], description_no: 'Selvflyvende drone med AI-hindernavigasjon. Kan fly rundt strukturer autonomt. God for komplekse inspeksjonsoppdrag.' },
+  { id: 'dji-mini-4-pro', name: 'DJI Mini 4 Pro', type: 'Mikrodrone (åpen kategori)', manufacturer: 'DJI', mtom_kg: 0.249, max_range_km: 4, max_flight_time_min: 48, has_thermal: false, has_rtk: false, has_lidar: false, payload_kg: 0, ip_rating: null, max_wind_ms: 10, price_nok: 12000, autonomous_dock: false, best_for: ['Enkel dokumentasjon', 'Opplæring', 'Kultur/turisme'], not_for: ['Beredskap', 'Profesjonell inspeksjon', 'BVLOS'], description_no: 'Under 250g — krever kun A1-sertifikat (nettkurs). Perfekt som opplæringsdrone og for enkel dokumentasjon.' },
+];
+
+// Estimate max required distance (A→B→A) based on municipality data
+function estimateMaxMissionDistance(area_km2: number | null, road_km: number | null, population: number | null): { multirotor_km: number; fixedwing_km: number } {
+  const area = area_km2 || 100;
+  const radius = Math.sqrt(area / Math.PI); // km from center to edge
+  return {
+    multirotor_km: Math.min(radius * 0.8, 15), // realistic multirotor round-trip
+    fixedwing_km: Math.min(radius * 1.5, 80),   // fixed-wing corridor
+  };
+}
 
 // Verified use case database
 const VERIFIED_USE_CASES = [
