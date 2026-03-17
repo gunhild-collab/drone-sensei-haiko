@@ -359,7 +359,7 @@ INSTRUKSJONER:
                         key_features: { type: "array", items: { type: "string" }, description: "Nøkkelegenskaper som er relevante for kommunen" },
                         why_chosen: { type: "string", description: "Kort forklaring (2-3 setninger) på HVORFOR denne dronen er valgt — distanse, utstyr, sambruk" },
                         covers_use_cases: { type: "array", items: { type: "string" }, description: "Liste over UC-IDer denne dronen dekker" },
-                        max_mission_range_km: { type: "number", description: "Maks oppdragsrekkevidde for denne kommunen" },
+                        max_flight_time_min: { type: "number", description: "Produsentens oppgitte maksimale flytid i minutter" },
                         needs_thermal: { type: "boolean" },
                         needs_rtk: { type: "boolean" },
                         needs_lidar: { type: "boolean" },
