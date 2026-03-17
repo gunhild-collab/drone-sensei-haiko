@@ -456,7 +456,7 @@ export default function DroneAnalysis({
                     {(drone as any).needs_thermal && <Badge variant="outline" className="text-[10px]">🌡️ Termisk kamera</Badge>}
                     {(drone as any).needs_rtk && <Badge variant="outline" className="text-[10px]">📍 RTK-presisjon</Badge>}
                     {(drone as any).needs_lidar && <Badge variant="outline" className="text-[10px]">📐 LiDAR</Badge>}
-                    {(drone as any).max_mission_range_km && <Badge variant="outline" className="text-[10px]">📏 {(drone as any).max_mission_range_km} km rekkevidde</Badge>}
+                    {(drone as any).max_flight_time_min && <Badge variant="outline" className="text-[10px]">⏱️ {(drone as any).max_flight_time_min} min flytid</Badge>}
                   </div>
 
                   {/* Key features */}
