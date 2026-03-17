@@ -18,22 +18,22 @@ const DRONE_ARCHETYPES = {
     type: "Fixed-wing drone-in-a-box",
     example: "Robot Aviation FX10",
     costNok: 1200000,
-    features: ["Lang rekkevidde (>50 km)", "2+ timer flygetid", "Autonom BVLOS", "Stor arealdekning", "RTK/PPK"],
+    features: ["Opptil ca. 2 timer flytid per oppdrag", "Autonom BVLOS", "Stor arealdekning", "RTK/PPK"],
   },
 };
 
 // === REAL DRONE DATABASE ===
 // Used for specific hardware recommendations based on mission requirements
 const DRONE_CATALOG = [
-  { id: 'dji-dock-2-m4t', name: 'DJI Dock 2 + Matrice 4T', type: 'Multirotor med dronestasjon', manufacturer: 'DJI', mtom_kg: 3.7, max_range_km: 15, max_flight_time_min: 48, has_thermal: true, has_rtk: true, has_lidar: false, payload_kg: 0, ip_rating: 'IP55', max_wind_ms: 12, price_nok: 450000, autonomous_dock: true, best_for: ['Beredskap/brann', 'Termisk inspeksjon', 'SAR', 'Bygningsinspeksjon', 'Situasjonsbevissthet'], not_for: ['Lang rekkevidde', 'Stor arealdekning'], description_no: 'Kompakt dronestasjon med Matrice 4T. Automatisk start, oppdrag og landing. Termisk + visuelt kamera. Ideell for lokal autonom overvåkning innenfor 15 km radius.' },
-  { id: 'dji-dock-2-m4e', name: 'DJI Dock 2 + Matrice 4E', type: 'Multirotor med dronestasjon', manufacturer: 'DJI', mtom_kg: 3.7, max_range_km: 15, max_flight_time_min: 48, has_thermal: false, has_rtk: true, has_lidar: false, payload_kg: 0, ip_rating: 'IP55', max_wind_ms: 12, price_nok: 380000, autonomous_dock: true, best_for: ['Kartlegging', 'Bygningsdokumentasjon', 'Plan og regulering', 'Fremdriftskontroll'], not_for: ['Termisk inspeksjon', 'SAR', 'Beredskap'], description_no: 'Samme dock-plattform uten termisk kamera. Lavere pris. Egnet for planlagt kartlegging og dokumentasjon der termisk ikke trengs.' },
-  { id: 'dji-m350-rtk-l2', name: 'DJI Matrice 350 RTK + Zenmuse L2', type: 'Multirotor (manuell/planlagt)', manufacturer: 'DJI', mtom_kg: 6.47, max_range_km: 8, max_flight_time_min: 50, has_thermal: true, has_rtk: true, has_lidar: true, payload_kg: 2.7, ip_rating: 'IP55', max_wind_ms: 15, price_nok: 350000, autonomous_dock: false, best_for: ['LiDAR-kartlegging', 'Detaljert 3D-modellering', 'Broinspeksjon', 'Kulturminnedokumentasjon'], not_for: ['Autonom beredskap', 'Lang rekkevidde'], description_no: 'Kraftig multirotor med LiDAR og termisk. Brukes manuelt av pilot for detaljerte oppdrag som bro- og bygningsinspeksjon, 3D-punktsky.' },
-  { id: 'dji-m30t', name: 'DJI Matrice 30T', type: 'Multirotor (feltdrone)', manufacturer: 'DJI', mtom_kg: 3.77, max_range_km: 8, max_flight_time_min: 48, has_thermal: true, has_rtk: false, has_lidar: false, payload_kg: 0, ip_rating: 'IP55', max_wind_ms: 15, price_nok: 180000, autonomous_dock: false, best_for: ['Feltberedskap', 'SAR', 'Termisk lekkasjedeteksjon', 'Rask innsats'], not_for: ['Autonom drift', 'Kartlegging'], description_no: 'Robust feltdrone med zoom + termisk + laser-rangefinder. Enkel å transportere. Backup for beredskap når dronestasjon ikke dekker.' },
-  { id: 'robot-aviation-fx10', name: 'Robot Aviation FX10', type: 'Fixed-wing drone-in-a-box', manufacturer: 'Robot Aviation', mtom_kg: 12, max_range_km: 80, max_flight_time_min: 150, has_thermal: true, has_rtk: true, has_lidar: false, payload_kg: 2, ip_rating: 'IP54', max_wind_ms: 18, price_nok: 1200000, autonomous_dock: true, best_for: ['Veiinspeksjon', 'Rørtrasé', 'Skogbrannpatrulje', 'Arealdekkende kartlegging', 'Vilttelling', 'Kystsonekartlegging'], not_for: ['Lokal inspeksjon', 'Bygningsinspeksjon'], description_no: 'Autonom fixed-wing med 80+ km rekkevidde og 2.5 timer flygetid. Tar av og lander fra kompakt stasjon. Perfekt for lange korridorer og stor arealdekning.' },
-  { id: 'wingtra-one-gen-ii', name: 'WingtraOne GEN II', type: 'VTOL fixed-wing (manuell)', manufacturer: 'Wingtra', mtom_kg: 3.7, max_range_km: 30, max_flight_time_min: 42, has_thermal: false, has_rtk: true, has_lidar: false, payload_kg: 0, ip_rating: 'IP43', max_wind_ms: 12, price_nok: 280000, autonomous_dock: false, best_for: ['Fotogrammetri', 'Ortofoto', 'Storskala kartlegging', 'Landbruk'], not_for: ['Beredskap', 'Termisk'], description_no: 'VTOL fixed-wing for presis kartlegging. Vertikal start/landing uten landingsbane. Brukes manuelt av pilot for planlagte kartleggingsoppdrag.' },
-  { id: 'sensefly-ebee-x', name: 'senseFly eBee X', type: 'Fixed-wing (manuell)', manufacturer: 'senseFly', mtom_kg: 1.6, max_range_km: 25, max_flight_time_min: 24, has_thermal: false, has_rtk: true, has_lidar: false, payload_kg: 0, ip_rating: 'IP43', max_wind_ms: 12, price_nok: 220000, autonomous_dock: false, best_for: ['Kartlegging', 'Jordbruk', 'Ortofoto'], not_for: ['Beredskap', 'Termisk', 'Tung payload'], description_no: 'Lett fixed-wing for mellomstore kartleggingsområder. Enkel håndkast-start. God for landbruk og plankartlegging.' },
-  { id: 'skydio-x10', name: 'Skydio X10', type: 'Multirotor (autonom)', manufacturer: 'Skydio', mtom_kg: 1.5, max_range_km: 6, max_flight_time_min: 50, has_thermal: true, has_rtk: false, has_lidar: false, payload_kg: 0, ip_rating: 'IP55', max_wind_ms: 12, price_nok: 150000, autonomous_dock: true, best_for: ['Autonom inspeksjon', 'Byggeinspeksjon', 'Hindernavigasjon'], not_for: ['Lang rekkevidde', 'Kartlegging'], description_no: 'Selvflyvende drone med AI-hindernavigasjon. Kan fly rundt strukturer autonomt. God for komplekse inspeksjonsoppdrag.' },
-  { id: 'dji-mini-4-pro', name: 'DJI Mini 4 Pro', type: 'Mikrodrone (åpen kategori)', manufacturer: 'DJI', mtom_kg: 0.249, max_range_km: 4, max_flight_time_min: 48, has_thermal: false, has_rtk: false, has_lidar: false, payload_kg: 0, ip_rating: null, max_wind_ms: 10, price_nok: 12000, autonomous_dock: false, best_for: ['Enkel dokumentasjon', 'Opplæring', 'Kultur/turisme'], not_for: ['Beredskap', 'Profesjonell inspeksjon', 'BVLOS'], description_no: 'Under 250g — krever kun A1-sertifikat (nettkurs). Perfekt som opplæringsdrone og for enkel dokumentasjon.' },
+  { id: 'dji-dock-2-m4t', name: 'DJI Dock 2 + Matrice 3D/3TD', type: 'Multirotor med dronestasjon', manufacturer: 'DJI', mtom_kg: 3.7, max_flight_time_min: 50, has_thermal: true, has_rtk: true, has_lidar: false, payload_kg: 0, ip_rating: 'IP55', max_wind_ms: 12, price_nok: 450000, autonomous_dock: true, best_for: ['Beredskap/brann', 'Termisk inspeksjon', 'SAR', 'Bygningsinspeksjon', 'Situasjonsbevissthet'], not_for: ['Lang rekkevidde', 'Stor arealdekning'], description_no: 'Kompakt dronestasjon med Matrice 3D/3TD. Automatisk start, oppdrag og landing. Termisk + visuelt kamera. Opptil ca. 50 minutter maksimal flytid under ideelle forhold ifølge produsent — reell operativ flytid er ofte lavere pga. vind, temperatur og payload.' },
+  { id: 'dji-dock-2-m4e', name: 'DJI Dock 2 + Matrice 3E', type: 'Multirotor med dronestasjon', manufacturer: 'DJI', mtom_kg: 3.7, max_flight_time_min: 50, has_thermal: false, has_rtk: true, has_lidar: false, payload_kg: 0, ip_rating: 'IP55', max_wind_ms: 12, price_nok: 380000, autonomous_dock: true, best_for: ['Kartlegging', 'Bygningsdokumentasjon', 'Plan og regulering', 'Fremdriftskontroll'], not_for: ['Termisk inspeksjon', 'SAR', 'Beredskap'], description_no: 'Samme dock-plattform uten termisk kamera. Lavere pris. Opptil ca. 50 minutter maksimal flytid under ideelle forhold ifølge produsent. Egnet for planlagt kartlegging og dokumentasjon.' },
+  { id: 'dji-m350-rtk-l2', name: 'DJI Matrice 350 RTK + Zenmuse L2', type: 'Multirotor (manuell/planlagt)', manufacturer: 'DJI', mtom_kg: 6.47, max_flight_time_min: 50, has_thermal: true, has_rtk: true, has_lidar: true, payload_kg: 2.7, ip_rating: 'IP55', max_wind_ms: 15, price_nok: 350000, autonomous_dock: false, best_for: ['LiDAR-kartlegging', 'Detaljert 3D-modellering', 'Broinspeksjon', 'Kulturminnedokumentasjon'], not_for: ['Autonom beredskap', 'Lang rekkevidde'], description_no: 'Kraftig multirotor med LiDAR og termisk. Opptil ca. 50 minutter flytid ifølge produsent. Brukes manuelt av pilot for detaljerte oppdrag som bro- og bygningsinspeksjon, 3D-punktsky.' },
+  { id: 'dji-m30t', name: 'DJI Matrice 30T', type: 'Multirotor (feltdrone)', manufacturer: 'DJI', mtom_kg: 3.77, max_flight_time_min: 48, has_thermal: true, has_rtk: false, has_lidar: false, payload_kg: 0, ip_rating: 'IP55', max_wind_ms: 15, price_nok: 180000, autonomous_dock: false, best_for: ['Feltberedskap', 'SAR', 'Termisk lekkasjedeteksjon', 'Rask innsats'], not_for: ['Autonom drift', 'Kartlegging'], description_no: 'Robust feltdrone med zoom + termisk + laser-rangefinder. Opptil ca. 48 minutter flytid ifølge produsent. Enkel å transportere. Backup for beredskap.' },
+  { id: 'robot-aviation-fx10', name: 'Robot Aviation FX10', type: 'Fixed-wing drone-in-a-box', manufacturer: 'Robot Aviation', mtom_kg: 12, max_flight_time_min: 120, has_thermal: true, has_rtk: true, has_lidar: false, payload_kg: 2, ip_rating: 'IP54', max_wind_ms: 18, price_nok: 1200000, autonomous_dock: true, best_for: ['Veiinspeksjon', 'Rørtrasé', 'Skogbrannpatrulje', 'Arealdekkende kartlegging', 'Vilttelling', 'Kystsonekartlegging'], not_for: ['Lokal inspeksjon', 'Bygningsinspeksjon'], description_no: 'Autonom fixed-wing. Opptil ca. 2 timer flytid per oppdrag ifølge produsent — faktisk operativ varighet avhenger av payload, vær og flyprofil. Tar av og lander fra kompakt stasjon. Perfekt for lange korridorer og stor arealdekning.' },
+  { id: 'wingtra-one-gen-ii', name: 'WingtraOne GEN II', type: 'VTOL fixed-wing (manuell)', manufacturer: 'Wingtra', mtom_kg: 3.7, max_flight_time_min: 42, has_thermal: false, has_rtk: true, has_lidar: false, payload_kg: 0, ip_rating: 'IP43', max_wind_ms: 12, price_nok: 280000, autonomous_dock: false, best_for: ['Fotogrammetri', 'Ortofoto', 'Storskala kartlegging', 'Landbruk'], not_for: ['Beredskap', 'Termisk'], description_no: 'VTOL fixed-wing for presis kartlegging. Opptil ca. 42 minutter flytid ifølge produsent. Vertikal start/landing. Brukes manuelt av pilot.' },
+  { id: 'sensefly-ebee-x', name: 'senseFly eBee X', type: 'Fixed-wing (manuell)', manufacturer: 'senseFly', mtom_kg: 1.6, max_flight_time_min: 24, has_thermal: false, has_rtk: true, has_lidar: false, payload_kg: 0, ip_rating: 'IP43', max_wind_ms: 12, price_nok: 220000, autonomous_dock: false, best_for: ['Kartlegging', 'Jordbruk', 'Ortofoto'], not_for: ['Beredskap', 'Termisk', 'Tung payload'], description_no: 'Lett fixed-wing for mellomstore kartleggingsområder. Opptil ca. 24 minutter flytid ifølge produsent. Enkel håndkast-start.' },
+  { id: 'skydio-x10', name: 'Skydio X10', type: 'Multirotor (autonom)', manufacturer: 'Skydio', mtom_kg: 1.5, max_flight_time_min: 50, has_thermal: true, has_rtk: false, has_lidar: false, payload_kg: 0, ip_rating: 'IP55', max_wind_ms: 12, price_nok: 150000, autonomous_dock: true, best_for: ['Autonom inspeksjon', 'Byggeinspeksjon', 'Hindernavigasjon'], not_for: ['Lang rekkevidde', 'Kartlegging'], description_no: 'Selvflyvende drone med AI-hindernavigasjon. Opptil ca. 50 minutter flytid ifølge produsent. Kan fly rundt strukturer autonomt.' },
+  { id: 'dji-mini-4-pro', name: 'DJI Mini 4 Pro', type: 'Mikrodrone (åpen kategori)', manufacturer: 'DJI', mtom_kg: 0.249, max_flight_time_min: 34, has_thermal: false, has_rtk: false, has_lidar: false, payload_kg: 0, ip_rating: null, max_wind_ms: 10, price_nok: 12000, autonomous_dock: false, best_for: ['Enkel dokumentasjon', 'Opplæring', 'Kultur/turisme'], not_for: ['Beredskap', 'Profesjonell inspeksjon', 'BVLOS'], description_no: 'Under 250g — krever kun A1-sertifikat (nettkurs). Opptil 34 minutter maksimal flytid med standard batteri ifølge produsent. Perfekt som opplæringsdrone og for enkel dokumentasjon.' },
 ];
 
 // Estimate max required distance (A→B→A) based on municipality data
@@ -199,14 +199,14 @@ Kommunen drifter droner fra en eller flere faste dronestasjoner — dronen start
 Kun et fåtall unntaksoperasjoner (broinspeksjon, tunnelportal, vernebygninger) krever manuell VLOS.
 
 DET FINNES KUN TO DRONETYPER:
-1. MULTIROTOR (autonom BVLOS fra dronestasjon): Kompakt multirotor med dock (f.eks. DJI Dock 2 + Matrice 4T).
+1. MULTIROTOR (autonom BVLOS fra dronestasjon): Kompakt multirotor med dock (f.eks. DJI Dock 2 + Matrice 3D/3TD).
    - Brukes til: lokale inspeksjoner, termisk, SAR, beredskap, bygningsdokumentasjon
-   - Rekkevidde: opptil ~15 km radius fra stasjon
+   - Opptil ca. 50 minutter maksimal flytid under ideelle forhold ifølge produsent (reell operativ flytid ofte lavere)
    - Pris ca. ${DRONE_ARCHETYPES.multirotor.costNok.toLocaleString('nb-NO')} NOK per enhet
 
 2. FIXED-WING DRONE-IN-A-BOX (f.eks. Robot Aviation FX10):
    - Brukes til: lange korridorflyginger (vei, rør), stor arealdekning (skog, natur, kartlegging), vilttelling
-   - Rekkevidde: 50+ km, 2+ timer flygetid
+   - Opptil ca. 2 timer flytid per oppdrag ifølge produsent (faktisk operativ varighet avhenger av payload, vær og profil)
    - Pris ca. ${DRONE_ARCHETYPES.fixedWing.costNok.toLocaleString('nb-NO')} NOK per enhet
 
 ${CERT_RULES}
@@ -239,8 +239,8 @@ KOMMUNEDATA:
 - Bygninger: ${buildings || 'ukjent'}
 - Terreng: ${terrain_type || 'ukjent'}
 - Befolkningstetthet: ${density_per_km2 || 'ukjent'} innb/km²
-- Estimert maks multirotor-oppdrag (tur-retur): ~${distances.multirotor_km.toFixed(0)} km
-- Estimert maks fixed-wing oppdrag: ~${distances.fixedwing_km.toFixed(0)} km
+- Typisk dekningsområde multirotor (estimat basert på flytid og sikkerhetsmarginer): ~${distances.multirotor_km.toFixed(0)} km fra stasjon
+- Typisk dekningsområde fixed-wing (estimat basert på flytid og sikkerhetsmarginer): ~${distances.fixedwing_km.toFixed(0)} km fra stasjon
 
 KOSTRA/SSB KOSTNADSDATA (tabell 12362):
 ${sectorCostLines}
@@ -255,7 +255,7 @@ ${iksContext}
 
 TILGJENGELIG DRONEDATABASE (velg fra disse basert på behov):
 ${JSON.stringify(DRONE_CATALOG.map(d => ({
-  id: d.id, name: d.name, type: d.type, range_km: d.max_range_km, flight_time_min: d.max_flight_time_min,
+  id: d.id, name: d.name, type: d.type, flight_time_min: d.max_flight_time_min,
   thermal: d.has_thermal, rtk: d.has_rtk, lidar: d.has_lidar, payload_kg: d.payload_kg,
   autonomous_dock: d.autonomous_dock, price_nok: d.price_nok, best_for: d.best_for, description_no: d.description_no,
 })), null, 1)}
@@ -274,12 +274,13 @@ INSTRUKSJONER:
 4. Hvis kostnadsdata mangler, si eksplisitt at data mangler i stedet for å finne på tall.
 5. For HVER operasjon: bruk NØYAKTIG operationType, easaCategory og certRequirement fra databasen
 6. DRONEFLÅTE — VELG SPESIFIKKE DRONER FRA DATABASEN:
-   - Vurder maks avstand fra dronestasjon til ytterste oppdrag (tur-retur). Multirotor: ~${distances.multirotor_km.toFixed(0)} km, Fixed-wing: ~${distances.fixedwing_km.toFixed(0)} km.
+   - Bruk produsentens oppgitte maksimale flytid som referanse — IKKE oppgi km-rekkevidde som produsentdata.
+   - Hvis du vil omtale typisk dekningsområde, bruk formuleringer som "typisk dekningsområde i denne analysen er X–Y km fra stasjonen basert på flytid og sikkerhetsmarginer" — tydelig merket som scenario/estimat.
    - Match utstyrbehov: Trenger operasjonene termisk? RTK? LiDAR? Payload?
    - Vurder autonom drift: Beredskapsoperasjoner krever dronestasjon. Planlagte oppdrag kan bruke manuell drone.
    - Vurder sambruk: Hvilke avdelinger kan dele same drone basert på overlappende behov?
    - Velg den billigste dronen som dekker behovet — ikke anbefal dyrere enn nødvendig.
-   - For HVER drone: forklar HVORFOR den er valgt (distanse, utstyr, bruksområder).
+   - For HVER drone: forklar HVORFOR den er valgt (flytid, utstyr, bruksområder). ALDRI bruk formuleringer som "rekkevidde på ~X km".
 7. ${fire_dept_type === 'IKS'
     ? `For IKS-brannvesenet ${fire_dept_name}: vurder om dronestasjonen kan dekke hele IKS-området med partnerkommuner: ${(iks_partners || []).join(', ')}`
     : fire_dept_name
@@ -358,7 +359,7 @@ INSTRUKSJONER:
                         key_features: { type: "array", items: { type: "string" }, description: "Nøkkelegenskaper som er relevante for kommunen" },
                         why_chosen: { type: "string", description: "Kort forklaring (2-3 setninger) på HVORFOR denne dronen er valgt — distanse, utstyr, sambruk" },
                         covers_use_cases: { type: "array", items: { type: "string" }, description: "Liste over UC-IDer denne dronen dekker" },
-                        max_mission_range_km: { type: "number", description: "Maks oppdragsrekkevidde for denne kommunen" },
+                        max_flight_time_min: { type: "number", description: "Produsentens oppgitte maksimale flytid i minutter" },
                         needs_thermal: { type: "boolean" },
                         needs_rtk: { type: "boolean" },
                         needs_lidar: { type: "boolean" },
