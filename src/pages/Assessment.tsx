@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { useLayoutSidebar } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +35,7 @@ type Step = "intro" | "data" | "analysis" | "questions";
 
 export default function Assessment() {
   const navigate = useNavigate();
+  const { requestCollapse, requestExpand } = useLayoutSidebar();
   const {
     answers, setAnswer, currentDimension, setCurrentDimension,
     municipalityName, setMunicipalityName, assessorName, setAssessorName,
@@ -41,6 +43,15 @@ export default function Assessment() {
   } = useAssessment();
 
   const [step, setStep] = useState<Step>("intro");
+
+  // Auto-collapse Layout sidebar when report is shown, expand when leaving
+  useEffect(() => {
+    if (step === "analysis") {
+      requestCollapse();
+    } else {
+      requestExpand();
+    }
+  }, [step, requestCollapse, requestExpand]);
   const [kostra, setKostra] = useState<KostraData | null>(null);
   const [kostraLoading, setKostraLoading] = useState(false);
   const [departments, setDepartments] = useState<ActiveDepartment[]>([]);
