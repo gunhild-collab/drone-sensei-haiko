@@ -256,7 +256,10 @@ export default function Step2FlightArea({ municipality, municipalityDensity, dro
     const map = L.map(mapContainerRef.current).setView(coords, 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
     map.addLayer(drawnItemsRef.current);
+    map.addLayer(restrictedLayersRef.current);
     mapRef.current = map;
+    // Draw restricted zones on map
+    drawRestrictedZones(map);
     return () => { map.remove(); mapRef.current = null; };
   }, [municipality]);
 
