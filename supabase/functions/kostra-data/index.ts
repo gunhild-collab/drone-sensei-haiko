@@ -107,9 +107,23 @@ const KOSTRA_FGK: Record<string, { code: string; label: string }> = {
   'Næring': { code: 'FGK4', label: 'Næringsforvaltning' },
 };
 
-const KOSTRA_12362_ART = 'AGD10';
+const KOSTRA_12362_ART_EXPENDITURE = 'AGD10';
 const KOSTRA_12362_CONTENT = 'KOSbelop0000';
 const KOSTRA_12362_YEAR_DEPTH = 3;
+
+// Sector-specific wage share of total expenditure (KOSTRA norms) and avg salary per FTE
+// Source: KOSTRA national averages — wage share varies significantly by sector
+const SECTOR_WAGE_SHARE: Record<string, number> = {
+  'Brann': 0.65,      // 65% of fire dept spend is wages
+  'Drift/vei': 0.35,  // Road maintenance: more material/contractor costs
+  'VA': 0.25,         // VA: capital-intensive, low wage share
+  'Plan': 0.75,       // Planning: mostly personnel
+  'Helse': 0.72,      // Health/care: labor-intensive
+  'Eiendom': 0.30,    // Property: maintenance/contracts
+  'Kultur': 0.60,     // Culture: mixed
+  'Næring': 0.55,     // Business development: mixed
+};
+const AVG_MUNICIPAL_SALARY_1000NOK = 700; // Average annual cost per FTE incl. social costs
 
 function getJsonStatValue(dataset: JsonStatDataset, selections: Record<string, string>): number | null {
   const ids = dataset.id || Object.keys(dataset.dimension || {});
@@ -140,7 +154,7 @@ async function fetchSectorData(code: string, name: string): Promise<SectorData[]
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         query: [
-          { code: 'KOKart0000', selection: { filter: 'item', values: [KOSTRA_12362_ART] } },
+          { code: 'KOKart0000', selection: { filter: 'item', values: [KOSTRA_12362_ART_EXPENDITURE] } },
           { code: 'Tid', selection: { filter: 'top', values: [String(KOSTRA_12362_YEAR_DEPTH)] } },
           { code: 'KOKkommuneregion0000', selection: { filter: 'item', values: [code] } },
           { code: 'ContentsCode', selection: { filter: 'item', values: [KOSTRA_12362_CONTENT] } },
@@ -170,7 +184,7 @@ async function fetchSectorData(code: string, name: string): Promise<SectorData[]
     for (const [sector, cfg] of Object.entries(KOSTRA_FGK)) {
       for (const year of years) {
         const value = getJsonStatValue(data, {
-          KOKart0000: KOSTRA_12362_ART,
+          KOKart0000: KOSTRA_12362_ART_EXPENDITURE,
           Tid: year,
           KOKkommuneregion0000: code,
           ContentsCode: KOSTRA_12362_CONTENT,
@@ -178,10 +192,15 @@ async function fetchSectorData(code: string, name: string): Promise<SectorData[]
         });
 
         if (value !== null) {
+          // Estimate FTEs from expenditure using sector-specific wage share
+          const wageShare = SECTOR_WAGE_SHARE[sector] || 0.50;
+          const estimatedWages1000 = value * wageShare;
+          const estimatedFte = Math.round((estimatedWages1000 / AVG_MUNICIPAL_SALARY_1000NOK) * 10) / 10;
+
           sectors.push({
             sector,
             expenditure_1000nok: Math.round(value),
-            employees_fte: null,
+            employees_fte: estimatedFte,
             year,
             source: 'ssb_12362',
           });
@@ -190,7 +209,7 @@ async function fetchSectorData(code: string, name: string): Promise<SectorData[]
       }
     }
 
-    console.log(`SSB 12362 for ${name}: ${JSON.stringify(sectors.map(({ sector, expenditure_1000nok, year }) => ({ sector, expenditure_1000nok, year })))}`);
+    console.log(`SSB 12362 for ${name}: ${JSON.stringify(sectors.map(({ sector, expenditure_1000nok, employees_fte, year }) => ({ sector, expenditure_1000nok, employees_fte, year })))}`);
     return sectors;
   } catch (e) {
     console.log('SSB 12362 fetch failed:', e);

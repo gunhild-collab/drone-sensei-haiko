@@ -245,12 +245,15 @@ export default function DroneAnalysis({
                         {perCapita != null && (
                           <p className="text-[10px] text-muted-foreground">{perCapita.toLocaleString('nb-NO')} kr/innb</p>
                         )}
+                        {s.employees_fte != null && (
+                          <p className="text-[10px] text-muted-foreground">~{s.employees_fte} årsverk</p>
+                        )}
                       </div>
                     );
                   })}
                 </div>
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  Kilde: {sectorData[0]?.source === 'ssb_12362' ? 'SSB tabell 12362' : 'Estimat'} · År {sectorData[0]?.year || '—'}
+                  Kilde: {sectorData[0]?.source === 'ssb_12362' ? 'SSB tabell 12362' : 'Estimat'} · År {sectorData[0]?.year || '—'} · Årsverk estimert fra lønnskostnader
                 </p>
               </div>
             )}
@@ -422,30 +425,70 @@ export default function DroneAnalysis({
           <h2 className="text-lg font-display font-semibold flex items-center gap-2">
             <Plane className="w-5 h-5 text-primary" /> Anbefalt droneflåte
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-3">
             {analysis.drone_fleet.map((drone, i) => (
               <Card key={i}>
-                <CardContent className="pt-4 pb-3 space-y-2">
+                <CardContent className="pt-4 pb-3 space-y-3">
                   <div className="flex items-center justify-between">
-                    <p className="font-medium text-sm">{drone.recommended_model}</p>
-                    <Badge variant="secondary" className="text-xs">×{drone.quantity}</Badge>
+                    <div>
+                      <p className="font-medium text-sm">{drone.recommended_model}</p>
+                      <p className="text-xs text-muted-foreground">{drone.drone_type}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-xs">×{drone.quantity}</Badge>
+                      <p className="text-sm font-semibold text-primary">
+                        {drone.estimated_cost_nok.toLocaleString('nb-NO')} NOK
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">{drone.drone_type}</p>
-                  <div className="flex flex-wrap gap-1">
-                    {drone.shared_between.map(dept => (
-                      <Badge key={dept} variant="outline" className="text-[10px]">{dept}</Badge>
-                    ))}
+
+                  {/* Why chosen - the key explanation */}
+                  {(drone as any).why_chosen && (
+                    <div className="bg-primary/5 rounded-lg p-3 border border-primary/10">
+                      <p className="text-xs font-medium text-primary mb-1">Hvorfor denne dronen?</p>
+                      <p className="text-xs text-foreground">{(drone as any).why_chosen}</p>
+                    </div>
+                  )}
+
+                  {/* Equipment badges */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {(drone as any).autonomous && <Badge variant="outline" className="text-[10px]">🤖 Autonom dronestasjon</Badge>}
+                    {(drone as any).needs_thermal && <Badge variant="outline" className="text-[10px]">🌡️ Termisk kamera</Badge>}
+                    {(drone as any).needs_rtk && <Badge variant="outline" className="text-[10px]">📍 RTK-presisjon</Badge>}
+                    {(drone as any).needs_lidar && <Badge variant="outline" className="text-[10px]">📐 LiDAR</Badge>}
+                    {(drone as any).max_mission_range_km && <Badge variant="outline" className="text-[10px]">📏 {(drone as any).max_mission_range_km} km rekkevidde</Badge>}
                   </div>
-                  {drone.key_features && (
+
+                  {/* Key features */}
+                  {drone.key_features && drone.key_features.length > 0 && (
                     <div className="flex flex-wrap gap-1">
                       {drone.key_features.map((f, fi) => (
                         <Badge key={fi} variant="secondary" className="text-[10px]">{f}</Badge>
                       ))}
                     </div>
                   )}
-                  <p className="text-xs font-medium text-primary">
-                    {drone.estimated_cost_nok.toLocaleString('nb-NO')} NOK
-                  </p>
+
+                  {/* Shared between departments */}
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Deles mellom avdelinger</p>
+                    <div className="flex flex-wrap gap-1">
+                      {drone.shared_between.map(dept => (
+                        <Badge key={dept} variant="outline" className="text-[10px]">{dept}</Badge>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Use cases covered */}
+                  {(drone as any).covers_use_cases && (drone as any).covers_use_cases.length > 0 && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Dekker bruksområder</p>
+                      <div className="flex flex-wrap gap-1">
+                        {(drone as any).covers_use_cases.map((uc: string) => (
+                          <Badge key={uc} variant="secondary" className="text-[10px]">{uc}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))}

@@ -6,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// === DRONE ARCHETYPES ===
+// === DRONE ARCHETYPES (for use case matching) ===
 const DRONE_ARCHETYPES = {
   multirotor: {
     type: "Multirotor (autonom BVLOS fra dronestasjon)",
@@ -21,6 +21,30 @@ const DRONE_ARCHETYPES = {
     features: ["Lang rekkevidde (>50 km)", "2+ timer flygetid", "Autonom BVLOS", "Stor arealdekning", "RTK/PPK"],
   },
 };
+
+// === REAL DRONE DATABASE ===
+// Used for specific hardware recommendations based on mission requirements
+const DRONE_CATALOG = [
+  { id: 'dji-dock-2-m4t', name: 'DJI Dock 2 + Matrice 4T', type: 'Multirotor med dronestasjon', manufacturer: 'DJI', mtom_kg: 3.7, max_range_km: 15, max_flight_time_min: 48, has_thermal: true, has_rtk: true, has_lidar: false, payload_kg: 0, ip_rating: 'IP55', max_wind_ms: 12, price_nok: 450000, autonomous_dock: true, best_for: ['Beredskap/brann', 'Termisk inspeksjon', 'SAR', 'Bygningsinspeksjon', 'Situasjonsbevissthet'], not_for: ['Lang rekkevidde', 'Stor arealdekning'], description_no: 'Kompakt dronestasjon med Matrice 4T. Automatisk start, oppdrag og landing. Termisk + visuelt kamera. Ideell for lokal autonom overvåkning innenfor 15 km radius.' },
+  { id: 'dji-dock-2-m4e', name: 'DJI Dock 2 + Matrice 4E', type: 'Multirotor med dronestasjon', manufacturer: 'DJI', mtom_kg: 3.7, max_range_km: 15, max_flight_time_min: 48, has_thermal: false, has_rtk: true, has_lidar: false, payload_kg: 0, ip_rating: 'IP55', max_wind_ms: 12, price_nok: 380000, autonomous_dock: true, best_for: ['Kartlegging', 'Bygningsdokumentasjon', 'Plan og regulering', 'Fremdriftskontroll'], not_for: ['Termisk inspeksjon', 'SAR', 'Beredskap'], description_no: 'Samme dock-plattform uten termisk kamera. Lavere pris. Egnet for planlagt kartlegging og dokumentasjon der termisk ikke trengs.' },
+  { id: 'dji-m350-rtk-l2', name: 'DJI Matrice 350 RTK + Zenmuse L2', type: 'Multirotor (manuell/planlagt)', manufacturer: 'DJI', mtom_kg: 6.47, max_range_km: 8, max_flight_time_min: 50, has_thermal: true, has_rtk: true, has_lidar: true, payload_kg: 2.7, ip_rating: 'IP55', max_wind_ms: 15, price_nok: 350000, autonomous_dock: false, best_for: ['LiDAR-kartlegging', 'Detaljert 3D-modellering', 'Broinspeksjon', 'Kulturminnedokumentasjon'], not_for: ['Autonom beredskap', 'Lang rekkevidde'], description_no: 'Kraftig multirotor med LiDAR og termisk. Brukes manuelt av pilot for detaljerte oppdrag som bro- og bygningsinspeksjon, 3D-punktsky.' },
+  { id: 'dji-m30t', name: 'DJI Matrice 30T', type: 'Multirotor (feltdrone)', manufacturer: 'DJI', mtom_kg: 3.77, max_range_km: 8, max_flight_time_min: 48, has_thermal: true, has_rtk: false, has_lidar: false, payload_kg: 0, ip_rating: 'IP55', max_wind_ms: 15, price_nok: 180000, autonomous_dock: false, best_for: ['Feltberedskap', 'SAR', 'Termisk lekkasjedeteksjon', 'Rask innsats'], not_for: ['Autonom drift', 'Kartlegging'], description_no: 'Robust feltdrone med zoom + termisk + laser-rangefinder. Enkel å transportere. Backup for beredskap når dronestasjon ikke dekker.' },
+  { id: 'robot-aviation-fx10', name: 'Robot Aviation FX10', type: 'Fixed-wing drone-in-a-box', manufacturer: 'Robot Aviation', mtom_kg: 12, max_range_km: 80, max_flight_time_min: 150, has_thermal: true, has_rtk: true, has_lidar: false, payload_kg: 2, ip_rating: 'IP54', max_wind_ms: 18, price_nok: 1200000, autonomous_dock: true, best_for: ['Veiinspeksjon', 'Rørtrasé', 'Skogbrannpatrulje', 'Arealdekkende kartlegging', 'Vilttelling', 'Kystsonekartlegging'], not_for: ['Lokal inspeksjon', 'Bygningsinspeksjon'], description_no: 'Autonom fixed-wing med 80+ km rekkevidde og 2.5 timer flygetid. Tar av og lander fra kompakt stasjon. Perfekt for lange korridorer og stor arealdekning.' },
+  { id: 'wingtra-one-gen-ii', name: 'WingtraOne GEN II', type: 'VTOL fixed-wing (manuell)', manufacturer: 'Wingtra', mtom_kg: 3.7, max_range_km: 30, max_flight_time_min: 42, has_thermal: false, has_rtk: true, has_lidar: false, payload_kg: 0, ip_rating: 'IP43', max_wind_ms: 12, price_nok: 280000, autonomous_dock: false, best_for: ['Fotogrammetri', 'Ortofoto', 'Storskala kartlegging', 'Landbruk'], not_for: ['Beredskap', 'Termisk'], description_no: 'VTOL fixed-wing for presis kartlegging. Vertikal start/landing uten landingsbane. Brukes manuelt av pilot for planlagte kartleggingsoppdrag.' },
+  { id: 'sensefly-ebee-x', name: 'senseFly eBee X', type: 'Fixed-wing (manuell)', manufacturer: 'senseFly', mtom_kg: 1.6, max_range_km: 25, max_flight_time_min: 24, has_thermal: false, has_rtk: true, has_lidar: false, payload_kg: 0, ip_rating: 'IP43', max_wind_ms: 12, price_nok: 220000, autonomous_dock: false, best_for: ['Kartlegging', 'Jordbruk', 'Ortofoto'], not_for: ['Beredskap', 'Termisk', 'Tung payload'], description_no: 'Lett fixed-wing for mellomstore kartleggingsområder. Enkel håndkast-start. God for landbruk og plankartlegging.' },
+  { id: 'skydio-x10', name: 'Skydio X10', type: 'Multirotor (autonom)', manufacturer: 'Skydio', mtom_kg: 1.5, max_range_km: 6, max_flight_time_min: 50, has_thermal: true, has_rtk: false, has_lidar: false, payload_kg: 0, ip_rating: 'IP55', max_wind_ms: 12, price_nok: 150000, autonomous_dock: true, best_for: ['Autonom inspeksjon', 'Byggeinspeksjon', 'Hindernavigasjon'], not_for: ['Lang rekkevidde', 'Kartlegging'], description_no: 'Selvflyvende drone med AI-hindernavigasjon. Kan fly rundt strukturer autonomt. God for komplekse inspeksjonsoppdrag.' },
+  { id: 'dji-mini-4-pro', name: 'DJI Mini 4 Pro', type: 'Mikrodrone (åpen kategori)', manufacturer: 'DJI', mtom_kg: 0.249, max_range_km: 4, max_flight_time_min: 48, has_thermal: false, has_rtk: false, has_lidar: false, payload_kg: 0, ip_rating: null, max_wind_ms: 10, price_nok: 12000, autonomous_dock: false, best_for: ['Enkel dokumentasjon', 'Opplæring', 'Kultur/turisme'], not_for: ['Beredskap', 'Profesjonell inspeksjon', 'BVLOS'], description_no: 'Under 250g — krever kun A1-sertifikat (nettkurs). Perfekt som opplæringsdrone og for enkel dokumentasjon.' },
+];
+
+// Estimate max required distance (A→B→A) based on municipality data
+function estimateMaxMissionDistance(area_km2: number | null, road_km: number | null, population: number | null): { multirotor_km: number; fixedwing_km: number } {
+  const area = area_km2 || 100;
+  const radius = Math.sqrt(area / Math.PI); // km from center to edge
+  return {
+    multirotor_km: Math.min(radius * 0.8, 15), // realistic multirotor round-trip
+    fixedwing_km: Math.min(radius * 1.5, 80),   // fixed-wing corridor
+  };
+}
 
 // Verified use case database
 const VERIFIED_USE_CASES = [
@@ -147,9 +171,21 @@ ${region_municipalities && region_municipalities.length > 0 ? `Totalt ${region_m
     const sectorCostLines = Array.isArray(sector_data) && sector_data.length > 0
       ? sector_data
           .filter((sector: any) => sector?.expenditure_1000nok != null)
-          .map((sector: any) => `- ${sector.sector}: ${sector.expenditure_1000nok} (1000 kr, år ${sector.year || 'ukjent'}, kilde ${sector.source || 'ukjent'})`)
+          .map((sector: any) => {
+            const fteLine = sector.employees_fte != null ? `, estimert ${sector.employees_fte} årsverk` : '';
+            return `- ${sector.sector}: ${sector.expenditure_1000nok} (1000 kr${fteLine}, år ${sector.year || 'ukjent'}, kilde ${sector.source || 'ukjent'})`;
+          })
           .join('\n')
       : '- Ingen sektorkostnader tilgjengelig fra SSB tabell 12362.';
+
+    const sectorStaffingLines = Array.isArray(sector_data) && sector_data.length > 0
+      ? sector_data
+          .filter((sector: any) => sector?.employees_fte != null)
+          .map((sector: any) => `- ${sector.sector}: ~${sector.employees_fte} årsverk (estimert fra lønnskostnader)`)
+          .join('\n')
+      : '- Ingen årsverkdata tilgjengelig.';
+
+    const distances = estimateMaxMissionDistance(area_km2, road_km, population);
 
     const fireBudgetLine = fire_stats?.fire_expenditure_1000nok != null
       ? `- Brann/ulykkesvern: ${fire_stats.fire_expenditure_1000nok} (1000 kr, år ${fire_stats.year || 'ukjent'}, kilde ${fire_stats.source || 'ukjent'})`
@@ -203,14 +239,26 @@ KOMMUNEDATA:
 - Bygninger: ${buildings || 'ukjent'}
 - Terreng: ${terrain_type || 'ukjent'}
 - Befolkningstetthet: ${density_per_km2 || 'ukjent'} innb/km²
+- Estimert maks multirotor-oppdrag (tur-retur): ~${distances.multirotor_km.toFixed(0)} km
+- Estimert maks fixed-wing oppdrag: ~${distances.fixedwing_km.toFixed(0)} km
 
 KOSTRA/SSB KOSTNADSDATA (tabell 12362):
 ${sectorCostLines}
 ${fireBudgetLine}
 
+ÅRSVERK PER SEKTOR (estimert fra lønnskostnader, SSB 12362):
+${sectorStaffingLines}
+
 AKTIVE AVDELINGER: ${JSON.stringify(deptNames)}
 
 ${iksContext}
+
+TILGJENGELIG DRONEDATABASE (velg fra disse basert på behov):
+${JSON.stringify(DRONE_CATALOG.map(d => ({
+  id: d.id, name: d.name, type: d.type, range_km: d.max_range_km, flight_time_min: d.max_flight_time_min,
+  thermal: d.has_thermal, rtk: d.has_rtk, lidar: d.has_lidar, payload_kg: d.payload_kg,
+  autonomous_dock: d.autonomous_dock, price_nok: d.price_nok, best_for: d.best_for, description_no: d.description_no,
+})), null, 1)}
 
 VERIFISERT USE CASE-DATABASE (velg KUN fra disse):
 ${JSON.stringify(relevantUCs, null, 1)}
@@ -222,20 +270,23 @@ INSTRUKSJONER:
    - "rør_km × 0.2" med rør_km = ${va_km || 'ukjent'}
    - "areal_km2 × 0.002" med areal = ${area_km2 || 'ukjent'}
    - Faste timer brukes som de er (f.eks. "30 timer/år flat")
-3. Når du omtaler avdelingsøkonomi eller brannøkonomi, bruk tallene over fra SSB tabell 12362 og ikke generaliser mellom kommuner.
+3. Når du omtaler avdelingsøkonomi eller brannøkonomi, bruk tallene over fra SSB tabell 12362 inkludert årsverk og ikke generaliser mellom kommuner.
 4. Hvis kostnadsdata mangler, si eksplisitt at data mangler i stedet for å finne på tall.
 5. For HVER operasjon: bruk NØYAKTIG operationType, easaCategory og certRequirement fra databasen
-6. DRONEFLÅTE: Beregn antall multirotorer og fixed-wing basert på totale flytimer per type.
-   - MULTIROTOR: 1 stk med mindre timer overstiger 400t/år — da 2
-   - FIXED-WING: 1 stk med mindre timer overstiger 400t/år — kun inkluder om det er UC-er som krever den
-   - Bruk modellnavnene: "${DRONE_ARCHETYPES.multirotor.example}" og "${DRONE_ARCHETYPES.fixedWing.example}"
+6. DRONEFLÅTE — VELG SPESIFIKKE DRONER FRA DATABASEN:
+   - Vurder maks avstand fra dronestasjon til ytterste oppdrag (tur-retur). Multirotor: ~${distances.multirotor_km.toFixed(0)} km, Fixed-wing: ~${distances.fixedwing_km.toFixed(0)} km.
+   - Match utstyrbehov: Trenger operasjonene termisk? RTK? LiDAR? Payload?
+   - Vurder autonom drift: Beredskapsoperasjoner krever dronestasjon. Planlagte oppdrag kan bruke manuell drone.
+   - Vurder sambruk: Hvilke avdelinger kan dele same drone basert på overlappende behov?
+   - Velg den billigste dronen som dekker behovet — ikke anbefal dyrere enn nødvendig.
+   - For HVER drone: forklar HVORFOR den er valgt (distanse, utstyr, bruksområder).
 7. ${fire_dept_type === 'IKS'
     ? `For IKS-brannvesenet ${fire_dept_name}: vurder om dronestasjonen kan dekke hele IKS-området med partnerkommuner: ${(iks_partners || []).join(', ')}`
     : fire_dept_name
     ? `Brannvesenet er et ${fire_dept_type}: ${fire_dept_name}. Dronestasjonen dekker kun ${municipality_name}.`
     : 'Ingen brannveseninfo.'}
 8. Gi én sertifiseringsvei per pilot — ALDRI bland åpen og spesifikk kategori
-9. Estimer totalkostnad basert på antall dronestasjoner × enhetspris`;
+9. Estimer totalkostnad basert på valgte droner`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -294,17 +345,26 @@ INSTRUKSJONER:
                   },
                   drone_fleet: {
                     type: "array",
+                    description: "Spesifikke droner fra DRONE_CATALOG, valgt basert på oppdragsbehov",
                     items: {
                       type: "object",
                       properties: {
+                        drone_id: { type: "string", description: "ID fra DRONE_CATALOG" },
                         drone_type: { type: "string" },
                         recommended_model: { type: "string" },
                         quantity: { type: "number" },
-                        shared_between: { type: "array", items: { type: "string" } },
+                        shared_between: { type: "array", items: { type: "string" }, description: "Avdelinger som deler denne dronen" },
                         estimated_cost_nok: { type: "number" },
-                        key_features: { type: "array", items: { type: "string" } },
+                        key_features: { type: "array", items: { type: "string" }, description: "Nøkkelegenskaper som er relevante for kommunen" },
+                        why_chosen: { type: "string", description: "Kort forklaring (2-3 setninger) på HVORFOR denne dronen er valgt — distanse, utstyr, sambruk" },
+                        covers_use_cases: { type: "array", items: { type: "string" }, description: "Liste over UC-IDer denne dronen dekker" },
+                        max_mission_range_km: { type: "number", description: "Maks oppdragsrekkevidde for denne kommunen" },
+                        needs_thermal: { type: "boolean" },
+                        needs_rtk: { type: "boolean" },
+                        needs_lidar: { type: "boolean" },
+                        autonomous: { type: "boolean", description: "Om denne brukes fra dronestasjon" },
                       },
-                      required: ["drone_type", "recommended_model", "quantity", "shared_between", "estimated_cost_nok"],
+                      required: ["drone_id", "drone_type", "recommended_model", "quantity", "shared_between", "estimated_cost_nok", "why_chosen", "covers_use_cases"],
                     },
                   },
                   certification_plan: {
