@@ -131,6 +131,23 @@ KRITISKE SERTIFISERINGSREGLER — bryt disse ALDRI:
    - MTOM og dronedeimensjon
    - Befolkningstetthet i operasjonsområdet
    - Flygehøyde
+
+4. MINI 4 PRO OG KOMPETANSEKRAV:
+   - DJI Mini 4 Pro er <250 g og opererer i åpen kategori — den krever A1/A3-kompetansebevis (nettkurs).
+   - A2-sertifikat er IKKE nødvendig for Mini 4 Pro. A2 er kun relevant ved bruk av tyngre droner (f.eks. Matrice 350) eller operasjoner nærmere mennesker i A2-underkategori.
+   - Hvis A2 nevnes i sammenheng med Mini 4 Pro, presiser at det er en frivillig ekstra opplæring for mer krevende VLOS-oppdrag med andre droner.
+
+5. KURSVARIGHET OG OPPLÆRING:
+   - Antall dager oppgitt for opplæring (f.eks. 15 dager SORA/BVLOS, 5 dager STS-01, 2 dager A2) er FORESLÅTTE opplæringsopplegg, IKKE regulatoriske minstekrav.
+   - For HVER kursbeskrivelse: inkluder setningen "Varighet og innhold kan tilpasses leverandør og kommunens behov; det finnes ingen fastsatt kurslengde i EASA-regelverket for denne kompetansen."
+   - Presiser at SORA-/BVLOS-opplæring er en del av grunnlaget for å kunne søke operasjonsautorisasjon (OpAuth), men at det er selve godkjenningen fra myndighetene (Luftfartstilsynet) som gir rett til å fly disse konseptene — ikke kurset alene.
+
+6. SPRÅK RUNDT STRATEGI VS. FAKTA:
+   - Skille ALLTID klart mellom:
+     a) Faktiske egenskaper (fra regelverk og produsentdata) — beskriv som fakta
+     b) Kommunespesifikke estimater (flytimer, dekningsområde) — merk tydelig som "estimert" eller "beregnet for denne analysen"
+     c) Strategiske anbefalinger og scenarier — bruk ord som "foreslås", "anbefales", "konseptuelt opplegg", ALDRI formuleringer som kan tolkes som vedtatt eller etablert praksis
+   - Use cases (UC-001 osv.), implementeringsplan og IKS-samarbeid er ANBEFALINGER, ikke vedtatte planer.
 `;
 
 serve(async (req) => {
