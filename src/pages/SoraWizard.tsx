@@ -147,11 +147,13 @@ export default function SoraWizard() {
     sizeClass: soraResult.droneClass as SoraResults['sizeClass'],
     intrinsicGrc: soraResult.intrinsicGRC,
     finalGrc: soraResult.finalGRC,
-    initialArc: `ARC-${soraResult.arc}` as SoraResults['initialArc'],
+    initialArc: `ARC-${soraResult.iARC || soraResult.arc}` as SoraResults['initialArc'],
     residualArc: `ARC-${soraResult.arc}` as SoraResults['residualArc'],
     sail: ROMAN_TO_NUM[soraResult.sail] || 1,
     sailRoman: soraResult.sail as SoraResults['sailRoman'],
     scenario: soraResult.scenario,
+    airMitigationCount: soraResult.airMitigationCount || 0,
+    groundMitigationTotal: soraResult.m1Reduction + soraResult.m2Reduction,
   }), [soraResult]);
 
   const bestScenarioId = soraResult.scenario;
