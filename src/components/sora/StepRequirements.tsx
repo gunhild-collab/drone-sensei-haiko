@@ -148,7 +148,7 @@ function getRequirements(scenario: string, sail: number, operationType: string):
   return reqs;
 }
 
-export default function StepRequirements({ scenario, sailRoman, sail, operationType, droneName }: Props) {
+export default function StepRequirements({ scenario, sailRoman, sail, operationType, droneName, onCompletedChange }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set(["ops-manual"]));
   const [completed, setCompleted] = useState<Set<string>>(new Set());
   const [hasItem, setHasItem] = useState<Record<string, boolean>>({});
