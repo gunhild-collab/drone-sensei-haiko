@@ -199,14 +199,14 @@ Kommunen drifter droner fra en eller flere faste dronestasjoner — dronen start
 Kun et fåtall unntaksoperasjoner (broinspeksjon, tunnelportal, vernebygninger) krever manuell VLOS.
 
 DET FINNES KUN TO DRONETYPER:
-1. MULTIROTOR (autonom BVLOS fra dronestasjon): Kompakt multirotor med dock (f.eks. DJI Dock 2 + Matrice 4T).
+1. MULTIROTOR (autonom BVLOS fra dronestasjon): Kompakt multirotor med dock (f.eks. DJI Dock 2 + Matrice 3D/3TD).
    - Brukes til: lokale inspeksjoner, termisk, SAR, beredskap, bygningsdokumentasjon
-   - Rekkevidde: opptil ~15 km radius fra stasjon
+   - Opptil ca. 50 minutter maksimal flytid under ideelle forhold ifølge produsent (reell operativ flytid ofte lavere)
    - Pris ca. ${DRONE_ARCHETYPES.multirotor.costNok.toLocaleString('nb-NO')} NOK per enhet
 
 2. FIXED-WING DRONE-IN-A-BOX (f.eks. Robot Aviation FX10):
    - Brukes til: lange korridorflyginger (vei, rør), stor arealdekning (skog, natur, kartlegging), vilttelling
-   - Rekkevidde: 50+ km, 2+ timer flygetid
+   - Opptil ca. 2 timer flytid per oppdrag ifølge produsent (faktisk operativ varighet avhenger av payload, vær og profil)
    - Pris ca. ${DRONE_ARCHETYPES.fixedWing.costNok.toLocaleString('nb-NO')} NOK per enhet
 
 ${CERT_RULES}
