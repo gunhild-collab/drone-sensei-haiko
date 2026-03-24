@@ -105,6 +105,22 @@ export interface DroneAnalysisResult {
     departments: string[];
     description: string;
   }>;
+  drone_mission_savings?: {
+    total_annual_missions: number;
+    drone_replaceable_missions: number;
+    categories: Array<{
+      category: string;
+      mission_types: string[];
+      annual_missions: number;
+      drone_role: 'erstatter_utrykning' | 'raskere_situasjonsbilde' | 'reduserer_biler';
+      description: string;
+      estimated_truck_reduction_pct: number;
+      estimated_time_saved_min?: number;
+      annual_savings_nok?: number;
+    }>;
+    total_annual_savings_nok?: number;
+    summary: string;
+  };
 }
 
 interface Props {
