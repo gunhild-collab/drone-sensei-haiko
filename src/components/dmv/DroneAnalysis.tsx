@@ -302,6 +302,7 @@ const sidebarSections = [
   { id: "leseguide", label: "📖 Leseguide", icon: BookOpen },
   { id: "kommuneprofil", label: "🏘️ Kommuneprofil", icon: MapPin },
   { id: "nokkeltall", label: "📊 Nøkkeltall", icon: Clock },
+  { id: "bris-analyse", label: "🚒 Utrykningsanalyse", icon: Siren },
   { id: "ordliste", label: "📚 Ordliste & veiledning", icon: BookOpen },
   { id: "modningsreise", label: "🗺️ Modningsreise", icon: Milestone },
   { id: "operasjoner", label: "⚙️ Operasjoner", icon: Shield },
