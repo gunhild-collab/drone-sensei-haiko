@@ -41,12 +41,27 @@ export interface FireStats {
   source?: string;
 }
 
+export interface BrisMission {
+  t: string;  // mission type
+  n: number;  // count
+  rt: string; // response time
+  dt: string; // dispatch time
+}
+
+export interface BrisMissionYear {
+  total: number;
+  missions: BrisMission[];
+}
+
+export type BrisMissionData = Record<string, BrisMissionYear>;
+
 export interface RiskProfile {
   ros_events: RosEvent[];
   response_times: ResponseTime;
   critical_infrastructure: CriticalInfra[];
   emergency_plan_links: EmergencyPlanLink[];
   fire_stats?: FireStats;
+  bris_mission_data?: BrisMissionData;
 }
 
 export interface SectorBudget {

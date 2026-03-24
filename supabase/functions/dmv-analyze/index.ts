@@ -158,7 +158,7 @@ serve(async (req) => {
       municipality_name, population, area_km2, road_km, va_km, buildings,
       terrain_type, density_per_km2, departments, iks_partners,
       fire_dept_name, fire_dept_type, alarm_sentral_name, region_municipalities,
-      sector_data, fire_stats,
+      sector_data, fire_stats, bris_mission_data,
     } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -270,6 +270,32 @@ AKTIVE AVDELINGER: ${JSON.stringify(deptNames)}
 
 ${iksContext}
 
+${bris_mission_data ? `BRIS OPPDRAGSDATA (reelle utrykninger fra brann- og redningstjenesten):
+${Object.entries(bris_mission_data as Record<string, any>).map(([year, data]: [string, any]) => {
+  const missions = (data.missions || []) as Array<{t: string; n: number; rt: string; dt: string}>;
+  const abaTotal = missions.filter((m: any) => m.t.startsWith('ABA')).reduce((s: number, m: any) => s + m.n, 0);
+  const brannTotal = missions.filter((m: any) => m.t.startsWith('Brann')).reduce((s: number, m: any) => s + m.n, 0);
+  const trafikk = missions.find((m: any) => m.t === 'Trafikkulykke');
+  const avbrutt = missions.filter((m: any) => m.t.startsWith('Avbrutt') || m.t.startsWith('Unødig')).reduce((s: number, m: any) => s + m.n, 0);
+  return `ÅR ${year} (totalt ${data.total} oppdrag):
+  - ABA (automatiske brannalarmer): ${abaTotal} oppdrag (mange er falske/unødige alarmer)
+  - Brann (bygning, skog, bil, etc.): ${brannTotal} oppdrag
+  - Trafikkulykker: ${trafikk?.n || 0} oppdrag (median responstid ${trafikk?.rt || 'ukjent'})
+  - Avbrutt/unødig: ${avbrutt} oppdrag
+  
+  Alle oppdragstyper med antall og responstid:
+${missions.map((m: any) => `  ${m.t}: ${m.n} oppdrag, responstid ${m.rt}, utrykningstid ${m.dt}`).join('\n')}`;
+}).join('\n\n')}
+
+ANALYSE AV DRONE-ERSTATTBARE OPPDRAG:
+Basert på BRIS-dataen, identifiser oppdragstyper der en drone fra dronestasjon kan:
+A) ERSTATTE en bil-utrykning helt (f.eks. ABA-verifisering, unødige alarmer)
+B) GI RASKERE situasjonsbevissthet før mannskapet ankommer (f.eks. bygningsbrann, trafikkulykke)
+C) REDUSERE antall biler som sendes ut (f.eks. ved å verifisere omfang først)
+
+For hver kategori: estimer antall oppdrag per år som kan påvirkes, potensiell tidsbesparelse, og reduksjon i bilutskjøring.
+Husk at drone fra stasjon typisk er på stedet innen 2-5 minutter i dekningsområdet.` : ''}
+
 TILGJENGELIG DRONEDATABASE (velg fra disse basert på behov):
 ${JSON.stringify(DRONE_CATALOG.map(d => ({
   id: d.id, name: d.name, type: d.type, flight_time_min: d.max_flight_time_min,
@@ -305,7 +331,8 @@ INSTRUKSJONER:
     : 'Ingen brannveseninfo.'}
 8. Gi én sertifiseringsvei per pilot — ALDRI bland åpen og spesifikk kategori. Følg reglene i punkt 4-6 i CERT_RULES nøye.
 9. Estimer totalkostnad basert på valgte droner
-10. Bruk ord som "foreslås", "anbefales", "konseptuelt opplegg" for implementeringsplaner, IKS-samarbeid og use case-struktur. Leseren skal forstå hva som er fakta vs. anbefaling.`;
+10. Bruk ord som "foreslås", "anbefales", "konseptuelt opplegg" for implementeringsplaner, IKS-samarbeid og use case-struktur. Leseren skal forstå hva som er fakta vs. anbefaling.
+${bris_mission_data ? `11. BRIS-ANALYSE: Basert på oppdragsdataen, lag en detaljert analyse av hvilke oppdragstyper som kan erstattes/forbedres med drone. Grupper i kategorier (ABA-verifisering, brann-situasjonsbevissthet, trafikk, naturhendelser osv.) og estimer besparelser i antall utrykninger, tid og kostnader.` : ''}`;
 
     // Retry logic for transient gateway errors (502, 503)
     let response: Response | null = null;
@@ -437,6 +464,34 @@ INSTRUKSJONER:
                         },
                         required: ["phase", "title", "departments", "description"],
                       },
+                    },
+                    drone_mission_savings: {
+                      type: "object",
+                      description: "Analyse av BRIS-oppdrag som kan erstattes/forbedres med drone. Kun inkludert hvis BRIS-data er tilgjengelig.",
+                      properties: {
+                        total_annual_missions: { type: "number", description: "Totalt antall oppdrag per år (snitt)" },
+                        drone_replaceable_missions: { type: "number", description: "Antall oppdrag som kan erstattes/forbedres med drone" },
+                        categories: {
+                          type: "array",
+                          items: {
+                            type: "object",
+                            properties: {
+                              category: { type: "string", description: "Kategori, f.eks. 'ABA-verifisering', 'Brann situasjonsbevissthet'" },
+                              mission_types: { type: "array", items: { type: "string" }, description: "Oppdragstyper fra BRIS som inngår" },
+                              annual_missions: { type: "number" },
+                              drone_role: { type: "string", enum: ["erstatter_utrykning", "raskere_situasjonsbilde", "reduserer_biler"], description: "Hva dronen gjør" },
+                              description: { type: "string", description: "Kort forklaring av hvordan drone hjelper, inkl. responstid-sammenligning" },
+                              estimated_truck_reduction_pct: { type: "number", description: "Estimert prosent av oppdrag der man kan unngå/redusere utrykning" },
+                              estimated_time_saved_min: { type: "number", description: "Estimert minutter spart per oppdrag i snitt" },
+                              annual_savings_nok: { type: "number", description: "Estimert årlig besparelse i NOK (ca. 3500 kr per unngått bilutrykning)" },
+                            },
+                            required: ["category", "mission_types", "annual_missions", "drone_role", "description", "estimated_truck_reduction_pct"],
+                          },
+                        },
+                        total_annual_savings_nok: { type: "number" },
+                        summary: { type: "string", description: "Oppsummering av besparelsespotensialet i 2-3 setninger" },
+                      },
+                      required: ["total_annual_missions", "drone_replaceable_missions", "categories", "summary"],
                     },
                   },
                   required: ["summary", "department_analyses", "drone_fleet", "certification_plan", "iks_recommendation", "total_drones_needed", "total_annual_cost_nok", "total_annual_flight_hours", "implementation_priority"],
