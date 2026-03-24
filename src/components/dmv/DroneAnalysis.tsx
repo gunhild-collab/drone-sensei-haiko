@@ -347,7 +347,7 @@ export default function DroneAnalysis({
   municipalityName, population, areaKm2, roadKm, vaKm, buildings,
   terrainType, densityPerKm2, departments, iksPartners,
   fireDeptName, fireDeptType, alarmSentralName, regionMunicipalities,
-  sectorData, fireStats, onContinue, onBack
+  sectorData, fireStats, brisMissionData, onContinue, onBack
 }: Props) {
   const [analysis, setAnalysis] = useState<DroneAnalysisResult | null>(null);
   const [loading, setLoading] = useState(true);
