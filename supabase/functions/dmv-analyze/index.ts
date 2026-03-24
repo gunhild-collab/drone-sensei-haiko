@@ -158,7 +158,7 @@ serve(async (req) => {
       municipality_name, population, area_km2, road_km, va_km, buildings,
       terrain_type, density_per_km2, departments, iks_partners,
       fire_dept_name, fire_dept_type, alarm_sentral_name, region_municipalities,
-      sector_data, fire_stats,
+      sector_data, fire_stats, bris_mission_data,
     } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
