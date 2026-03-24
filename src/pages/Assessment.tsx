@@ -356,6 +356,7 @@ export default function Assessment() {
         regionMunicipalities={regionMunicipalities}
         sectorData={kostra?.sector_data || []}
         fireStats={kostra?.fire_stats || null}
+        brisMissionData={profile.risk_profile.bris_mission_data || null}
         onContinue={() => setStep("questions")}
         onBack={() => setStep("data")}
       />
