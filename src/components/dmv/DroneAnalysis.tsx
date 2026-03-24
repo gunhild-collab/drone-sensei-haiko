@@ -403,6 +403,7 @@ export default function DroneAnalysis({
             region_municipalities: regionMunicipalities,
             sector_data: sectorData,
             fire_stats: fireStats,
+            bris_mission_data: brisMissionData,
           },
         });
         if (fnError) throw new Error(fnError.message);
@@ -415,7 +416,7 @@ export default function DroneAnalysis({
       }
     };
     run();
-  }, [municipalityName, population, areaKm2, roadKm, vaKm, buildings, terrainType, densityPerKm2, departments, iksPartners, fireDeptName, fireDeptType, alarmSentralName, regionMunicipalities, sectorData, fireStats]);
+  }, [municipalityName, population, areaKm2, roadKm, vaKm, buildings, terrainType, densityPerKm2, departments, iksPartners, fireDeptName, fireDeptType, alarmSentralName, regionMunicipalities, sectorData, fireStats, brisMissionData]);
 
   if (loading) {
     return (
