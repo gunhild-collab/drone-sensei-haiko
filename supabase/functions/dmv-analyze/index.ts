@@ -270,6 +270,32 @@ AKTIVE AVDELINGER: ${JSON.stringify(deptNames)}
 
 ${iksContext}
 
+${bris_mission_data ? `BRIS OPPDRAGSDATA (reelle utrykninger fra brann- og redningstjenesten):
+${Object.entries(bris_mission_data as Record<string, any>).map(([year, data]: [string, any]) => {
+  const missions = (data.missions || []) as Array<{t: string; n: number; rt: string; dt: string}>;
+  const abaTotal = missions.filter((m: any) => m.t.startsWith('ABA')).reduce((s: number, m: any) => s + m.n, 0);
+  const brannTotal = missions.filter((m: any) => m.t.startsWith('Brann')).reduce((s: number, m: any) => s + m.n, 0);
+  const trafikk = missions.find((m: any) => m.t === 'Trafikkulykke');
+  const avbrutt = missions.filter((m: any) => m.t.startsWith('Avbrutt') || m.t.startsWith('Unødig')).reduce((s: number, m: any) => s + m.n, 0);
+  return `ÅR ${year} (totalt ${data.total} oppdrag):
+  - ABA (automatiske brannalarmer): ${abaTotal} oppdrag (mange er falske/unødige alarmer)
+  - Brann (bygning, skog, bil, etc.): ${brannTotal} oppdrag
+  - Trafikkulykker: ${trafikk?.n || 0} oppdrag (median responstid ${trafikk?.rt || 'ukjent'})
+  - Avbrutt/unødig: ${avbrutt} oppdrag
+  
+  Alle oppdragstyper med antall og responstid:
+${missions.map((m: any) => `  ${m.t}: ${m.n} oppdrag, responstid ${m.rt}, utrykningstid ${m.dt}`).join('\n')}`;
+}).join('\n\n')}
+
+ANALYSE AV DRONE-ERSTATTBARE OPPDRAG:
+Basert på BRIS-dataen, identifiser oppdragstyper der en drone fra dronestasjon kan:
+A) ERSTATTE en bil-utrykning helt (f.eks. ABA-verifisering, unødige alarmer)
+B) GI RASKERE situasjonsbevissthet før mannskapet ankommer (f.eks. bygningsbrann, trafikkulykke)
+C) REDUSERE antall biler som sendes ut (f.eks. ved å verifisere omfang først)
+
+For hver kategori: estimer antall oppdrag per år som kan påvirkes, potensiell tidsbesparelse, og reduksjon i bilutskjøring.
+Husk at drone fra stasjon typisk er på stedet innen 2-5 minutter i dekningsområdet.` : ''}
+
 TILGJENGELIG DRONEDATABASE (velg fra disse basert på behov):
 ${JSON.stringify(DRONE_CATALOG.map(d => ({
   id: d.id, name: d.name, type: d.type, flight_time_min: d.max_flight_time_min,
@@ -305,7 +331,8 @@ INSTRUKSJONER:
     : 'Ingen brannveseninfo.'}
 8. Gi én sertifiseringsvei per pilot — ALDRI bland åpen og spesifikk kategori. Følg reglene i punkt 4-6 i CERT_RULES nøye.
 9. Estimer totalkostnad basert på valgte droner
-10. Bruk ord som "foreslås", "anbefales", "konseptuelt opplegg" for implementeringsplaner, IKS-samarbeid og use case-struktur. Leseren skal forstå hva som er fakta vs. anbefaling.`;
+10. Bruk ord som "foreslås", "anbefales", "konseptuelt opplegg" for implementeringsplaner, IKS-samarbeid og use case-struktur. Leseren skal forstå hva som er fakta vs. anbefaling.
+${bris_mission_data ? `11. BRIS-ANALYSE: Basert på oppdragsdataen, lag en detaljert analyse av hvilke oppdragstyper som kan erstattes/forbedres med drone. Grupper i kategorier (ABA-verifisering, brann-situasjonsbevissthet, trafikk, naturhendelser osv.) og estimer besparelser i antall utrykninger, tid og kostnader.` : ''}`;
 
     // Retry logic for transient gateway errors (502, 503)
     let response: Response | null = null;
