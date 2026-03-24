@@ -307,157 +307,167 @@ INSTRUKSJONER:
 9. Estimer totalkostnad basert på valgte droner
 10. Bruk ord som "foreslås", "anbefales", "konseptuelt opplegg" for implementeringsplaner, IKS-samarbeid og use case-struktur. Leseren skal forstå hva som er fakta vs. anbefaling.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "drone_analysis",
-              description: "Returnerer en komplett droneanalyse for kommunen basert på verifiserte use cases",
-              parameters: {
-                type: "object",
-                properties: {
-                  summary: { type: "string", description: "Kort oppsummering (2-3 setninger) SPESIFIKT for denne kommunen. Bruk ord som 'anbefales' og 'foreslås' — dette er en strategisk vurdering, ikke et vedtatt tiltak." },
-                  department_analyses: {
-                    type: "array",
-                    items: {
+    // Retry logic for transient gateway errors (502, 503)
+    let response: Response | null = null;
+    const MAX_RETRIES = 3;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          tools: [
+            {
+              type: "function",
+              function: {
+                name: "drone_analysis",
+                description: "Returnerer en komplett droneanalyse for kommunen basert på verifiserte use cases",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    summary: { type: "string", description: "Kort oppsummering (2-3 setninger) SPESIFIKT for denne kommunen. Bruk ord som 'anbefales' og 'foreslås' — dette er en strategisk vurdering, ikke et vedtatt tiltak." },
+                    department_analyses: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          department: { type: "string" },
+                          use_cases: {
+                            type: "array",
+                            items: {
+                              type: "object",
+                              properties: {
+                                id: { type: "string", description: "UC-ID fra databasen" },
+                                name: { type: "string" },
+                                description: { type: "string", description: "Kort beskrivelse tilpasset kommunen" },
+                                operation_type: { type: "string", enum: ["VLOS", "BVLOS"] },
+                                easa_category: { type: "string" },
+                                required_permit: { type: "string" },
+                                pilot_certification: { type: "string", description: "Nøyaktig ÉN sertifiseringsvei" },
+                                drone_type: { type: "string" },
+                                priority: { type: "string", enum: ["Høy", "Medium", "Lav"] },
+                                annual_flight_hours: { type: "number", description: "Beregnet fra formel + kommunedata" },
+                                calculation_basis: { type: "string", description: "Vis beregningen, f.eks. '380km × 0.15 = 57 timer'" },
+                                needs_thermal: { type: "boolean" },
+                                needs_rtk: { type: "boolean" },
+                              },
+                              required: ["id", "name", "description", "operation_type", "easa_category", "required_permit", "pilot_certification", "drone_type", "priority", "annual_flight_hours", "calculation_basis"],
+                            },
+                          },
+                          total_annual_hours: { type: "number" },
+                        },
+                        required: ["department", "use_cases", "total_annual_hours"],
+                      },
+                    },
+                    drone_fleet: {
+                      type: "array",
+                      description: "Spesifikke droner fra DRONE_CATALOG, valgt basert på oppdragsbehov",
+                      items: {
+                        type: "object",
+                        properties: {
+                          drone_id: { type: "string", description: "ID fra DRONE_CATALOG" },
+                          drone_type: { type: "string" },
+                          recommended_model: { type: "string" },
+                          quantity: { type: "number" },
+                          shared_between: { type: "array", items: { type: "string" }, description: "Avdelinger som deler denne dronen" },
+                          estimated_cost_nok: { type: "number" },
+                          key_features: { type: "array", items: { type: "string" }, description: "Nøkkelegenskaper som er relevante for kommunen" },
+                          why_chosen: { type: "string", description: "Kort forklaring (2-3 setninger) på HVORFOR denne dronen er valgt — distanse, utstyr, sambruk" },
+                          covers_use_cases: { type: "array", items: { type: "string" }, description: "Liste over UC-IDer denne dronen dekker" },
+                          max_flight_time_min: { type: "number", description: "Produsentens oppgitte maksimale flytid i minutter" },
+                          needs_thermal: { type: "boolean" },
+                          needs_rtk: { type: "boolean" },
+                          needs_lidar: { type: "boolean" },
+                          autonomous: { type: "boolean", description: "Om denne brukes fra dronestasjon" },
+                        },
+                        required: ["drone_id", "drone_type", "recommended_model", "quantity", "shared_between", "estimated_cost_nok", "why_chosen", "covers_use_cases"],
+                      },
+                    },
+                    certification_plan: {
                       type: "object",
+                      description: "Samlet sertifiseringsplan — én vei per pilotgruppe",
                       properties: {
-                        department: { type: "string" },
-                        use_cases: {
+                        pilot_groups: {
                           type: "array",
                           items: {
                             type: "object",
                             properties: {
-                              id: { type: "string", description: "UC-ID fra databasen" },
-                              name: { type: "string" },
-                              description: { type: "string", description: "Kort beskrivelse tilpasset kommunen" },
-                              operation_type: { type: "string", enum: ["VLOS", "BVLOS"] },
-                              easa_category: { type: "string" },
-                              required_permit: { type: "string" },
-                              pilot_certification: { type: "string", description: "Nøyaktig ÉN sertifiseringsvei" },
-                              drone_type: { type: "string" },
-                              priority: { type: "string", enum: ["Høy", "Medium", "Lav"] },
-                              annual_flight_hours: { type: "number", description: "Beregnet fra formel + kommunedata" },
-                              calculation_basis: { type: "string", description: "Vis beregningen, f.eks. '380km × 0.15 = 57 timer'" },
-                              needs_thermal: { type: "boolean" },
-                              needs_rtk: { type: "boolean" },
+                              group_name: { type: "string" },
+                              certification_path: { type: "string", description: "Nøyaktig ÉN sertifiseringsvei" },
+                              covers_use_cases: { type: "array", items: { type: "string" } },
+                              training_description: { type: "string", description: "Beskrivelse av foreslått opplæring. Avslutt ALLTID med: 'Varighet og innhold kan tilpasses leverandør og kommunens behov; det finnes ingen fastsatt kurslengde i EASA-regelverket for denne kompetansen.' For SORA/BVLOS: presiser at opplæringen er grunnlag for å søke OpAuth, men at godkjenningen fra Luftfartstilsynet gir rett til å fly — ikke kurset alene." },
+                              estimated_training_days: { type: "number", description: "Foreslått antall dager (IKKE regulatorisk minstekrav)" },
+                              practical_outcome: { type: "string", description: "Én setning på 'ikke-nerd-språk' som forklarer hva piloten faktisk kan gjøre etter kurset" },
                             },
-                            required: ["id", "name", "description", "operation_type", "easa_category", "required_permit", "pilot_certification", "drone_type", "priority", "annual_flight_hours", "calculation_basis"],
+                            required: ["group_name", "certification_path", "covers_use_cases", "training_description", "estimated_training_days", "practical_outcome"],
                           },
                         },
-                        total_annual_hours: { type: "number" },
                       },
-                      required: ["department", "use_cases", "total_annual_hours"],
+                      required: ["pilot_groups"],
                     },
-                  },
-                  drone_fleet: {
-                    type: "array",
-                    description: "Spesifikke droner fra DRONE_CATALOG, valgt basert på oppdragsbehov",
-                    items: {
+                    iks_recommendation: {
                       type: "object",
                       properties: {
-                        drone_id: { type: "string", description: "ID fra DRONE_CATALOG" },
-                        drone_type: { type: "string" },
-                        recommended_model: { type: "string" },
-                        quantity: { type: "number" },
-                        shared_between: { type: "array", items: { type: "string" }, description: "Avdelinger som deler denne dronen" },
-                        estimated_cost_nok: { type: "number" },
-                        key_features: { type: "array", items: { type: "string" }, description: "Nøkkelegenskaper som er relevante for kommunen" },
-                        why_chosen: { type: "string", description: "Kort forklaring (2-3 setninger) på HVORFOR denne dronen er valgt — distanse, utstyr, sambruk" },
-                        covers_use_cases: { type: "array", items: { type: "string" }, description: "Liste over UC-IDer denne dronen dekker" },
-                        max_flight_time_min: { type: "number", description: "Produsentens oppgitte maksimale flytid i minutter" },
-                        needs_thermal: { type: "boolean" },
-                        needs_rtk: { type: "boolean" },
-                        needs_lidar: { type: "boolean" },
-                        autonomous: { type: "boolean", description: "Om denne brukes fra dronestasjon" },
+                        can_share: { type: "boolean" },
+                        shared_resources: { type: "array", items: { type: "string" } },
+                        recommendation: { type: "string", description: "Bruk ord som 'foreslås' eller 'anbefales'" },
+                        partner_municipalities: { type: "array", items: { type: "string" } },
                       },
-                      required: ["drone_id", "drone_type", "recommended_model", "quantity", "shared_between", "estimated_cost_nok", "why_chosen", "covers_use_cases"],
+                      required: ["can_share", "recommendation"],
                     },
-                  },
-                  certification_plan: {
-                    type: "object",
-                    description: "Samlet sertifiseringsplan — én vei per pilotgruppe",
-                    properties: {
-                      pilot_groups: {
-                        type: "array",
-                        items: {
-                          type: "object",
-                          properties: {
-                            group_name: { type: "string" },
-                            certification_path: { type: "string", description: "Nøyaktig ÉN sertifiseringsvei" },
-                            covers_use_cases: { type: "array", items: { type: "string" } },
-                            training_description: { type: "string", description: "Beskrivelse av foreslått opplæring. Avslutt ALLTID med: 'Varighet og innhold kan tilpasses leverandør og kommunens behov; det finnes ingen fastsatt kurslengde i EASA-regelverket for denne kompetansen.' For SORA/BVLOS: presiser at opplæringen er grunnlag for å søke OpAuth, men at godkjenningen fra Luftfartstilsynet gir rett til å fly — ikke kurset alene." },
-                            estimated_training_days: { type: "number", description: "Foreslått antall dager (IKKE regulatorisk minstekrav)" },
-                            practical_outcome: { type: "string", description: "Én setning på 'ikke-nerd-språk' som forklarer hva piloten faktisk kan gjøre etter kurset, f.eks. 'Kan planlegge og gjennomføre autonome BVLOS-flyginger fra dronestasjon i samsvar med operasjonsmanualen.' For A1/A3: 'Kan fly lette droner (<250g) med visuell kontakt for enkel dokumentasjon og opplæring.' For A2: 'Kan fly droner opp til 4 kg nærmere mennesker for mer krevende inspeksjonsoppdrag.' For STS-01: 'Kan gjennomføre standardiserte droneoperasjoner i spesifikk kategori, inkludert inspeksjon og kartlegging.' For SORA/BVLOS: 'Kan planlegge og gjennomføre autonome BVLOS-flyginger fra dronestasjon etter godkjent operasjonsautorisasjon.'" },
-                          },
-                          required: ["group_name", "certification_path", "covers_use_cases", "training_description", "estimated_training_days", "practical_outcome"],
+                    total_drones_needed: { type: "number" },
+                    total_annual_cost_nok: { type: "number" },
+                    total_annual_flight_hours: { type: "number" },
+                    implementation_priority: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          phase: { type: "number" },
+                          title: { type: "string" },
+                          departments: { type: "array", items: { type: "string" } },
+                          description: { type: "string", description: "Bruk 'foreslås', 'anbefales' eller 'konseptuelt opplegg'" },
                         },
+                        required: ["phase", "title", "departments", "description"],
                       },
                     },
-                    required: ["pilot_groups"],
                   },
-                  iks_recommendation: {
-                    type: "object",
-                    properties: {
-                      can_share: { type: "boolean" },
-                      shared_resources: { type: "array", items: { type: "string" } },
-                      recommendation: { type: "string", description: "Bruk ord som 'foreslås' eller 'anbefales' — dette er en anbefaling, ikke vedtatt praksis" },
-                      partner_municipalities: { type: "array", items: { type: "string" } },
-                    },
-                    required: ["can_share", "recommendation"],
-                  },
-                  total_drones_needed: { type: "number" },
-                  total_annual_cost_nok: { type: "number" },
-                  total_annual_flight_hours: { type: "number" },
-                  implementation_priority: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        phase: { type: "number" },
-                        title: { type: "string" },
-                        departments: { type: "array", items: { type: "string" } },
-                        description: { type: "string", description: "Bruk 'foreslås', 'anbefales' eller 'konseptuelt opplegg' — ikke formuleringer som antyder vedtatt praksis" },
-                      },
-                      required: ["phase", "title", "departments", "description"],
-                    },
-                  },
+                  required: ["summary", "department_analyses", "drone_fleet", "certification_plan", "iks_recommendation", "total_drones_needed", "total_annual_cost_nok", "total_annual_flight_hours", "implementation_priority"],
                 },
-                required: ["summary", "department_analyses", "drone_fleet", "certification_plan", "iks_recommendation", "total_drones_needed", "total_annual_cost_nok", "total_annual_flight_hours", "implementation_priority"],
               },
             },
-          },
-        ],
-        tool_choice: { type: "function", function: { name: "drone_analysis" } },
-      }),
-    });
+          ],
+          tool_choice: { type: "function", function: { name: "drone_analysis" } },
+        }),
+      });
 
-    if (!response.ok) {
-      if (response.status === 429) {
+      if (response.ok || (response.status !== 502 && response.status !== 503)) break;
+      console.warn(`AI gateway attempt ${attempt} failed with ${response.status}, retrying...`);
+      await response.text(); // consume body
+      if (attempt < MAX_RETRIES) await new Promise(r => setTimeout(r, 2000 * attempt));
+    }
+
+    if (!response || !response.ok) {
+      if (response?.status === 429) {
         return new Response(JSON.stringify({ success: false, error: "Rate limit — prøv igjen om litt" }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (response.status === 402) {
+      if (response?.status === 402) {
         return new Response(JSON.stringify({ success: false, error: "Kreditt oppbrukt" }), {
           status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const text = await response.text();
-      console.error("AI gateway error:", response.status, text);
-      return new Response(JSON.stringify({ success: false, error: "AI-analyse feilet" }), {
+      const text = response ? await response.text() : "no response";
+      console.error("AI gateway error:", response?.status, text);
+      return new Response(JSON.stringify({ success: false, error: "AI-analyse feilet — prøv igjen" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -470,7 +480,25 @@ INSTRUKSJONER:
       });
     }
 
-    const analysis = JSON.parse(toolCall.function.arguments);
+    // Robust JSON parsing with repair
+    let analysis: any;
+    try {
+      analysis = JSON.parse(toolCall.function.arguments);
+    } catch (_parseErr) {
+      // Try to repair common JSON issues
+      let cleaned = toolCall.function.arguments
+        .replace(/,\s*}/g, "}")
+        .replace(/,\s*]/g, "]")
+        .replace(/[\x00-\x1F\x7F]/g, "");
+      try {
+        analysis = JSON.parse(cleaned);
+      } catch (finalErr) {
+        console.error("JSON repair failed:", finalErr, "Raw length:", toolCall.function.arguments?.length);
+        return new Response(JSON.stringify({ success: false, error: "Analysen ble avbrutt — prøv igjen" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
 
     // POST-PROCESSING VALIDATION: Enforce correct values from verified database
     if (analysis.department_analyses) {
