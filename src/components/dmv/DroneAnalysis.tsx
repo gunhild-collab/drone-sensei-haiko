@@ -145,6 +145,7 @@ interface Props {
     year?: string;
     source?: string;
   } | null;
+  brisMissionData: BrisMissionData | null;
   onContinue: () => void;
   onBack: () => void;
 }
