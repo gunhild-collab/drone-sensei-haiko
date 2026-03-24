@@ -625,6 +625,80 @@ export default function DroneAnalysis({
             </Card>
           </div>
 
+          {/* ─── BRIS Utrykningsanalyse ─── */}
+          {analysis.drone_mission_savings && (
+            <div id="bris-analyse" className="space-y-4 mb-6 scroll-mt-6">
+              <h2 className="text-lg font-display font-semibold flex items-center gap-2">
+                <Siren className="w-5 h-5 text-destructive" /> 🚒 Utrykningsanalyse — drone vs. bil
+              </h2>
+              <p className="text-sm text-muted-foreground">{analysis.drone_mission_savings.summary}</p>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <Card>
+                  <CardContent className="pt-4 pb-3 text-center">
+                    <p className="text-2xl font-display font-bold text-foreground">{analysis.drone_mission_savings.total_annual_missions}</p>
+                    <p className="text-xs text-muted-foreground">Oppdrag/år (snitt)</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-4 pb-3 text-center">
+                    <p className="text-2xl font-display font-bold text-primary">{analysis.drone_mission_savings.drone_replaceable_missions}</p>
+                    <p className="text-xs text-muted-foreground">Drone-relevante</p>
+                  </CardContent>
+                </Card>
+                {analysis.drone_mission_savings.total_annual_savings_nok != null && (
+                  <Card>
+                    <CardContent className="pt-4 pb-3 text-center">
+                      <p className="text-2xl font-display font-bold text-chart-2">{(analysis.drone_mission_savings.total_annual_savings_nok / 1000).toFixed(0)}k</p>
+                      <p className="text-xs text-muted-foreground">Est. besparelse/år (NOK)</p>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                {analysis.drone_mission_savings.categories.map((cat, i) => {
+                  const roleLabels: Record<string, { label: string; color: string }> = {
+                    erstatter_utrykning: { label: "Erstatter utrykning", color: "bg-chart-2/10 text-chart-2 border-chart-2/30" },
+                    raskere_situasjonsbilde: { label: "Raskere situasjonsbilde", color: "bg-primary/10 text-primary border-primary/30" },
+                    reduserer_biler: { label: "Reduserer antall biler", color: "bg-chart-3/10 text-chart-3 border-chart-3/30" },
+                  };
+                  const role = roleLabels[cat.drone_role] || roleLabels.raskere_situasjonsbilde;
+                  return (
+                    <Card key={i} className="border">
+                      <CardContent className="pt-4 pb-3 space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-display font-semibold">{cat.category}</p>
+                            <Badge variant="outline" className={cn("text-[10px] mt-1 border", role.color)}>{role.label}</Badge>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-lg font-display font-bold">{cat.annual_missions}</p>
+                            <p className="text-[10px] text-muted-foreground">oppdrag/år</p>
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{cat.description}</p>
+                        <div className="flex flex-wrap gap-3 text-[11px]">
+                          <span>📉 ~{cat.estimated_truck_reduction_pct}% reduksjon</span>
+                          {cat.estimated_time_saved_min != null && <span>⏱️ ~{cat.estimated_time_saved_min} min spart/oppdrag</span>}
+                          {cat.annual_savings_nok != null && <span>💰 ~{(cat.annual_savings_nok / 1000).toFixed(0)}k kr/år</span>}
+                        </div>
+                        {cat.mission_types.length > 0 && (
+                          <div className="flex flex-wrap gap-1 pt-1">
+                            {cat.mission_types.slice(0, 5).map(mt => (
+                              <Badge key={mt} variant="secondary" className="text-[9px]">{mt}</Badge>
+                            ))}
+                            {cat.mission_types.length > 5 && <Badge variant="secondary" className="text-[9px]">+{cat.mission_types.length - 5} til</Badge>}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* ─── Ordliste section: Glossary + OpsManual + ERP ─── */}
           <div id="ordliste" className="space-y-4 mb-6 scroll-mt-6">
             <h2 className="text-lg font-display font-semibold flex items-center gap-2">
