@@ -984,6 +984,7 @@ export default function DroneAnalysis({
                 </Card>
 
                 {/* ─── Scenario Simulator Cards ─── */}
+                {droneGroups.length > 0 && <ScenarioSimulator droneGroups={droneGroups} yearKey={yearKey} />}
                 {droneGroups.length > 0 && (() => {
                   // Sort so ABA is first (hero), then by mission count
                   const sorted = [...droneGroups].sort((a, b) => {
