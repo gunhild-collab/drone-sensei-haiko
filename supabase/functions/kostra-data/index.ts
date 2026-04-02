@@ -393,15 +393,24 @@ Deno.serve(async (req) => {
 
     if (areaKm2) indicators.push({ id: 'area_km2', name: 'Areal', value: areaKm2, unit: 'km²', year: '2024' });
 
-    // Step 3: Derived metrics
+    // Step 3: Derived metrics + real road km from SSB 11814
     const popDensity = population && areaKm2 ? Math.round(population / areaKm2) : null;
-    const estimatedRoadKm = population ? Math.round(population * 0.015) : null;
+    let actualRoadKm: number | null = null;
+    let roadKmSource = 'estimated';
+    if (municipalityCode) {
+      const roadData = await fetchSSBRoadKm(municipalityCode, municipality_name);
+      if (roadData) {
+        actualRoadKm = roadData.roadKm;
+        roadKmSource = 'ssb_11814';
+      }
+    }
+    const estimatedRoadKm = actualRoadKm ?? (population ? Math.round(population * 0.015) : null);
     const estimatedBuildings = population ? Math.round(population * 0.4) : null;
     const estimatedVaKm = population ? Math.round(population * 0.01) : null;
     const estimatedAgriLand = areaKm2 ? Math.round(areaKm2 * (bracket === 'small_rural' ? 0.15 : bracket === 'mid_tier' ? 0.1 : 0.03)) : null;
 
     if (popDensity) indicators.push({ id: 'pop_density', name: 'Befolkningstetthet', value: popDensity, unit: 'innb./km²' });
-    if (estimatedRoadKm) indicators.push({ id: 'road_km', name: 'Kommunale veier (est.)', value: estimatedRoadKm, unit: 'km' });
+    if (estimatedRoadKm) indicators.push({ id: 'road_km', name: roadKmSource === 'ssb_11814' ? 'Kommunale veier (SSB)' : 'Kommunale veier (est.)', value: estimatedRoadKm, unit: 'km' });
     if (estimatedBuildings) indicators.push({ id: 'buildings', name: 'Bygninger (est.)', value: estimatedBuildings, unit: 'stk' });
     if (estimatedVaKm) indicators.push({ id: 'va_km', name: 'VA-ledningsnett (est.)', value: estimatedVaKm, unit: 'km' });
     if (estimatedAgriLand) indicators.push({ id: 'agri_km2', name: 'Jordbruksareal (est.)', value: estimatedAgriLand, unit: 'km²' });
