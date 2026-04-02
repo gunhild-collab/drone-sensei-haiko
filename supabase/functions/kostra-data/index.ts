@@ -100,6 +100,59 @@ async function fetchSSBRoadKm(code: string, name: string): Promise<{ roadKm: num
   }
 }
 
+// ── SSB Table 12051 (v2 API): property management data ──────────────────
+interface PropertyData {
+  areal_per_innbygger_m2: number | null;
+  vedlikehold_per_kvm_kr: number | null;
+  drift_per_kvm_kr: number | null;
+  energi_per_kvm_kr: number | null;
+  netto_drift_per_innb_kr: number | null;
+  andel_av_driftsutgifter_pct: number | null;
+  year: string;
+}
+
+async function fetchSSBPropertyData(code: string, name: string): Promise<PropertyData | null> {
+  try {
+    const url = 'https://data.ssb.no/api/pxwebapi/v2/tables/12051/data?lang=no&outputFormat=json-stat2';
+    const resp = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const regionIdx = data.dimension?.KOKkommuneregion0000?.category?.index;
+    const contentIdx = data.dimension?.ContentsCode?.category?.index;
+    const timeIdx = data.dimension?.Tid?.category?.index;
+    if (!regionIdx || !contentIdx || !timeIdx) return null;
+    const r = regionIdx[code];
+    const t = Object.keys(timeIdx)[0];
+    const tIdx = timeIdx[t];
+    if (r === undefined || tIdx === undefined) return null;
+    const sizes = data.size as number[];
+
+    const getValue = (contentCode: string): number | null => {
+      const c = contentIdx[contentCode];
+      if (c === undefined) return null;
+      const flatIdx = r * sizes[1] * sizes[2] + tIdx * sizes[2] + c;
+      const v = data.value?.[flatIdx];
+      return typeof v === 'number' ? v : null;
+    };
+
+    const result: PropertyData = {
+      areal_per_innbygger_m2: getValue('KOSarealperinnb0000'),
+      vedlikehold_per_kvm_kr: getValue('KOSvedlikeholdpe0000'),
+      drift_per_kvm_kr: getValue('KOSdriftperkvm0000'),
+      energi_per_kvm_kr: getValue('KOSenergiperkvm0000'),
+      netto_drift_per_innb_kr: getValue('KOSndu421perinnb0000'),
+      andel_av_driftsutgifter_pct: getValue('KOSndueieforvtot0000'),
+      year: t,
+    };
+
+    console.log(`SSB 12051: ${name} (${code}) → areal ${result.areal_per_innbygger_m2} m²/innb, vedlikehold ${result.vedlikehold_per_kvm_kr} kr/m² (${t})`);
+    return result;
+  } catch (e) {
+    console.log('SSB 12051 property data fetch failed:', e);
+    return null;
+  }
+}
+
 // ── SSB Table 12362: Sector-level KOSTRA expenditure ────────────────────
 // Table 12362 dimensions: art, year, region, statistic variable, function
 // We query municipality codes directly and fall back to the latest non-null year
@@ -441,10 +494,11 @@ Deno.serve(async (req) => {
       protected_areas: protectedAreas,
     };
 
-    // Step 4: Fetch KOSTRA sector-level expenditure
-    const ssbResult = municipalityCode
-      ? await fetchAllSectorData(municipalityCode, municipality_name)
-      : { sectors: [], source: 'none' };
+    // Step 4: Fetch KOSTRA sector-level expenditure + property data in parallel
+    const [ssbResult, propertyData] = await Promise.all([
+      municipalityCode ? fetchAllSectorData(municipalityCode, municipality_name) : Promise.resolve({ sectors: [], source: 'none' }),
+      municipalityCode ? fetchSSBPropertyData(municipalityCode, municipality_name) : Promise.resolve(null),
+    ]);
 
     // Fallback: estimate sector budgets from population if SSB returned nothing
     let finalSectors = ssbResult.sectors;
@@ -486,6 +540,11 @@ Deno.serve(async (req) => {
         }
       : null;
 
+    // Estimate total municipal building area from property data
+    const totalBuildingAreaM2 = propertyData?.areal_per_innbygger_m2 && population
+      ? Math.round(population * propertyData.areal_per_innbygger_m2)
+      : null;
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -499,6 +558,11 @@ Deno.serve(async (req) => {
         fire_stats: fireStats,
         sector_data: finalSectors,
         sector_data_source: sectorSource,
+        property_data: propertyData ? {
+          ...propertyData,
+          total_building_area_m2: totalBuildingAreaM2,
+          source: 'ssb_12051',
+        } : null,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
