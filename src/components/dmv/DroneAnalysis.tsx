@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import type { BrisMissionData } from "@/hooks/useMunicipalityProfile";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -222,6 +222,202 @@ function GlossaryTerms() {
       {terms.map(t => (
         <p key={t.term}><span className="font-semibold text-foreground">{t.emoji} {t.term}:</span> {t.desc}</p>
       ))}
+    </div>
+  );
+}
+
+const priorityColor = (p: string) => {
+  if (p === "Høy") return "bg-destructive/10 text-destructive border-destructive/20";
+  if (p === "Medium") return "bg-chart-3/10 text-chart-3 border-chart-3/20";
+  return "bg-muted text-muted-foreground border-border";
+};
+
+/* ─── Department × Drone Matrix ─── */
+function DepartmentDroneMatrix({ departmentAnalyses, droneFleet, expandedDept, setExpandedDept }: {
+  departmentAnalyses: DroneAnalysisResult['department_analyses'];
+  droneFleet: DroneAnalysisResult['drone_fleet'];
+  expandedDept: string | null;
+  setExpandedDept: (d: string | null) => void;
+}) {
+  const droneColumns = droneFleet.length > 0
+    ? droneFleet.map(d => ({ label: d.recommended_model, type: d.drone_type, departments: d.shared_between }))
+    : [
+        { label: 'DJI Dock 2', type: 'Multirotor', departments: [] as string[] },
+        { label: 'FX10', type: 'Fixed-wing', departments: [] as string[] },
+        { label: 'M30T', type: 'Feltdrone', departments: [] as string[] },
+      ];
+
+  function getMatchingUseCases(dept: DroneAnalysisResult['department_analyses'][0], droneCol: typeof droneColumns[0]) {
+    return dept.use_cases.filter(uc => {
+      const ucType = (uc.drone_type || '').toLowerCase();
+      const colType = droneCol.type.toLowerCase();
+      const colLabel = droneCol.label.toLowerCase();
+      if (ucType.includes(colType) || ucType.includes(colLabel) || colType.includes(ucType)) return true;
+      if (ucType.includes('multirotor') || ucType.includes('dock') || ucType.includes('dji dock')) return colType.includes('multirotor') || colLabel.includes('dock');
+      if (ucType.includes('fixed') || ucType.includes('wing') || ucType.includes('fx')) return colType.includes('fixed') || colLabel.includes('fx');
+      if (ucType.includes('felt') || ucType.includes('m30') || ucType.includes('matrice 30')) return colType.includes('felt') || colLabel.includes('m30');
+      return false;
+    });
+  }
+
+  const totalDepts = departmentAnalyses.length;
+  const totalOps = departmentAnalyses.reduce((s, d) => s + d.use_cases.length, 0);
+  const activeDrones = droneColumns.filter(dc =>
+    departmentAnalyses.some(dept => getMatchingUseCases(dept, dc).length > 0)
+  ).length;
+
+  function getQuickWin(dept: DroneAnalysisResult['department_analyses'][0]) {
+    const sorted = [...dept.use_cases].sort((a, b) => {
+      const prio: Record<string, number> = { 'Høy': 0, 'Medium': 1, 'Lav': 2 };
+      const pa = prio[a.priority] ?? 2;
+      const pb = prio[b.priority] ?? 2;
+      if (pa !== pb) return pa - pb;
+      return a.annual_flight_hours - b.annual_flight_hours;
+    });
+    return sorted[0] || null;
+  }
+
+  const droneEmojis = ['🏠', '✈️', '🚁', '🤖', '📡'];
+
+  return (
+    <div className="space-y-3">
+      <Card className="border-primary/20 bg-primary/[0.03]">
+        <CardContent className="py-3">
+          <p className="text-sm font-medium text-center">
+            <span className="text-primary font-bold">{activeDrones || droneColumns.length} droner</span> dekker{' '}
+            <span className="text-primary font-bold">{totalDepts} avdelinger</span> og{' '}
+            <span className="text-primary font-bold">{totalOps} operasjoner</span>
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/30">
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs">Avdeling</th>
+                  {droneColumns.map((dc, i) => (
+                    <th key={i} className="text-center py-3 px-3 font-medium text-xs min-w-[90px]">
+                      <div className="flex flex-col items-center gap-0.5">
+                        <span className="text-lg">{droneEmojis[i] || '🚁'}</span>
+                        <span className="text-muted-foreground leading-tight truncate max-w-[100px]">{dc.label}</span>
+                        <span className="text-[10px] text-muted-foreground/60">{dc.type}</span>
+                      </div>
+                    </th>
+                  ))}
+                  <th className="text-center py-3 px-3 font-medium text-muted-foreground text-xs">Timer/år</th>
+                </tr>
+              </thead>
+              <tbody>
+                {departmentAnalyses.map((dept, deptIdx) => {
+                  const isExpanded = expandedDept === dept.department;
+                  const quickWin = getQuickWin(dept);
+                  return (
+                    <React.Fragment key={dept.department}>
+                      <tr
+                        id={`dept-${deptIdx}`}
+                        className={cn(
+                          "border-b cursor-pointer transition-colors scroll-mt-6",
+                          isExpanded ? "bg-primary/[0.04]" : "hover:bg-muted/30"
+                        )}
+                        onClick={() => setExpandedDept(isExpanded ? null : dept.department)}
+                      >
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-2">
+                            {isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" /> : <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />}
+                            <span className="font-medium">{dept.department}</span>
+                          </div>
+                        </td>
+                        {droneColumns.map((dc, ci) => {
+                          const matches = getMatchingUseCases(dept, dc);
+                          return (
+                            <td key={ci} className="py-3 px-3 text-center">
+                              {matches.length > 0 ? (
+                                <div className="flex flex-col items-center gap-0.5">
+                                  <span className="text-green-600 text-base">✓</span>
+                                  <span className="text-[11px] text-muted-foreground">{matches.length} ops</span>
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground/30">—</span>
+                              )}
+                            </td>
+                          );
+                        })}
+                        <td className="py-3 px-3 text-center">
+                          <Badge variant="secondary" className="text-[11px]">{dept.total_annual_hours} t</Badge>
+                        </td>
+                      </tr>
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <tr>
+                            <td colSpan={droneColumns.length + 2} className="p-0">
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="overflow-hidden"
+                              >
+                                <div className="px-4 py-4 bg-muted/20 space-y-3">
+                                  {quickWin && (
+                                    <div className="flex items-start gap-3 p-3 rounded-lg border border-primary/20 bg-primary/[0.04]">
+                                      <Sparkles className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                                      <div>
+                                        <p className="text-xs font-semibold text-primary">⚡ Quick win</p>
+                                        <p className="text-sm font-medium mt-0.5">{quickWin.name}</p>
+                                        <p className="text-xs text-muted-foreground mt-0.5">{quickWin.description}</p>
+                                        <div className="flex gap-1.5 mt-2">
+                                          <Badge className={cn("text-[10px]", priorityColor(quickWin.priority))}>{quickWin.priority} prioritet</Badge>
+                                          <Badge variant="secondary" className="text-[10px]">{quickWin.annual_flight_hours} t/år</Badge>
+                                          <Badge variant="outline" className="text-[10px]">{quickWin.drone_type}</Badge>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                  <div className="space-y-1.5">
+                                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Alle operasjoner ({dept.use_cases.length})</p>
+                                    {dept.use_cases.map((uc, i) => (
+                                      <div key={i} className="p-3 rounded-lg bg-background border text-sm space-y-2">
+                                        <div className="flex items-start justify-between">
+                                          <div>
+                                            <p className="font-medium">{uc.name}</p>
+                                            <p className="text-xs text-muted-foreground mt-0.5">{uc.description}</p>
+                                          </div>
+                                          <Badge className={cn("text-[10px] ml-2 flex-shrink-0", priorityColor(uc.priority))}>
+                                            {uc.priority}
+                                          </Badge>
+                                        </div>
+                                        <div className="flex flex-wrap gap-1.5">
+                                          <Badge variant="outline" className="text-[10px] gap-1">{friendlyLabel(uc.operation_type)}</Badge>
+                                          <Badge variant="outline" className="text-[10px] gap-1">{friendlyCategory(uc.easa_category)}</Badge>
+                                          <Badge variant="outline" className="text-[10px] gap-1">
+                                            <GraduationCap className="w-2.5 h-2.5" /> {friendlyLabel(uc.pilot_certification)}
+                                          </Badge>
+                                          <Badge variant="secondary" className="text-[10px]">{uc.drone_type}</Badge>
+                                          <Badge variant="secondary" className="text-[10px]">{uc.annual_flight_hours} t/år</Badge>
+                                          {uc.calculation_basis && (
+                                            <span className="text-[10px] text-muted-foreground italic">{uc.calculation_basis}</span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              </motion.div>
+                            </td>
+                          </tr>
+                        )}
+                      </AnimatePresence>
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -852,11 +1048,8 @@ export default function DroneAnalysis({
     )
   );
 
-  const priorityColor = (p: string) => {
-    if (p === "Høy") return "bg-destructive/10 text-destructive border-destructive/20";
-    if (p === "Medium") return "bg-chart-3/10 text-chart-3 border-chart-3/20";
-    return "bg-muted text-muted-foreground border-border";
-  };
+  // priorityColor moved to module level
+
 
   return (
     <div className="flex gap-6 p-6 lg:p-10">
@@ -1231,89 +1424,17 @@ export default function DroneAnalysis({
             <JourneyBox />
           </div>
 
-          {/* Department breakdown */}
+          {/* Department × Drone matrix */}
           <div id="operasjoner" className="space-y-3 mb-6 scroll-mt-6">
             <h2 className="text-lg font-display font-semibold flex items-center gap-2">
               <Shield className="w-5 h-5 text-primary" /> ⚙️ Operasjoner per avdeling
             </h2>
-            {analysis.department_analyses.map((dept, deptIdx) => (
-              <Card key={dept.department} id={`dept-${deptIdx}`} className="scroll-mt-6">
-                <button
-                  onClick={() => setExpandedDept(expandedDept === dept.department ? null : dept.department)}
-                  className="w-full text-left"
-                >
-                  <CardContent className="py-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Building2 className="w-5 h-5 text-primary" />
-                        <div>
-                          <p className="font-medium text-sm">{dept.department}</p>
-                          <p className="text-xs text-muted-foreground">{dept.use_cases.length} operasjoner · {dept.total_annual_hours} timer/år (estimat)</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex gap-1">
-                          {dept.use_cases.filter(uc => uc.priority === "Høy").length > 0 && (
-                            <Badge className={cn("text-[10px]", priorityColor("Høy"))}>
-                              {dept.use_cases.filter(uc => uc.priority === "Høy").length} høy
-                            </Badge>
-                          )}
-                        </div>
-                        {expandedDept === dept.department ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                      </div>
-                    </div>
-                  </CardContent>
-                </button>
-
-                <AnimatePresence>
-                  {expandedDept === dept.department && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="px-6 pb-4 space-y-2">
-                        {dept.use_cases.map((uc, i) => (
-                          <div key={i} className="p-3 rounded-lg bg-muted/50 text-sm space-y-2">
-                            <div className="flex items-start justify-between">
-                              <div>
-                                <p className="font-medium">{uc.name}</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">{uc.description}</p>
-                              </div>
-                              <Badge className={cn("text-[10px] ml-2 flex-shrink-0", priorityColor(uc.priority))}>
-                                {uc.priority}
-                              </Badge>
-                            </div>
-                            <div className="flex flex-wrap gap-1.5">
-                              <Badge variant="outline" className="text-[10px] gap-1">
-                                {friendlyLabel(uc.operation_type)}
-                              </Badge>
-                              <Badge variant="outline" className="text-[10px] gap-1">
-                                {friendlyCategory(uc.easa_category)}
-                              </Badge>
-                              <Badge variant="outline" className="text-[10px] gap-1">
-                                <GraduationCap className="w-2.5 h-2.5" /> {friendlyLabel(uc.pilot_certification)}
-                              </Badge>
-                              <Badge variant="secondary" className="text-[10px]">
-                                {uc.drone_type}
-                              </Badge>
-                              <Badge variant="secondary" className="text-[10px]">
-                                {uc.annual_flight_hours} t/år
-                              </Badge>
-                              {uc.calculation_basis && (
-                                <span className="text-[10px] text-muted-foreground italic">{uc.calculation_basis}</span>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </Card>
-            ))}
+            <DepartmentDroneMatrix
+              departmentAnalyses={analysis.department_analyses}
+              droneFleet={analysis.drone_fleet}
+              expandedDept={expandedDept}
+              setExpandedDept={setExpandedDept}
+            />
           </div>
 
           {/* Drone fleet */}
