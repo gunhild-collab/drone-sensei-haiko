@@ -226,6 +226,12 @@ function GlossaryTerms() {
   );
 }
 
+const priorityColor = (p: string) => {
+  if (p === "Høy") return "bg-destructive/10 text-destructive border-destructive/20";
+  if (p === "Medium") return "bg-chart-3/10 text-chart-3 border-chart-3/20";
+  return "bg-muted text-muted-foreground border-border";
+};
+
 /* ─── Department × Drone Matrix ─── */
 function DepartmentDroneMatrix({ departmentAnalyses, droneFleet, expandedDept, setExpandedDept }: {
   departmentAnalyses: DroneAnalysisResult['department_analyses'];
