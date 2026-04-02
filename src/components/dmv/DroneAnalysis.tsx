@@ -735,6 +735,157 @@ function groupBrisMissions(missions: Array<{ t: string; n: number; rt: string; d
 
   return result.sort((a, b) => b.totalMissions - a.totalMissions);
 }
+/* ─── UC label map ─── */
+const ucLabelMap: Record<string, string> = {
+  'UC-001': '🔥 Brannverifisering',
+  'UC-002': '🌊 Flom og skred',
+  'UC-003': '🔍 Savnet person',
+  'UC-004': '🛣️ Veiinspeksjon',
+  'UC-005': '🏗️ Byggkontroll',
+  'UC-006': '🌲 Skogbrannpatrulje',
+  'UC-007': '🏛️ Kulturminner',
+  'UC-008': '📐 Arealkartlegging',
+  'UC-009': '💧 VA-inspeksjon',
+  'UC-010': '🚇 Tunnel og bro',
+  'UC-011': '🚨 Trafikkulykke',
+  'UC-012': '☠️ Farlig gods',
+  'UC-013': '🏘️ Bygningsbrann',
+  'UC-014': '🌿 Miljøovervåking',
+  'UC-017': '🔎 Nærinspeksjon',
+  'UC-018': '🏚️ Byggesaksløp',
+  'UC-019': '🛤️ Korridorkartlegging',
+  'UC-021': '🌾 Naturforvaltning',
+  'UC-022': '⛰️ Ras og skredrisiko',
+  'UC-023': '🌍 Storskala kartlegging',
+  'UC-025': '🚑 AED-levering',
+  'UC-027': '🏥 Blodprøvetransport',
+};
+
+function ucFriendlyTag(code: string): string {
+  return ucLabelMap[code] || code;
+}
+
+/* ─── Pilot icon progressions ─── */
+const pilotProgressions: Record<string, { icons: string[]; labels: string[] }> = {
+  autonom: {
+    icons: ['🧑‍✈️', '📱', '🚁🛰️'],
+    labels: ['Piloter starter', 'Planlegger fra base', 'Dronen flyr selv'],
+  },
+  areal: {
+    icons: ['🧑‍💻', '🗺️', '✈️'],
+    labels: ['Planlegger rute', 'GIS-integrasjon', 'Kartlegger stort areal'],
+  },
+  vlos: {
+    icons: ['🧑‍✈️', '👁️', '🔍'],
+    labels: ['Piloter manuelt', 'Visuell kontakt', 'Detaljinspeksjon'],
+  },
+};
+
+function detectProgression(group: any, index: number) {
+  const name = (group.group_name || '').toLowerCase();
+  const path = (group.certification_path || '').toLowerCase();
+  if (name.includes('autonom') || path.includes('bvlos') || path.includes('sora')) return pilotProgressions.autonom;
+  if (name.includes('areal') || name.includes('kartlegg') || name.includes('fixed')) return pilotProgressions.areal;
+  return pilotProgressions.vlos;
+}
+
+function regBadgeLabel(path: string): string {
+  const p = path.toLowerCase();
+  if (p.includes('sora') || p.includes('bvlos')) return 'OpAuth / BVLOS';
+  if (p.includes('sts') || p.includes('a2')) return 'STS / A2';
+  if (p.includes('a1') || p.includes('a3')) return 'A1/A3 Åpen';
+  return path;
+}
+
+function simplifiedGroupName(name: string, index: number): string {
+  const lower = name.toLowerCase();
+  if (lower.includes('beredskap') || lower.includes('bvlos') || lower.includes('autonom')) return `Gruppe ${index + 1} — Autonom beredskap`;
+  if (lower.includes('kartlegg') || lower.includes('areal') || lower.includes('fixed')) return `Gruppe ${index + 1} — Arealkartlegging`;
+  if (lower.includes('inspeksjon') || lower.includes('vlos') || lower.includes('manuell')) return `Gruppe ${index + 1} — Manuell inspeksjon`;
+  return `Gruppe ${index + 1} — ${name.split('(')[0].trim()}`;
+}
+
+/* ─── PilotProfileCard ─── */
+function PilotProfileCard({ group, index }: { group: any; index: number }) {
+  const [expanded, setExpanded] = useState(false);
+  const [showAllUc, setShowAllUc] = useState(false);
+  const prog = detectProgression(group, index);
+  const ucTags = (group.covers_use_cases || []).map((uc: string) => ucFriendlyTag(uc));
+  const visibleTags = showAllUc ? ucTags : ucTags.slice(0, 6);
+  const hiddenCount = ucTags.length - 6;
+  const outcome = (group.practical_outcome || group.training_description || '').split('.')[0] + '.';
+
+  return (
+    <Card className="overflow-hidden border cursor-pointer hover:shadow-sm transition-shadow" style={{ borderColor: '#e5e7eb', borderRadius: 10 }} onClick={() => setExpanded(!expanded)}>
+      <CardContent className="p-0">
+        {/* Icon progression panel */}
+        <div className="flex items-center justify-center gap-4 py-4 px-4" style={{ background: '#f9fafb', borderRadius: '10px 10px 0 0' }}>
+          {prog.icons.map((icon, j) => (
+            <React.Fragment key={j}>
+              {j > 0 && <span className="text-muted-foreground text-lg">→</span>}
+              <div className="flex flex-col items-center gap-1">
+                <span className="text-[36px] leading-none">{icon}</span>
+                <span className="text-[10px] text-muted-foreground text-center max-w-[80px]">{prog.labels[j]}</span>
+              </div>
+            </React.Fragment>
+          ))}
+        </div>
+
+        {/* Title row */}
+        <div className="px-4 pt-3 pb-2 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <p className="font-semibold text-sm" style={{ color: '#0f0b2d' }}>{simplifiedGroupName(group.group_name, index)}</p>
+            <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: '#f3f4f6', color: '#6b7280' }}>{regBadgeLabel(group.certification_path)}</span>
+          </div>
+          <span className="font-bold text-sm" style={{ color: '#0f0b2d' }}>~{group.estimated_training_days} dager</span>
+        </div>
+
+        {/* Outcome sentence */}
+        <div className="mx-4 mb-3 rounded-md px-3 py-2" style={{ background: '#f0fdf4' }}>
+          <p className="text-xs" style={{ color: '#166534' }}>
+            <strong>Etter opplæring:</strong> {outcome.length > 120 ? outcome.slice(0, 117) + '…' : outcome}
+          </p>
+        </div>
+
+        {/* Expand indicator */}
+        <div className="flex items-center justify-center pb-2">
+          {expanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+        </div>
+
+        {/* Expanded: UC tags */}
+        <AnimatePresence>
+          {expanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="px-4 pb-4 pt-1">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-2">Bruksområder</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {visibleTags.map((tag: string, j: number) => (
+                    <span key={j} className="text-xs px-2.5 py-1 rounded-full border bg-background" style={{ borderColor: '#e5e7eb', fontSize: 12 }}>{tag}</span>
+                  ))}
+                  {!showAllUc && hiddenCount > 0 && (
+                    <button
+                      className="text-xs px-2.5 py-1 rounded-full border font-medium"
+                      style={{ borderColor: '#e5e7eb', color: '#7c3aed', fontSize: 12 }}
+                      onClick={(e) => { e.stopPropagation(); setShowAllUc(true); }}
+                    >
+                      + {hiddenCount} flere
+                    </button>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </CardContent>
+    </Card>
+  );
+}
 
 /* ─── Report Sidebar ─── */
 const sidebarSections = [
