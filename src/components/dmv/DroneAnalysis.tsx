@@ -1042,11 +1042,8 @@ export default function DroneAnalysis({
     )
   );
 
-  const priorityColor = (p: string) => {
-    if (p === "Høy") return "bg-destructive/10 text-destructive border-destructive/20";
-    if (p === "Medium") return "bg-chart-3/10 text-chart-3 border-chart-3/20";
-    return "bg-muted text-muted-foreground border-border";
-  };
+  // priorityColor moved to module level
+
 
   return (
     <div className="flex gap-6 p-6 lg:p-10">
