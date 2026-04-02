@@ -739,13 +739,13 @@ function groupBrisMissions(missions: Array<{ t: string; n: number; rt: string; d
 /* ─── Report Sidebar ─── */
 const sidebarSections = [
   { id: "leseguide", label: "📖 Leseguide", icon: BookOpen },
+  { id: "modningsreise", label: "🗺️ Modningsreise", icon: Milestone },
   { id: "kommuneprofil", label: "🏘️ Kommuneprofil", icon: MapPin },
   { id: "dronekart", label: "🗺️ Ditt dronekart", icon: Map },
   { id: "nokkeltall", label: "📊 Nøkkeltall", icon: Clock },
   { id: "brannstatistikk", label: "🔥 Brannstatistikk", icon: Flame },
   
   { id: "ordliste", label: "📚 Ordliste & veiledning", icon: BookOpen },
-  { id: "modningsreise", label: "🗺️ Modningsreise", icon: Milestone },
   { id: "operasjoner", label: "⚙️ Operasjoner", icon: Shield },
   { id: "droneflate", label: "🚁 Droneflåte", icon: Plane },
   { id: "sertifisering", label: "🎓 Sertifisering", icon: GraduationCap },
