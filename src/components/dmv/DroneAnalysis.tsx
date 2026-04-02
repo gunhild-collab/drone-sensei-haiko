@@ -1231,89 +1231,17 @@ export default function DroneAnalysis({
             <JourneyBox />
           </div>
 
-          {/* Department breakdown */}
+          {/* Department × Drone matrix */}
           <div id="operasjoner" className="space-y-3 mb-6 scroll-mt-6">
             <h2 className="text-lg font-display font-semibold flex items-center gap-2">
               <Shield className="w-5 h-5 text-primary" /> ⚙️ Operasjoner per avdeling
             </h2>
-            {analysis.department_analyses.map((dept, deptIdx) => (
-              <Card key={dept.department} id={`dept-${deptIdx}`} className="scroll-mt-6">
-                <button
-                  onClick={() => setExpandedDept(expandedDept === dept.department ? null : dept.department)}
-                  className="w-full text-left"
-                >
-                  <CardContent className="py-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Building2 className="w-5 h-5 text-primary" />
-                        <div>
-                          <p className="font-medium text-sm">{dept.department}</p>
-                          <p className="text-xs text-muted-foreground">{dept.use_cases.length} operasjoner · {dept.total_annual_hours} timer/år (estimat)</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex gap-1">
-                          {dept.use_cases.filter(uc => uc.priority === "Høy").length > 0 && (
-                            <Badge className={cn("text-[10px]", priorityColor("Høy"))}>
-                              {dept.use_cases.filter(uc => uc.priority === "Høy").length} høy
-                            </Badge>
-                          )}
-                        </div>
-                        {expandedDept === dept.department ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                      </div>
-                    </div>
-                  </CardContent>
-                </button>
-
-                <AnimatePresence>
-                  {expandedDept === dept.department && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="px-6 pb-4 space-y-2">
-                        {dept.use_cases.map((uc, i) => (
-                          <div key={i} className="p-3 rounded-lg bg-muted/50 text-sm space-y-2">
-                            <div className="flex items-start justify-between">
-                              <div>
-                                <p className="font-medium">{uc.name}</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">{uc.description}</p>
-                              </div>
-                              <Badge className={cn("text-[10px] ml-2 flex-shrink-0", priorityColor(uc.priority))}>
-                                {uc.priority}
-                              </Badge>
-                            </div>
-                            <div className="flex flex-wrap gap-1.5">
-                              <Badge variant="outline" className="text-[10px] gap-1">
-                                {friendlyLabel(uc.operation_type)}
-                              </Badge>
-                              <Badge variant="outline" className="text-[10px] gap-1">
-                                {friendlyCategory(uc.easa_category)}
-                              </Badge>
-                              <Badge variant="outline" className="text-[10px] gap-1">
-                                <GraduationCap className="w-2.5 h-2.5" /> {friendlyLabel(uc.pilot_certification)}
-                              </Badge>
-                              <Badge variant="secondary" className="text-[10px]">
-                                {uc.drone_type}
-                              </Badge>
-                              <Badge variant="secondary" className="text-[10px]">
-                                {uc.annual_flight_hours} t/år
-                              </Badge>
-                              {uc.calculation_basis && (
-                                <span className="text-[10px] text-muted-foreground italic">{uc.calculation_basis}</span>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </Card>
-            ))}
+            <DepartmentDroneMatrix
+              departmentAnalyses={analysis.department_analyses}
+              droneFleet={analysis.drone_fleet}
+              expandedDept={expandedDept}
+              setExpandedDept={setExpandedDept}
+            />
           </div>
 
           {/* Drone fleet */}
