@@ -297,11 +297,125 @@ function ErpBox() {
   );
 }
 
+/* ─── Fire Statistics helpers ─── */
+function timeToMinutes(t: string): number {
+  if (!t || t === '00:00:00') return 0;
+  const parts = t.split(':').map(Number);
+  return (parts[0] || 0) * 60 + (parts[1] || 0) + (parts[2] || 0) / 60;
+}
+
+interface GroupedMission {
+  category: string;
+  emoji: string;
+  missions: Array<{ t: string; n: number; rt: string; dt: string }>;
+  totalMissions: number;
+  avgResponseMin: number;
+  droneScenario?: { title: string; description: string; icon: string };
+}
+
+function groupBrisMissions(missions: Array<{ t: string; n: number; rt: string; dt: string }>): GroupedMission[] {
+  const groups: Record<string, { emoji: string; types: string[]; droneScenario?: GroupedMission['droneScenario'] }> = {
+    'Automatiske brannalarmer (ABA)': {
+      emoji: '🔔',
+      types: ['ABA'],
+      droneScenario: {
+        title: 'Drone verifiserer alarm før utrykning',
+        description: 'Ved ABA-alarmer kan en drone nå adressen på 1–3 minutter og bekrefte om det er reell brann via termisk kamera. Ved falsk alarm avblåses utrykning — sparer ca. 30 min per hendelse.',
+        icon: '🚁',
+      },
+    },
+    'Bygningsbrann': {
+      emoji: '🏠🔥',
+      types: ['Brann i bygning', 'Branntilløp i bygg', 'Branntilløp komfyr', 'Brann i skorstein', 'Brann gjenoppblussing', 'Brann i el installasjon'],
+      droneScenario: {
+        title: 'Situasjonsbilde for innsatsleder',
+        description: 'Drone gir termisk oversikt over brannen før mannskapene er på stedet. Innsatsleder ser hvor brannen er verst, om det er fare for spredning, og kan planlegge angrepsvei fra luften.',
+        icon: '🌡️',
+      },
+    },
+    'Skog- og naturbrann': {
+      emoji: '🌲🔥',
+      types: ['Brann i skog', 'Brann i gress', 'Brann i søppelkasse', 'Branntilløp utenfor'],
+      droneScenario: {
+        title: 'Oversiktskartlegging og brannfront',
+        description: 'Ved skog- og markbrann gir drone sanntids oversikt over brannfronten, vindretning og truede områder. Erstatter helikopterbehov i tidlig fase og gir kontinuerlig oppdatering under slukkingen.',
+        icon: '🗺️',
+      },
+    },
+    'Trafikkulykker': {
+      emoji: '🚗',
+      types: ['Trafikkulykke'],
+      droneScenario: {
+        title: 'Raskere situasjonsbilde ved ulykke',
+        description: 'Drone når ulykkesstedet raskt og gir oversikt over omfang, antall involverte kjøretøy, trafikkdirigering og adkomstvei for utrykningskjøretøy.',
+        icon: '📸',
+      },
+    },
+    'Naturhendelser': {
+      emoji: '🌊',
+      types: ['Naturhendelse'],
+      droneScenario: {
+        title: 'Skadekartlegging og overvåking',
+        description: 'Ved flom, ras eller stormskader kan dronen kartlegge skadeomfang over store områder uten risiko for mannskaper. Spesielt nyttig for å vurdere om evakuering er nødvendig.',
+        icon: '🔍',
+      },
+    },
+    'Redning og helseoppdrag': { emoji: '🚑', types: ['Helseoppdrag', 'Person i vann', 'Ulykke/redning', 'Trussel om selvdrap'] },
+    'Kjøretøy- og utstyrsbrann': { emoji: '🚘🔥', types: ['Brann i personbil', 'Brann i motorredskap', 'Brann i fritidsbåt', 'Brann annet'] },
+    'Unødig alarm / avbrutt': { emoji: '❌', types: ['Avbrutt utrykning', 'Unødig'] },
+    'Øvrige oppdrag': { emoji: '📋', types: [] }, // catch-all
+  };
+
+  const result: GroupedMission[] = [];
+  const used = new Set<number>();
+
+  for (const [category, cfg] of Object.entries(groups)) {
+    const matched = missions
+      .map((m, i) => ({ ...m, _i: i }))
+      .filter(m => {
+        if (used.has(m._i)) return false;
+        if (cfg.types.length === 0) return false;
+        return cfg.types.some(t => m.t.startsWith(t) || m.t.includes(t));
+      });
+
+    if (matched.length > 0) {
+      matched.forEach(m => used.add(m._i));
+      const totalN = matched.reduce((s, m) => s + m.n, 0);
+      const weightedRT = matched.reduce((s, m) => s + timeToMinutes(m.rt) * m.n, 0);
+      result.push({
+        category,
+        emoji: cfg.emoji,
+        missions: matched,
+        totalMissions: totalN,
+        avgResponseMin: totalN > 0 ? Math.round(weightedRT / totalN * 10) / 10 : 0,
+        droneScenario: cfg.droneScenario,
+      });
+    }
+  }
+
+  // Catch-all for remaining
+  const remaining = missions.filter((_, i) => !used.has(i));
+  if (remaining.length > 0) {
+    const totalN = remaining.reduce((s, m) => s + m.n, 0);
+    const weightedRT = remaining.reduce((s, m) => s + timeToMinutes(m.rt) * m.n, 0);
+    result.push({
+      category: 'Øvrige oppdrag',
+      emoji: '📋',
+      missions: remaining,
+      totalMissions: totalN,
+      avgResponseMin: totalN > 0 ? Math.round(weightedRT / totalN * 10) / 10 : 0,
+    });
+  }
+
+  return result.sort((a, b) => b.totalMissions - a.totalMissions);
+}
+
 /* ─── Report Sidebar ─── */
 const sidebarSections = [
   { id: "leseguide", label: "📖 Leseguide", icon: BookOpen },
   { id: "kommuneprofil", label: "🏘️ Kommuneprofil", icon: MapPin },
   { id: "nokkeltall", label: "📊 Nøkkeltall", icon: Clock },
+  { id: "brannstatistikk", label: "🔥 Brannstatistikk", icon: Flame },
   { id: "bris-analyse", label: "🚒 Utrykningsanalyse", icon: Siren },
   { id: "ordliste", label: "📚 Ordliste & veiledning", icon: BookOpen },
   { id: "modningsreise", label: "🗺️ Modningsreise", icon: Milestone },
