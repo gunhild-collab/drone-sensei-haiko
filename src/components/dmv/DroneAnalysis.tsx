@@ -1777,44 +1777,15 @@ export default function DroneAnalysis({
             </Card>
           </div>
 
-          {/* Certification plan */}
+          {/* Certification plan — Pilotprofil cards */}
           {analysis.certification_plan && analysis.certification_plan.pilot_groups.length > 0 && (
             <div id="sertifisering" className="space-y-3 mb-6 scroll-mt-6">
               <h2 className="text-lg font-display font-semibold flex items-center gap-2">
                 <GraduationCap className="w-5 h-5 text-primary" /> 🎓 Sertifiseringsplan
               </h2>
 
-              <Card className="border-primary/10 bg-primary/[0.02]">
-                <CardContent className="pt-4 pb-3">
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    For de fleste kommuner starter reisen med <strong>A1/A3-kompetanse</strong> og en enkel operasjonsmanual.
-                    Når behovet blir mer avansert (STS, PDRA, BVLOS), øker også kravene til kurs, operasjonsmanual og ERP.
-                    Antall dager oppgitt nedenfor er <strong>foreslåtte opplæringsopplegg</strong>, ikke regulatoriske minstekrav.
-                  </p>
-                </CardContent>
-              </Card>
-
               {analysis.certification_plan.pilot_groups.map((group, i) => (
-                <Card key={i}>
-                  <CardContent className="pt-4 pb-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <p className="font-medium text-sm">{group.group_name}</p>
-                      <Badge variant="secondary" className="text-xs">~{group.estimated_training_days} dager (foreslått)</Badge>
-                    </div>
-                    <p className="text-xs font-medium text-primary">{friendlyLabel(group.certification_path)}</p>
-                    {(group as any).practical_outcome && (
-                      <p className="text-xs text-foreground bg-primary/5 rounded-md p-2 border border-primary/10">
-                        <strong>Etter opplæring:</strong> {(group as any).practical_outcome}
-                      </p>
-                    )}
-                    <p className="text-xs text-muted-foreground">{group.training_description}</p>
-                    <div className="flex flex-wrap gap-1">
-                      {group.covers_use_cases.map(uc => (
-                        <Badge key={uc} variant="outline" className="text-[10px]">{uc}</Badge>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
+                <PilotProfileCard key={i} group={group} index={i} />
               ))}
             </div>
           )}
