@@ -1276,6 +1276,7 @@ export default function DroneAnalysis({
   const [error, setError] = useState<string | null>(null);
   const [expandedDept, setExpandedDept] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState("leseguide");
+  const [expandedPhase, setExpandedPhase] = useState<number | null>(null);
 
   // Intersection observer for active sidebar tracking
   useEffect(() => {
@@ -1823,33 +1824,153 @@ export default function DroneAnalysis({
             </Card>
           )}
 
-          {/* Implementation phases */}
-          {analysis.implementation_priority.length > 0 && (
-            <div id="implementering" className="space-y-3 mb-6 scroll-mt-6">
-              <h2 className="text-lg font-display font-semibold">📅 Foreslått implementeringsplan</h2>
-              <p className="text-xs text-muted-foreground -mt-1">Fasene nedenfor er strategiske anbefalinger og bør tilpasses kommunens egne forutsetninger og budsjett.</p>
-              {analysis.implementation_priority.map((phase) => (
-                <Card key={phase.phase}>
-                  <CardContent className="pt-4 pb-3">
-                    <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-display font-bold text-sm flex-shrink-0">
-                        {phase.phase}
+          {/* Implementation timeline — Gantt-style */}
+          {analysis.implementation_priority.length > 0 && (() => {
+            const phases = [
+              { months: '0–6', label: 'Fase 1', color: 'from-[#6858f8] to-[#6858f8]/80', width: '16.7%' },
+              { months: '6–18', label: 'Fase 2', color: 'from-[#6858f8]/70 to-[#ff66c4]/70', width: '33.3%' },
+              { months: '18–36', label: 'Fase 3', color: 'from-[#ff66c4]/60 to-[#ff66c4]/40', width: '50%' },
+            ];
+            const totalCost = analysis.drone_fleet.reduce((s, d) => s + d.estimated_cost_nok * d.quantity, 0);
+            // Rough ROI breakeven estimate: ~18 months
+            const breakevenPct = 50; // 18 months out of 36
+
+            return (
+              <div id="implementering" className="space-y-4 mb-6 scroll-mt-6">
+                <h2 className="text-lg font-display font-semibold flex items-center gap-2">
+                  📅 Implementeringsplan
+                </h2>
+                <p className="text-xs text-muted-foreground -mt-2">
+                  Strategisk anbefaling — tilpass til kommunens budsjett og forutsetninger.
+                </p>
+
+                {/* Gantt timeline bar */}
+                <Card>
+                  <CardContent className="pt-5 pb-4 space-y-4">
+                    {/* Month axis */}
+                    <div className="flex justify-between text-[10px] text-muted-foreground px-1">
+                      <span>0 mnd</span>
+                      <span>6 mnd</span>
+                      <span>12 mnd</span>
+                      <span>18 mnd</span>
+                      <span>24 mnd</span>
+                      <span>36 mnd</span>
+                    </div>
+
+                    {/* Phase bars */}
+                    <div className="space-y-2">
+                      {analysis.implementation_priority.slice(0, 3).map((phase, i) => {
+                        const p = phases[i] || phases[2];
+                        const isExpanded = expandedPhase === i;
+                        return (
+                          <div key={phase.phase}>
+                            <button
+                              onClick={() => setExpandedPhase(isExpanded ? null : i)}
+                              className="w-full text-left"
+                            >
+                              <div className="relative h-10 bg-muted/30 rounded-lg overflow-hidden">
+                                <div
+                                  className={cn("absolute top-0 left-0 h-full rounded-lg bg-gradient-to-r flex items-center px-3 gap-2 transition-all", p.color)}
+                                  style={{
+                                    width: p.width,
+                                    marginLeft: i === 0 ? '0' : i === 1 ? '16.7%' : '50%',
+                                  }}
+                                >
+                                  <span className="text-white text-xs font-semibold whitespace-nowrap drop-shadow-sm">
+                                    {p.label}
+                                  </span>
+                                  <span className="text-white/80 text-[10px] whitespace-nowrap hidden sm:inline">
+                                    {p.months} mnd
+                                  </span>
+                                </div>
+                                <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                                  {isExpanded ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
+                                </div>
+                              </div>
+                            </button>
+
+                            <AnimatePresence>
+                              {isExpanded && (
+                                <motion.div
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: "auto", opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  transition={{ duration: 0.2 }}
+                                  className="overflow-hidden"
+                                >
+                                  <div className="mt-2 p-4 rounded-lg bg-muted/20 border space-y-3">
+                                    <p className="text-sm font-display font-semibold">{phase.title}</p>
+                                    <p className="text-xs text-muted-foreground">{phase.description}</p>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                      {/* Purchased */}
+                                      <div className="bg-background rounded-lg p-3 border">
+                                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5">🚁 Innkjøp</p>
+                                        <div className="space-y-1">
+                                          {i === 0 && analysis.drone_fleet.slice(0, 1).map((d, di) => (
+                                            <p key={di} className="text-xs font-medium">{d.recommended_model}</p>
+                                          ))}
+                                          {i === 1 && analysis.drone_fleet.slice(1, 2).map((d, di) => (
+                                            <p key={di} className="text-xs font-medium">{d.recommended_model}</p>
+                                          ))}
+                                          {i === 2 && analysis.drone_fleet.slice(2).map((d, di) => (
+                                            <p key={di} className="text-xs font-medium">{d.recommended_model}</p>
+                                          ))}
+                                          {i === 0 && analysis.drone_fleet.length === 0 && <p className="text-xs text-muted-foreground">Pilotprosjekt-utstyr</p>}
+                                        </div>
+                                      </div>
+
+                                      {/* Training */}
+                                      <div className="bg-background rounded-lg p-3 border">
+                                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5">🎓 Opplæring</p>
+                                        {i === 0 && <p className="text-xs">A1/A3-kurs for nøkkelpersonell</p>}
+                                        {i === 1 && <p className="text-xs">STS-01 / A2-sertifisering</p>}
+                                        {i === 2 && <p className="text-xs">SORA / BVLOS-kompetanse</p>}
+                                      </div>
+
+                                      {/* Use cases going live */}
+                                      <div className="bg-background rounded-lg p-3 border">
+                                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5">✅ Bruksområder</p>
+                                        <div className="flex flex-wrap gap-1">
+                                          {phase.departments.map(d => (
+                                            <Badge key={d} variant="secondary" className="text-[9px]">{d}</Badge>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* ROI breakeven indicator */}
+                    <div className="relative h-6 mt-2">
+                      <div className="absolute top-0 left-0 right-0 h-px bg-border" />
+                      <div
+                        className="absolute top-0 flex flex-col items-center"
+                        style={{ left: `${breakevenPct}%`, transform: 'translateX(-50%)' }}
+                      >
+                        <div className="w-0.5 h-3 bg-chart-2" />
+                        <Badge className="bg-chart-2/10 text-chart-2 border-chart-2/30 text-[9px] mt-0.5 whitespace-nowrap">
+                          💰 Estimert ROI breakeven
+                        </Badge>
                       </div>
-                      <div>
-                        <p className="font-medium text-sm">{phase.title}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{phase.description}</p>
-                        <div className="flex flex-wrap gap-1 mt-1.5">
-                          {phase.departments.map(d => (
-                            <Badge key={d} variant="secondary" className="text-[10px]">{d}</Badge>
-                          ))}
-                        </div>
-                      </div>
+                    </div>
+
+                    {/* Summary */}
+                    <div className="flex items-center justify-between text-xs pt-2 border-t">
+                      <span className="text-muted-foreground">Total investering over 36 mnd</span>
+                      <span className="font-display font-bold text-[#6858f8]">{totalCost.toLocaleString('nb-NO')} NOK</span>
                     </div>
                   </CardContent>
                 </Card>
-              ))}
-            </div>
-          )}
+              </div>
+            );
+          })()}
 
           {/* Actions */}
           <div className="flex justify-between pt-4">
