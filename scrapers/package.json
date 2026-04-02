@@ -1,0 +1,24 @@
+{
+  "name": "haiko-drone-scrapers",
+  "version": "1.0.0",
+  "description": "Playwright-based scrapers for the Haiko drone product database",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "scrape:easa": "tsx src/runner.ts easa",
+    "scrape:dji": "tsx src/runner.ts dji-enterprise",
+    "scrape:dji-prices": "tsx src/runner.ts dji-store-no",
+    "scrape:all": "tsx src/runner.ts all",
+    "install:browsers": "playwright install chromium"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.0",
+    "dotenv": "^16.4.0",
+    "playwright": "^1.50.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.0"
+  }
+}
