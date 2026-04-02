@@ -751,6 +751,7 @@ const sidebarSections = [
   { id: "sertifisering", label: "🎓 Sertifisering", icon: GraduationCap },
   { id: "iks", label: "🤝 IKS-samarbeid", icon: Flame },
   { id: "implementering", label: "📅 Implementering", icon: ArrowRight },
+  { id: "neste-steg", label: "🚀 Neste steg", icon: ArrowRight },
 ];
 
 /* ─── Drone Map Hub Diagram ─── */
