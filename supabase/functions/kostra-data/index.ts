@@ -540,6 +540,11 @@ Deno.serve(async (req) => {
         }
       : null;
 
+    // Estimate total municipal building area from property data
+    const totalBuildingAreaM2 = propertyData?.areal_per_innbygger_m2 && population
+      ? Math.round(population * propertyData.areal_per_innbygger_m2)
+      : null;
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -553,6 +558,11 @@ Deno.serve(async (req) => {
         fire_stats: fireStats,
         sector_data: finalSectors,
         sector_data_source: sectorSource,
+        property_data: propertyData ? {
+          ...propertyData,
+          total_building_area_m2: totalBuildingAreaM2,
+          source: 'ssb_12051',
+        } : null,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
