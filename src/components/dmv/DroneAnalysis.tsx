@@ -783,6 +783,213 @@ function ReportSidebar({ activeSection }: { activeSection: string }) {
     </aside>
   );
 }
+/* ─── Fire Stats Tabs Component ─── */
+function FireStatsTabs({ grouped, droneGroups, maxRT, yearData, yearKey, droneMissionSavings }: {
+  grouped: GroupedMission[];
+  droneGroups: GroupedMission[];
+  maxRT: number;
+  yearData: { total: number; missions: any[] };
+  yearKey: string;
+  droneMissionSavings: DroneAnalysisResult['drone_mission_savings'];
+}) {
+  return (
+    <Tabs defaultValue="oversikt" className="w-full">
+      <TabsList className="w-full grid grid-cols-3">
+        <TabsTrigger value="oversikt" className="text-xs">📊 Oversikt</TabsTrigger>
+        <TabsTrigger value="scenarier" className="text-xs">🚁 Dronescenarier</TabsTrigger>
+        <TabsTrigger value="besparelse" className="text-xs">💰 Besparelse</TabsTrigger>
+      </TabsList>
+
+      {/* Tab 1: Oversikt */}
+      <TabsContent value="oversikt" className="space-y-4 mt-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Card>
+            <CardContent className="pt-4 pb-3 text-center">
+              <p className="text-2xl font-display font-bold">{yearData.total}</p>
+              <p className="text-xs text-muted-foreground">Oppdrag totalt</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 pb-3 text-center">
+              <p className="text-2xl font-display font-bold">{grouped.length}</p>
+              <p className="text-xs text-muted-foreground">Kategorier</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 pb-3 text-center">
+              <p className="text-2xl font-display font-bold text-primary">{droneGroups.length}</p>
+              <p className="text-xs text-muted-foreground">Drone-relevante</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 pb-3 text-center">
+              <p className="text-2xl font-display font-bold text-destructive">
+                {droneGroups.reduce((s, g) => s + g.totalMissions, 0)}
+              </p>
+              <p className="text-xs text-muted-foreground">Dronepotensial</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Clock className="w-4 h-4 text-primary" /> Median responstid per kategori
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Drone kan typisk nå stedet på 1–3 min fra dronestasjon.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {grouped.map(g => {
+              const pct = Math.min((g.avgResponseMin / maxRT) * 100, 100);
+              const isDroneRelevant = !!g.droneScenario;
+              return (
+                <Collapsible key={g.category}>
+                  <div className="space-y-0.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-medium truncate max-w-[50%]">{g.emoji} {g.category}</span>
+                      <span className="text-muted-foreground flex items-center gap-2">
+                        <span className="font-semibold text-foreground">{g.avgResponseMin.toFixed(1)} min</span>
+                        <span>({g.totalMissions} oppdrag)</span>
+                        {g.missions.length > 1 && (
+                          <CollapsibleTrigger asChild>
+                            <button className="text-[10px] text-primary hover:underline ml-1">Detaljer</button>
+                          </CollapsibleTrigger>
+                        )}
+                      </span>
+                    </div>
+                    <div className="h-3 bg-muted rounded-full overflow-hidden relative">
+                      <div
+                        className={cn(
+                          "h-full rounded-full transition-all",
+                          isDroneRelevant ? "bg-primary" : "bg-muted-foreground/30"
+                        )}
+                        style={{ width: `${pct}%` }}
+                      />
+                      {isDroneRelevant && g.avgResponseMin > 3 && (
+                        <div
+                          className="absolute top-0 h-full w-0.5 bg-chart-2"
+                          style={{ left: `${Math.min((2 / maxRT) * 100, 100)}%` }}
+                          title="Drone responstid ~2 min"
+                        />
+                      )}
+                    </div>
+                  </div>
+                  <CollapsibleContent>
+                    <div className="flex flex-wrap gap-1 mt-1.5 mb-2 ml-4">
+                      {g.missions.map((m, mi) => (
+                        <Badge key={mi} variant="secondary" className="text-[9px]">
+                          {m.t} ({m.n})
+                        </Badge>
+                      ))}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              );
+            })}
+            <div className="flex items-center gap-4 text-[10px] text-muted-foreground pt-2 border-t">
+              <span className="flex items-center gap-1"><span className="w-3 h-2 rounded bg-primary inline-block" /> Drone-relevant</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-2 rounded bg-muted-foreground/30 inline-block" /> Øvrig</span>
+              <span className="flex items-center gap-1"><span className="w-0.5 h-3 bg-chart-2 inline-block" /> Drone ~2 min</span>
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      {/* Tab 2: Dronescenarier */}
+      <TabsContent value="scenarier" className="mt-4">
+        {droneGroups.length > 0 ? (
+          <ScenarioSimulator droneGroups={droneGroups} yearKey={yearKey} />
+        ) : (
+          <p className="text-sm text-muted-foreground text-center py-8">Ingen drone-relevante scenarier funnet.</p>
+        )}
+      </TabsContent>
+
+      {/* Tab 3: Besparelsesberegning */}
+      <TabsContent value="besparelse" className="space-y-4 mt-4">
+        {droneMissionSavings ? (
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <Card>
+                <CardContent className="pt-4 pb-3 text-center">
+                  <p className="text-2xl font-display font-bold text-foreground">{droneMissionSavings.total_annual_missions}</p>
+                  <p className="text-xs text-muted-foreground">Oppdrag/år (snitt)</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4 pb-3 text-center">
+                  <p className="text-2xl font-display font-bold text-primary">{droneMissionSavings.drone_replaceable_missions}</p>
+                  <p className="text-xs text-muted-foreground">Drone-relevante</p>
+                </CardContent>
+              </Card>
+              {droneMissionSavings.total_annual_savings_nok != null && (
+                <Card>
+                  <CardContent className="pt-4 pb-3 text-center">
+                    <p className="text-2xl font-display font-bold text-chart-2">{(droneMissionSavings.total_annual_savings_nok / 1000).toFixed(0)}k</p>
+                    <p className="text-xs text-muted-foreground">Est. besparelse/år (NOK)</p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            <p className="text-sm text-muted-foreground">{droneMissionSavings.summary}</p>
+
+            <div className="space-y-3">
+              {droneMissionSavings.categories.map((cat, i) => {
+                const roleLabels: Record<string, { label: string; color: string }> = {
+                  erstatter_utrykning: { label: "Erstatter utrykning", color: "bg-chart-2/10 text-chart-2 border-chart-2/30" },
+                  raskere_situasjonsbilde: { label: "Raskere situasjonsbilde", color: "bg-primary/10 text-primary border-primary/30" },
+                  reduserer_biler: { label: "Reduserer antall biler", color: "bg-chart-3/10 text-chart-3 border-chart-3/30" },
+                };
+                const role = roleLabels[cat.drone_role] || roleLabels.raskere_situasjonsbilde;
+                return (
+                  <Card key={i} className="border">
+                    <CardContent className="pt-4 pb-3 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-display font-semibold">{cat.category}</p>
+                          <Badge variant="outline" className={cn("text-[10px] mt-1 border", role.color)}>{role.label}</Badge>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-lg font-display font-bold">{cat.annual_missions}</p>
+                          <p className="text-[10px] text-muted-foreground">oppdrag/år</p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{cat.description}</p>
+                      <div className="flex flex-wrap gap-3 text-[11px]">
+                        <span>📉 ~{cat.estimated_truck_reduction_pct}% reduksjon</span>
+                        {cat.estimated_time_saved_min != null && <span>⏱️ ~{cat.estimated_time_saved_min} min spart/oppdrag</span>}
+                        {cat.annual_savings_nok != null && <span>💰 ~{(cat.annual_savings_nok / 1000).toFixed(0)}k kr/år</span>}
+                      </div>
+                      <Collapsible>
+                        {cat.mission_types.length > 0 && (
+                          <CollapsibleTrigger asChild>
+                            <button className="text-[10px] text-primary hover:underline mt-1">Se detaljer ({cat.mission_types.length} typer)</button>
+                          </CollapsibleTrigger>
+                        )}
+                        <CollapsibleContent>
+                          <div className="flex flex-wrap gap-1 pt-1.5">
+                            {cat.mission_types.map(mt => (
+                              <Badge key={mt} variant="secondary" className="text-[9px]">{mt}</Badge>
+                            ))}
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground text-center py-8">Besparelsesdata er ikke tilgjengelig for denne kommunen.</p>
+        )}
+      </TabsContent>
+    </Tabs>
+  );
+}
+
 /* ─── Scenario Simulator Component ─── */
 function ScenarioSimulator({ droneGroups, yearKey }: { droneGroups: GroupedMission[]; yearKey: string }) {
   const [showAll, setShowAll] = useState(false);
