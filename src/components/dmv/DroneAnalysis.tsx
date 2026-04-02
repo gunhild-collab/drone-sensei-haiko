@@ -751,6 +751,7 @@ const sidebarSections = [
   { id: "sertifisering", label: "🎓 Sertifisering", icon: GraduationCap },
   { id: "iks", label: "🤝 IKS-samarbeid", icon: Flame },
   { id: "implementering", label: "📅 Implementering", icon: ArrowRight },
+  { id: "neste-steg", label: "🚀 Neste steg", icon: ArrowRight },
 ];
 
 /* ─── Drone Map Hub Diagram ─── */
@@ -1971,6 +1972,53 @@ export default function DroneAnalysis({
               </div>
             );
           })()}
+
+          {/* Neste steg med Haiko */}
+          <div id="neste-steg" className="scroll-mt-6 -mx-4 px-4 py-8 mt-6 rounded-2xl" style={{ background: 'linear-gradient(135deg, rgba(104,88,248,0.06) 0%, rgba(255,102,196,0.06) 100%)' }}>
+            <h2 className="text-lg font-display font-semibold mb-1 text-center">🚀 Neste steg med Haiko</h2>
+            <p className="text-xs text-muted-foreground text-center mb-5">Vi hjelper kommunen fra analyse til operativ drift</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Card 1 – Book møte */}
+              <Card className="border-[#e8e5f8] shadow-none">
+                <CardContent className="pt-5 pb-4 flex flex-col items-center text-center gap-3">
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #6858f8, #ff66c4)' }}>
+                    <Users className="w-5 h-5 text-white" strokeWidth={1.5} />
+                  </div>
+                  <div>
+                    <p className="font-display font-semibold text-sm">Book oppfølgingsmøte</p>
+                    <p className="text-xs text-muted-foreground mt-1">Vi gjennomgår rapporten sammen, tilpasser til kommunens budsjett og lager en konkret handlingsplan.</p>
+                  </div>
+                  <div className="bg-muted/50 rounded-lg px-4 py-2.5 w-full text-left space-y-1">
+                    <p className="text-xs font-medium">Gunhild Synnes</p>
+                    <a href="mailto:gunhild@haiko.no" className="text-xs hover:underline" style={{ color: '#6858f8' }}>gunhild@haiko.no</a>
+                    <p className="text-[11px] text-muted-foreground">+47 976 71 085</p>
+                  </div>
+                  <a href="mailto:gunhild@haiko.no?subject=Oppfølgingsmøte%20droneanalyse%20–%20Nes%20kommune" className="w-full">
+                    <Button className="w-full gap-2 font-display font-semibold text-xs" style={{ background: 'linear-gradient(135deg, #6858f8, #ff66c4)' }}>
+                      Send e-post <ArrowRight className="w-3.5 h-3.5" />
+                    </Button>
+                  </a>
+                </CardContent>
+              </Card>
+
+              {/* Card 2 – Last ned rapport */}
+              <Card className="border-[#e8e5f8] shadow-none">
+                <CardContent className="pt-5 pb-4 flex flex-col items-center text-center gap-3">
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #6858f8, #ff66c4)' }}>
+                    <BookOpen className="w-5 h-5 text-white" strokeWidth={1.5} />
+                  </div>
+                  <div>
+                    <p className="font-display font-semibold text-sm">Last ned rapport som PDF</p>
+                    <p className="text-xs text-muted-foreground mt-1">Få hele analysen med bruksområder, kostnadsberegninger og implementeringsplan som et PDF-dokument du kan dele internt.</p>
+                  </div>
+                  <Button variant="outline" className="w-full gap-2 font-display font-semibold text-xs border-[#e8e5f8] mt-auto" onClick={() => window.print()}>
+                    <BookOpen className="w-3.5 h-3.5" strokeWidth={1.5} /> Last ned PDF
+                  </Button>
+                  <p className="text-[11px] text-muted-foreground">Bruker nettleserens utskriftsfunksjon</p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
 
           {/* Actions */}
           <div className="flex justify-between pt-4">
