@@ -297,11 +297,125 @@ function ErpBox() {
   );
 }
 
+/* ─── Fire Statistics helpers ─── */
+function timeToMinutes(t: string): number {
+  if (!t || t === '00:00:00') return 0;
+  const parts = t.split(':').map(Number);
+  return (parts[0] || 0) * 60 + (parts[1] || 0) + (parts[2] || 0) / 60;
+}
+
+interface GroupedMission {
+  category: string;
+  emoji: string;
+  missions: Array<{ t: string; n: number; rt: string; dt: string }>;
+  totalMissions: number;
+  avgResponseMin: number;
+  droneScenario?: { title: string; description: string; icon: string };
+}
+
+function groupBrisMissions(missions: Array<{ t: string; n: number; rt: string; dt: string }>): GroupedMission[] {
+  const groups: Record<string, { emoji: string; types: string[]; droneScenario?: GroupedMission['droneScenario'] }> = {
+    'Automatiske brannalarmer (ABA)': {
+      emoji: '🔔',
+      types: ['ABA'],
+      droneScenario: {
+        title: 'Drone verifiserer alarm før utrykning',
+        description: 'Ved ABA-alarmer kan en drone nå adressen på 1–3 minutter og bekrefte om det er reell brann via termisk kamera. Ved falsk alarm avblåses utrykning — sparer ca. 30 min per hendelse.',
+        icon: '🚁',
+      },
+    },
+    'Bygningsbrann': {
+      emoji: '🏠🔥',
+      types: ['Brann i bygning', 'Branntilløp i bygg', 'Branntilløp komfyr', 'Brann i skorstein', 'Brann gjenoppblussing', 'Brann i el installasjon'],
+      droneScenario: {
+        title: 'Situasjonsbilde for innsatsleder',
+        description: 'Drone gir termisk oversikt over brannen før mannskapene er på stedet. Innsatsleder ser hvor brannen er verst, om det er fare for spredning, og kan planlegge angrepsvei fra luften.',
+        icon: '🌡️',
+      },
+    },
+    'Skog- og naturbrann': {
+      emoji: '🌲🔥',
+      types: ['Brann i skog', 'Brann i gress', 'Brann i søppelkasse', 'Branntilløp utenfor'],
+      droneScenario: {
+        title: 'Oversiktskartlegging og brannfront',
+        description: 'Ved skog- og markbrann gir drone sanntids oversikt over brannfronten, vindretning og truede områder. Erstatter helikopterbehov i tidlig fase og gir kontinuerlig oppdatering under slukkingen.',
+        icon: '🗺️',
+      },
+    },
+    'Trafikkulykker': {
+      emoji: '🚗',
+      types: ['Trafikkulykke'],
+      droneScenario: {
+        title: 'Raskere situasjonsbilde ved ulykke',
+        description: 'Drone når ulykkesstedet raskt og gir oversikt over omfang, antall involverte kjøretøy, trafikkdirigering og adkomstvei for utrykningskjøretøy.',
+        icon: '📸',
+      },
+    },
+    'Naturhendelser': {
+      emoji: '🌊',
+      types: ['Naturhendelse'],
+      droneScenario: {
+        title: 'Skadekartlegging og overvåking',
+        description: 'Ved flom, ras eller stormskader kan dronen kartlegge skadeomfang over store områder uten risiko for mannskaper. Spesielt nyttig for å vurdere om evakuering er nødvendig.',
+        icon: '🔍',
+      },
+    },
+    'Redning og helseoppdrag': { emoji: '🚑', types: ['Helseoppdrag', 'Person i vann', 'Ulykke/redning', 'Trussel om selvdrap'] },
+    'Kjøretøy- og utstyrsbrann': { emoji: '🚘🔥', types: ['Brann i personbil', 'Brann i motorredskap', 'Brann i fritidsbåt', 'Brann annet'] },
+    'Unødig alarm / avbrutt': { emoji: '❌', types: ['Avbrutt utrykning', 'Unødig'] },
+    'Øvrige oppdrag': { emoji: '📋', types: [] }, // catch-all
+  };
+
+  const result: GroupedMission[] = [];
+  const used = new Set<number>();
+
+  for (const [category, cfg] of Object.entries(groups)) {
+    const matched = missions
+      .map((m, i) => ({ ...m, _i: i }))
+      .filter(m => {
+        if (used.has(m._i)) return false;
+        if (cfg.types.length === 0) return false;
+        return cfg.types.some(t => m.t.startsWith(t) || m.t.includes(t));
+      });
+
+    if (matched.length > 0) {
+      matched.forEach(m => used.add(m._i));
+      const totalN = matched.reduce((s, m) => s + m.n, 0);
+      const weightedRT = matched.reduce((s, m) => s + timeToMinutes(m.rt) * m.n, 0);
+      result.push({
+        category,
+        emoji: cfg.emoji,
+        missions: matched,
+        totalMissions: totalN,
+        avgResponseMin: totalN > 0 ? Math.round(weightedRT / totalN * 10) / 10 : 0,
+        droneScenario: cfg.droneScenario,
+      });
+    }
+  }
+
+  // Catch-all for remaining
+  const remaining = missions.filter((_, i) => !used.has(i));
+  if (remaining.length > 0) {
+    const totalN = remaining.reduce((s, m) => s + m.n, 0);
+    const weightedRT = remaining.reduce((s, m) => s + timeToMinutes(m.rt) * m.n, 0);
+    result.push({
+      category: 'Øvrige oppdrag',
+      emoji: '📋',
+      missions: remaining,
+      totalMissions: totalN,
+      avgResponseMin: totalN > 0 ? Math.round(weightedRT / totalN * 10) / 10 : 0,
+    });
+  }
+
+  return result.sort((a, b) => b.totalMissions - a.totalMissions);
+}
+
 /* ─── Report Sidebar ─── */
 const sidebarSections = [
   { id: "leseguide", label: "📖 Leseguide", icon: BookOpen },
   { id: "kommuneprofil", label: "🏘️ Kommuneprofil", icon: MapPin },
   { id: "nokkeltall", label: "📊 Nøkkeltall", icon: Clock },
+  { id: "brannstatistikk", label: "🔥 Brannstatistikk", icon: Flame },
   { id: "bris-analyse", label: "🚒 Utrykningsanalyse", icon: Siren },
   { id: "ordliste", label: "📚 Ordliste & veiledning", icon: BookOpen },
   { id: "modningsreise", label: "🗺️ Modningsreise", icon: Milestone },
@@ -624,6 +738,153 @@ export default function DroneAnalysis({
               </CardContent>
             </Card>
           </div>
+
+          {/* ─── Brannstatistikk fra BRIS ─── */}
+          {brisMissionData && (() => {
+            const yearKey = Object.keys(brisMissionData).sort().reverse()[0];
+            const yearData = brisMissionData[yearKey];
+            if (!yearData?.missions?.length) return null;
+            const grouped = groupBrisMissions(yearData.missions);
+            const maxRT = Math.max(...grouped.map(g => g.avgResponseMin), 1);
+            const droneGroups = grouped.filter(g => g.droneScenario);
+
+            return (
+              <div id="brannstatistikk" className="space-y-4 mb-6 scroll-mt-6">
+                <h2 className="text-lg font-display font-semibold flex items-center gap-2">
+                  <Flame className="w-5 h-5 text-destructive" /> 🔥 Brannstatistikk ({yearKey})
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Basert på {yearData.total} registrerte oppdrag fra brannstatistikk.no (BRIS). 
+                  Data viser oppdragstyper, median responstid og hvor drone kan gi merverdi.
+                </p>
+
+                {/* Summary cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <Card>
+                    <CardContent className="pt-4 pb-3 text-center">
+                      <p className="text-2xl font-display font-bold">{yearData.total}</p>
+                      <p className="text-xs text-muted-foreground">Oppdrag totalt</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-4 pb-3 text-center">
+                      <p className="text-2xl font-display font-bold">{grouped.length}</p>
+                      <p className="text-xs text-muted-foreground">Kategorier</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-4 pb-3 text-center">
+                      <p className="text-2xl font-display font-bold text-primary">{droneGroups.length}</p>
+                      <p className="text-xs text-muted-foreground">Drone-relevante</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-4 pb-3 text-center">
+                      <p className="text-2xl font-display font-bold text-destructive">
+                        {droneGroups.reduce((s, g) => s + g.totalMissions, 0)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Oppdrag med dronepotensial</p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Response time chart */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-primary" /> Median responstid per kategori
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Tid fra alarm til mannskap er fremme (median). Drone kan typisk nå stedet på 1–3 min fra dronestasjon.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {grouped.map(g => {
+                      const pct = Math.min((g.avgResponseMin / maxRT) * 100, 100);
+                      const isDroneRelevant = !!g.droneScenario;
+                      return (
+                        <div key={g.category} className="space-y-0.5">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-medium truncate max-w-[60%]">{g.emoji} {g.category}</span>
+                            <span className="text-muted-foreground flex items-center gap-2">
+                              <span className="font-semibold text-foreground">{g.avgResponseMin.toFixed(1)} min</span>
+                              <span>({g.totalMissions} oppdrag)</span>
+                            </span>
+                          </div>
+                          <div className="h-3 bg-muted rounded-full overflow-hidden relative">
+                            <div
+                              className={cn(
+                                "h-full rounded-full transition-all",
+                                isDroneRelevant ? "bg-primary" : "bg-muted-foreground/30"
+                              )}
+                              style={{ width: `${pct}%` }}
+                            />
+                            {/* Drone marker at ~2 min */}
+                            {isDroneRelevant && g.avgResponseMin > 3 && (
+                              <div
+                                className="absolute top-0 h-full w-0.5 bg-chart-2"
+                                style={{ left: `${Math.min((2 / maxRT) * 100, 100)}%` }}
+                                title="Drone responstid ~2 min"
+                              />
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <div className="flex items-center gap-4 text-[10px] text-muted-foreground pt-2 border-t">
+                      <span className="flex items-center gap-1"><span className="w-3 h-2 rounded bg-primary inline-block" /> Drone-relevant</span>
+                      <span className="flex items-center gap-1"><span className="w-3 h-2 rounded bg-muted-foreground/30 inline-block" /> Øvrig</span>
+                      <span className="flex items-center gap-1"><span className="w-0.5 h-3 bg-chart-2 inline-block" /> Drone responstid (~2 min)</span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Drone scenario cards */}
+                {droneGroups.length > 0 && (
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-display font-semibold flex items-center gap-2">
+                      🚁 Dronescenarier — spart utrykning og raskere respons
+                    </h3>
+                    {droneGroups.map(g => (
+                      <Card key={g.category} className="border-primary/20 bg-primary/[0.02]">
+                        <CardContent className="pt-4 pb-3 space-y-2">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-display font-semibold">{g.droneScenario!.icon} {g.droneScenario!.title}</p>
+                              <Badge variant="secondary" className="text-[10px] mt-1">{g.emoji} {g.category}</Badge>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <p className="text-lg font-display font-bold text-primary">{g.totalMissions}</p>
+                              <p className="text-[10px] text-muted-foreground">oppdrag/{yearKey}</p>
+                            </div>
+                          </div>
+                          <p className="text-xs text-muted-foreground leading-relaxed">{g.droneScenario!.description}</p>
+                          <div className="flex items-center gap-3 text-[11px]">
+                            <span className="text-destructive">⏱️ Snitt responstid i dag: {g.avgResponseMin.toFixed(1)} min</span>
+                            <span className="text-primary">🚁 Drone: ~2 min</span>
+                            <span className="text-chart-2 font-semibold">⚡ Spart: ~{Math.max(0, g.avgResponseMin - 2).toFixed(0)} min/oppdrag</span>
+                          </div>
+                          {g.missions.length > 0 && (
+                            <div className="flex flex-wrap gap-1 pt-1">
+                              {g.missions.slice(0, 6).map(m => (
+                                <Badge key={m.t} variant="outline" className="text-[9px]">{m.t} ({m.n})</Badge>
+                              ))}
+                              {g.missions.length > 6 && <Badge variant="outline" className="text-[9px]">+{g.missions.length - 6} til</Badge>}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+
+                <p className="text-[10px] text-muted-foreground">
+                  Kilde: brannstatistikk.no (BRIS) · Periode: {yearKey} · Responstid angitt som median · 
+                  Drone-responstid (~2 min) forutsetter dronestasjon innen 3 km radius
+                </p>
+              </div>
+            );
+          })()}
 
           {/* ─── BRIS Utrykningsanalyse ─── */}
           {analysis.drone_mission_savings && (
