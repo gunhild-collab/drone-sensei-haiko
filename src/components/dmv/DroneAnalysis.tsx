@@ -1412,7 +1412,18 @@ export default function DroneAnalysis({
             <HowToReadBox />
           </div>
 
-          {/* Municipality profile summary */}
+          {/* Maturity roadmap — prominent position */}
+          <div id="modningsreise" className="mb-6 scroll-mt-6">
+            <Card className="border-primary/15 bg-gradient-to-br from-[#6858f8]/[0.02] to-transparent">
+              <CardContent className="pt-5 pb-4">
+                <h2 className="text-sm font-display font-semibold flex items-center gap-2 mb-5">
+                  <Milestone className="w-4 h-4 text-[#6858f8]" /> Modningsreise — hvor er kommunen i dag?
+                </h2>
+                <MaturityRoadmap currentStep={1} />
+              </CardContent>
+            </Card>
+          </div>
+
           <Card id="kommuneprofil" className="mb-6 border-primary/20 bg-primary/[0.02] scroll-mt-6">
             <CardContent className="pt-5 pb-4 space-y-4">
               <h2 className="text-sm font-display font-semibold text-primary flex items-center gap-2">
