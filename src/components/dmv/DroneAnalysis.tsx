@@ -585,6 +585,152 @@ function ReportSidebar({ activeSection }: { activeSection: string }) {
     </aside>
   );
 }
+/* ─── Scenario Simulator Component ─── */
+function ScenarioSimulator({ droneGroups, yearKey }: { droneGroups: GroupedMission[]; yearKey: string }) {
+  const [showAll, setShowAll] = useState(false);
+
+  const sorted = [...droneGroups].sort((a, b) => {
+    if (a.category.includes('ABA')) return -1;
+    if (b.category.includes('ABA')) return 1;
+    return b.totalMissions - a.totalMissions;
+  });
+  const isHero = (g: GroupedMission) => g.category.includes('ABA');
+  const visible = showAll ? sorted : sorted.slice(0, 3);
+
+  return (
+    <div className="space-y-4">
+      <h3 className="text-sm font-display font-semibold flex items-center gap-2">
+        🚁 Scenario-simulator — drone vs. tradisjonell utrykning
+      </h3>
+
+      {visible.map(g => {
+        const hero = isHero(g);
+        const savedMin = Math.max(0, Math.round(g.avgResponseMin - 2));
+        const annualSavedHours = Math.round((savedMin * g.totalMissions) / 60);
+
+        const tradSteps = [
+          { label: 'Alarm mottas', time: '0 min', icon: '🔔' },
+          { label: 'Mannskap alarmert', time: '~1 min', icon: '📟' },
+          { label: 'Utrykning starter', time: '~3 min', icon: '🚒' },
+          { label: 'Ankomst', time: `~${Math.round(g.avgResponseMin)} min`, icon: '📍' },
+        ];
+        const droneSteps = [
+          { label: 'Alarm mottas', time: '0 min', icon: '🔔' },
+          { label: 'Drone startet', time: '~15 sek', icon: '🚁' },
+          { label: 'På stedet', time: '~2 min', icon: '📍' },
+        ];
+
+        return (
+          <Card
+            key={g.category}
+            className={cn(
+              "overflow-hidden transition-shadow",
+              hero
+                ? "border-primary/30 bg-gradient-to-br from-primary/[0.04] to-primary/[0.01] shadow-md"
+                : "border-border"
+            )}
+          >
+            <CardContent className={cn("space-y-4", hero ? "pt-6 pb-5" : "pt-4 pb-3")}>
+              {/* Header */}
+              <div className="flex items-start gap-3">
+                <div className={cn(
+                  "flex items-center justify-center rounded-xl flex-shrink-0",
+                  hero ? "w-14 h-14 text-3xl bg-primary/10" : "w-10 h-10 text-xl bg-muted"
+                )}>
+                  {g.droneScenario!.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={cn("font-display font-semibold", hero ? "text-base" : "text-sm")}>
+                    {g.droneScenario!.title}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {g.emoji} {g.category} · {g.totalMissions} oppdrag/{yearKey}
+                  </p>
+                </div>
+                <div className={cn(
+                  "text-right flex-shrink-0 rounded-xl px-3 py-2",
+                  hero ? "bg-chart-2/10" : "bg-muted"
+                )}>
+                  <p className={cn("font-display font-bold", hero ? "text-2xl text-chart-2" : "text-lg text-chart-2")}>
+                    -{savedMin} min
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">per oppdrag</p>
+                </div>
+              </div>
+
+              {/* Side-by-side timeline */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-lg border border-destructive/20 bg-destructive/[0.03] p-3">
+                  <p className="text-[10px] uppercase tracking-wider font-semibold text-destructive mb-2">
+                    I dag: mannskap i bil
+                  </p>
+                  <div className="space-y-0">
+                    {tradSteps.map((s, si) => (
+                      <div key={si} className="flex items-start gap-2">
+                        <div className="flex flex-col items-center">
+                          <div className="w-5 h-5 rounded-full bg-destructive/15 flex items-center justify-center text-[10px]">{s.icon}</div>
+                          {si < tradSteps.length - 1 && <div className="w-px h-4 bg-destructive/20" />}
+                        </div>
+                        <div className="flex-1 min-w-0 pb-1">
+                          <p className="text-[11px] font-medium leading-tight">{s.label}</p>
+                          <p className="text-[10px] text-destructive font-semibold">{s.time}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-chart-2/20 bg-chart-2/[0.03] p-3">
+                  <p className="text-[10px] uppercase tracking-wider font-semibold text-chart-2 mb-2">
+                    Med drone
+                  </p>
+                  <div className="space-y-0">
+                    {droneSteps.map((s, si) => (
+                      <div key={si} className="flex items-start gap-2">
+                        <div className="flex flex-col items-center">
+                          <div className="w-5 h-5 rounded-full bg-chart-2/15 flex items-center justify-center text-[10px]">{s.icon}</div>
+                          {si < droneSteps.length - 1 && <div className="w-px h-4 bg-chart-2/20" />}
+                        </div>
+                        <div className="flex-1 min-w-0 pb-1">
+                          <p className="text-[11px] font-medium leading-tight">{s.label}</p>
+                          <p className="text-[10px] text-chart-2 font-semibold">{s.time}</p>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="flex items-center gap-2 mt-1 pt-1 border-t border-chart-2/10">
+                      <span className="text-[11px]">✅</span>
+                      <p className="text-[10px] text-chart-2 font-semibold">Situasjonsbilde levert</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground leading-relaxed">{g.droneScenario!.description}</p>
+
+              {hero && annualSavedHours > 0 && (
+                <div className="flex items-center gap-4 p-2.5 rounded-lg bg-chart-2/[0.06] border border-chart-2/15">
+                  <div>
+                    <p className="text-xs font-semibold text-chart-2">Estimert årlig gevinst</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {g.totalMissions} oppdrag × {savedMin} min spart = <span className="font-bold text-foreground">~{annualSavedHours} timer/år</span> frigjort kapasitet
+                    </p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })}
+
+      {sorted.length > 3 && !showAll && (
+        <Button variant="outline" size="sm" className="w-full" onClick={() => setShowAll(true)}>
+          Vis alle {sorted.length} scenarier
+          <ChevronDown className="w-4 h-4 ml-1" />
+        </Button>
+      )}
+    </div>
+  );
+}
 
 export default function DroneAnalysis({
   municipalityName, population, areaKm2, roadKm, vaKm, buildings,
