@@ -424,28 +424,156 @@ function DepartmentDroneMatrix({ departmentAnalyses, droneFleet, expandedDept, s
   );
 }
 
-/* ─── Journey / timeline box ─── */
-function JourneyBox() {
+/* ─── Maturity Roadmap ─── */
+function MaturityRoadmap({ currentStep = 1 }: { currentStep?: number }) {
+  const [expanded, setExpanded] = useState<number | null>(null);
+
   const steps = [
-    { n: 1, title: "Start enkelt", desc: "A1/A3-kompetanse + enkel operasjonsmanual + grunnleggende ERP. Fly med mikrodrone (f.eks. DJI Mini 4 Pro) til dokumentasjon og opplæring." },
-    { n: 2, title: "Utvid til STS/A2", desc: "STS-01-erklæring for standardiserte operasjoner. A2-sertifikat gir adgang til mer krevende VLOS-oppdrag nærmere mennesker med tyngre droner." },
-    { n: 3, title: "Spesifikk kategori / BVLOS", desc: "Full SORA-vurdering, komplett operasjonsmanual og utvidet ERP. Søknad om operasjonsautorisasjon (OpAuth) fra Luftfartstilsynet." },
-    { n: 4, title: "Autonome dronestasjoner og IKS", desc: "Etabler permanente dronestasjoner for autonom drift. Vurder samarbeid med nabokommuner for delte ressurser og kostnadsfordeling." },
+    {
+      n: 1, title: "A1/A3 — Grunnleggende",
+      short: "Enkel OM + ERP",
+      details: {
+        hva: "Fly med mikrodrone (< 250g, f.eks. DJI Mini 4 Pro) for foto/video og enkel dokumentasjon. Visuell kontakt (VLOS) påkrevd.",
+        krav: "A1/A3-kompetansebevis (netteksamen via Luftfartstilsynet), operatørregistrering, enkel operasjonsmanual (1–2 sider) og grunnleggende ERP.",
+        tid: "1–2 uker fra start til operativ",
+        kostnad: "~5 000–15 000 NOK (drone + kurs)",
+      },
+    },
+    {
+      n: 2, title: "STS / A2 — Utvidet",
+      short: "STS-01 + A2-sertifikat",
+      details: {
+        hva: "Fly tyngre droner (opptil 4 kg) nærmere mennesker. STS-01 gir standardisert VLOS, A2 gir utvidede rettigheter i tettbygd strøk.",
+        krav: "A2-kompetansebevis (praktisk og teoretisk prøve), STS-01 erklæring, utvidet operasjonsmanual med sikkerhetsprosedyrer.",
+        tid: "2–4 uker opplæring",
+        kostnad: "~30 000–80 000 NOK (kurs + drone)",
+      },
+    },
+    {
+      n: 3, title: "SORA / BVLOS",
+      short: "Operasjonsautorisasjon",
+      details: {
+        hva: "Fly utenfor synsrekkevidde (BVLOS) for inspeksjon, kartlegging, søk og redning. Krever full risikovurdering.",
+        krav: "Full SORA-vurdering, komplett operasjonsmanual (SORA-format), ERP med kontaktpunkter, SMS (Safety Management System) for SAIL III+, søknad om OpAuth fra Luftfartstilsynet.",
+        tid: "3–6 måneder inkl. søknadsbehandling",
+        kostnad: "~150 000–400 000 NOK (drone + opplæring + søknad)",
+      },
+    },
+    {
+      n: 4, title: "Autonome stasjoner + IKS",
+      short: "Drone-in-a-box",
+      details: {
+        hva: "Permanente dronestasjoner med autonom take-off/landing. Samarbeid med nabokommuner (IKS) for delte ressurser og kostnadsfordeling.",
+        krav: "U-space luftromsintegrasjon, avansert SMS, IKS-avtale, driftsstøtteavtale med leverandør, kommunalt vedtak.",
+        tid: "12–24 måneder fra planlegging til drift",
+        kostnad: "~500 000–2 000 000 NOK per stasjon",
+      },
+    },
   ];
+
   return (
-    <InfoBox title="Typisk modningsreise for kommunal dronebruk" icon={<Milestone className="w-4 h-4" />} variant="accent">
-      <div className="space-y-2 mt-1">
-        {steps.map(s => (
-          <div key={s.n} className="flex items-start gap-2.5">
-            <div className="w-5 h-5 rounded-full bg-accent/20 flex items-center justify-center text-accent font-bold text-[10px] flex-shrink-0 mt-0.5">{s.n}</div>
-            <div>
-              <p className="text-xs font-semibold text-foreground">{s.title}</p>
-              <p className="text-[11px]">{s.desc}</p>
-            </div>
-          </div>
-        ))}
+    <div className="space-y-4">
+      {/* Horizontal progress bar */}
+      <div className="relative">
+        <div className="flex items-center justify-between relative z-10">
+          {steps.map((s, i) => {
+            const isActive = s.n === currentStep;
+            const isPast = s.n < currentStep;
+            const isFuture = s.n > currentStep;
+            return (
+              <button
+                key={s.n}
+                onClick={() => setExpanded(expanded === s.n ? null : s.n)}
+                className={cn(
+                  "flex flex-col items-center text-center group relative",
+                  "transition-all duration-200",
+                  i === 0 ? "items-start" : i === steps.length - 1 ? "items-end" : ""
+                )}
+                style={{ flex: 1 }}
+              >
+                {/* "Du er her" marker */}
+                {isActive && (
+                  <div className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap">
+                    <Badge className="text-[9px] bg-[#6858f8] text-white border-0 shadow-md animate-pulse">
+                      Du er her
+                    </Badge>
+                  </div>
+                )}
+                <div className={cn(
+                  "w-10 h-10 rounded-full flex items-center justify-center font-display font-bold text-sm border-2 transition-all",
+                  isActive
+                    ? "bg-gradient-to-br from-[#ff66c4] to-[#6858f8] text-white border-[#6858f8] shadow-lg shadow-[#6858f8]/30 scale-110"
+                    : isPast
+                      ? "bg-[#6858f8] text-white border-[#6858f8]"
+                      : "bg-muted text-muted-foreground border-border group-hover:border-primary/40"
+                )}>
+                  {isPast ? '✓' : s.n}
+                </div>
+                <p className={cn(
+                  "text-[11px] font-semibold mt-1.5 leading-tight max-w-[90px]",
+                  isActive ? "text-[#6858f8]" : isPast ? "text-foreground" : "text-muted-foreground"
+                )}>{s.title}</p>
+                <p className="text-[9px] text-muted-foreground mt-0.5 max-w-[80px] leading-tight">{s.short}</p>
+              </button>
+            );
+          })}
+        </div>
+        {/* Connecting line */}
+        <div className="absolute top-5 left-[12%] right-[12%] h-0.5 bg-border z-0">
+          <div
+            className="h-full bg-gradient-to-r from-[#6858f8] to-[#6858f8]/40 transition-all"
+            style={{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }}
+          />
+        </div>
       </div>
-    </InfoBox>
+
+      {/* Expanded detail panel */}
+      <AnimatePresence>
+        {expanded && (() => {
+          const step = steps.find(s => s.n === expanded)!;
+          return (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <Card className={cn(
+                "border",
+                expanded === currentStep ? "border-[#6858f8]/30 bg-[#6858f8]/[0.03]" : "border-border"
+              )}>
+                <CardContent className="pt-4 pb-3 space-y-3">
+                  <p className="text-sm font-display font-semibold">{step.title}</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Hva kan du gjøre?</p>
+                        <p className="text-xs text-foreground mt-0.5">{step.details.hva}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Krav</p>
+                        <p className="text-xs text-foreground mt-0.5">{step.details.krav}</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="bg-muted/50 rounded-lg p-3">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">⏱️ Tidsbruk</p>
+                        <p className="text-sm font-semibold text-foreground mt-0.5">{step.details.tid}</p>
+                      </div>
+                      <div className="bg-muted/50 rounded-lg p-3">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">💰 Estimert kostnad</p>
+                        <p className="text-sm font-semibold text-foreground mt-0.5">{step.details.kostnad}</p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
+    </div>
   );
 }
 
@@ -611,13 +739,13 @@ function groupBrisMissions(missions: Array<{ t: string; n: number; rt: string; d
 /* ─── Report Sidebar ─── */
 const sidebarSections = [
   { id: "leseguide", label: "📖 Leseguide", icon: BookOpen },
+  { id: "modningsreise", label: "🗺️ Modningsreise", icon: Milestone },
   { id: "kommuneprofil", label: "🏘️ Kommuneprofil", icon: MapPin },
   { id: "dronekart", label: "🗺️ Ditt dronekart", icon: Map },
   { id: "nokkeltall", label: "📊 Nøkkeltall", icon: Clock },
   { id: "brannstatistikk", label: "🔥 Brannstatistikk", icon: Flame },
   
   { id: "ordliste", label: "📚 Ordliste & veiledning", icon: BookOpen },
-  { id: "modningsreise", label: "🗺️ Modningsreise", icon: Milestone },
   { id: "operasjoner", label: "⚙️ Operasjoner", icon: Shield },
   { id: "droneflate", label: "🚁 Droneflåte", icon: Plane },
   { id: "sertifisering", label: "🎓 Sertifisering", icon: GraduationCap },
@@ -1284,7 +1412,18 @@ export default function DroneAnalysis({
             <HowToReadBox />
           </div>
 
-          {/* Municipality profile summary */}
+          {/* Maturity roadmap — prominent position */}
+          <div id="modningsreise" className="mb-6 scroll-mt-6">
+            <Card className="border-primary/15 bg-gradient-to-br from-[#6858f8]/[0.02] to-transparent">
+              <CardContent className="pt-5 pb-4">
+                <h2 className="text-sm font-display font-semibold flex items-center gap-2 mb-5">
+                  <Milestone className="w-4 h-4 text-[#6858f8]" /> Modningsreise — hvor er kommunen i dag?
+                </h2>
+                <MaturityRoadmap currentStep={1} />
+              </CardContent>
+            </Card>
+          </div>
+
           <Card id="kommuneprofil" className="mb-6 border-primary/20 bg-primary/[0.02] scroll-mt-6">
             <CardContent className="pt-5 pb-4 space-y-4">
               <h2 className="text-sm font-display font-semibold text-primary flex items-center gap-2">
@@ -1478,10 +1617,6 @@ export default function DroneAnalysis({
             <ErpBox />
           </div>
 
-          {/* Journey / timeline */}
-          <div id="modningsreise" className="mb-6 scroll-mt-6">
-            <JourneyBox />
-          </div>
 
           {/* Department × Drone matrix */}
           <div id="operasjoner" className="space-y-3 mb-6 scroll-mt-6">
