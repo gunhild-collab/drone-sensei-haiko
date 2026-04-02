@@ -1126,8 +1126,8 @@ export default function DroneAnalysis({
             <h2 className="text-lg font-display font-semibold flex items-center gap-2">
               <Shield className="w-5 h-5 text-primary" /> ⚙️ Operasjoner per avdeling
             </h2>
-            {analysis.department_analyses.map((dept) => (
-              <Card key={dept.department}>
+            {analysis.department_analyses.map((dept, deptIdx) => (
+              <Card key={dept.department} id={`dept-${deptIdx}`} className="scroll-mt-6">
                 <button
                   onClick={() => setExpandedDept(expandedDept === dept.department ? null : dept.department)}
                   className="w-full text-left"
