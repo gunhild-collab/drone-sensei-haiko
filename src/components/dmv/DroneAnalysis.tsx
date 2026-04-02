@@ -615,7 +615,7 @@ const sidebarSections = [
   { id: "dronekart", label: "🗺️ Ditt dronekart", icon: Map },
   { id: "nokkeltall", label: "📊 Nøkkeltall", icon: Clock },
   { id: "brannstatistikk", label: "🔥 Brannstatistikk", icon: Flame },
-  { id: "bris-analyse", label: "🚒 Utrykningsanalyse", icon: Siren },
+  
   { id: "ordliste", label: "📚 Ordliste & veiledning", icon: BookOpen },
   { id: "modningsreise", label: "🗺️ Modningsreise", icon: Milestone },
   { id: "operasjoner", label: "⚙️ Operasjoner", icon: Shield },
