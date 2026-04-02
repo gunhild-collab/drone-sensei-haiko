@@ -1,114 +1,170 @@
-import { Link } from "react-router-dom";
-import { ArrowRight, Target, Shield, Cpu, Building2, Network } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Link, useNavigate } from "react-router-dom";
+import { Plus, MapPin, FileSearch, Map, ArrowRight, Inbox } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
-import { dimensions, maturityLevels } from "@/data/dmvData";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
-const dimensionIcons = [Target, Shield, Cpu, Building2, Network];
+interface AnalysisRow {
+  id: string;
+  municipality_name: string;
+  created_at: string;
+  total_score: number | null;
+  maturity_level: number | null;
+}
 
 const fadeUp = {
-  initial: { opacity: 0, y: 20 },
+  initial: { opacity: 0, y: 16 },
   animate: { opacity: 1, y: 0 },
 };
 
+const outputCards = [
+  {
+    icon: "📍",
+    label: "Kommuneprofil",
+    body: "KOSTRA-data, befolkning, geografi og avdelingsstruktur hentet automatisk.",
+  },
+  {
+    icon: "🚁",
+    label: "Dronescenarier",
+    body: "Konkrete bruksområder med estimert besparelse og responstidsgevinst per avdeling.",
+  },
+  {
+    icon: "🗺️",
+    label: "Implementeringsveikart",
+    body: "Anbefalt droneflåte, sertifiseringsplan og faseinndelt implementering.",
+  },
+];
+
 export default function Dashboard() {
+  const navigate = useNavigate();
+  const [analyses, setAnalyses] = useState<AnalysisRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase
+      .from("assessments")
+      .select("id, municipality_name, created_at, total_score, maturity_level")
+      .order("created_at", { ascending: false })
+      .then(({ data }) => {
+        setAnalyses((data as unknown as AnalysisRow[]) || []);
+        setLoading(false);
+      });
+  }, []);
+
   return (
-    <div className="p-6 lg:p-10 max-w-6xl mx-auto space-y-10">
-      {/* Hero */}
-      <motion.div {...fadeUp} transition={{ duration: 0.5 }}>
-        <div className="relative overflow-hidden rounded-2xl bg-primary p-8 lg:p-12">
-          <div className="relative z-10">
-            <h1 className="text-3xl lg:text-4xl font-display font-bold text-primary-foreground mb-3">
-              Drone Modenhetsvurdering
-            </h1>
-            <p className="text-primary-foreground/80 max-w-xl text-lg mb-6">
-              Kartlegg kommunens modenhetsnivå for dronebruk på tvers av fem dimensjoner. 
-              Få innsikt, anbefalinger og en veikart for videre utvikling.
-            </p>
-            <Link to="/vurdering">
-              <Button size="lg" variant="secondary" className="gap-2 font-display font-semibold">
-                Start vurdering
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            </Link>
-          </div>
-          <div className="absolute -right-10 -top-10 w-64 h-64 rounded-full bg-primary-foreground/5" />
-          <div className="absolute -right-5 -bottom-20 w-48 h-48 rounded-full bg-primary-foreground/5" />
+    <div className="p-6 lg:p-10 max-w-5xl mx-auto space-y-10">
+      {/* Header */}
+      <motion.div {...fadeUp} transition={{ duration: 0.4 }}>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold" style={{ color: "#0f0b2d" }}>
+            God dag, Gunhild
+          </h1>
+          <Link to="/vurdering">
+            <Button
+              className="gap-2 text-white border-0"
+              style={{
+                background: "linear-gradient(135deg, #e91e8c 0%, #7c3aed 100%)",
+                borderRadius: 8,
+              }}
+            >
+              <Plus className="w-4 h-4" />
+              Start ny analyse
+            </Button>
+          </Link>
         </div>
       </motion.div>
 
-      {/* SORA Builder Hero */}
-      <motion.div {...fadeUp} transition={{ duration: 0.5, delay: 0.05 }}>
-        <div className="relative overflow-hidden rounded-2xl p-8 lg:p-12" style={{ background: 'linear-gradient(135deg, #0f0f17 0%, #1a1025 50%, #0f0f17 100%)', border: '1px solid #2a2a3e' }}>
-          <div className="relative z-10">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="px-2 py-0.5 rounded text-xs font-bold bg-[#7c3aed]/20 text-[#7c3aed]">NY</span>
-              <span className="text-gray-400 text-sm">SORA 2.5</span>
-            </div>
-            <h2 className="text-3xl lg:text-4xl font-bold text-white mb-3" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-              <span className="bg-gradient-to-r from-[#7c3aed] to-[#ec4899] bg-clip-text text-transparent">SORA Builder</span>
-            </h2>
-            <p className="text-gray-400 max-w-xl text-lg mb-6">
-              Beregn GRC, ARC, SAIL og generer komplett OSO-dokumentasjon og ConOps-utkast for din droneoperasjon.
-            </p>
-            <Link to="/sora">
-              <Button size="lg" className="gap-2 font-semibold bg-[#7c3aed] hover:bg-[#6d28d9] text-white">
-                Start SORA-vurdering
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            </Link>
-          </div>
-          <div className="absolute -right-10 -top-10 w-64 h-64 rounded-full bg-[#7c3aed]/5" />
-          <div className="absolute -right-5 -bottom-20 w-48 h-48 rounded-full bg-[#ec4899]/5" />
-        </div>
-      </motion.div>
+      {/* Aktive analyser */}
+      <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.05 }}>
+        <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: "#6b7280" }}>
+          Dine analyser
+        </p>
 
-      {/* Dimensions overview */}
-      <motion.div {...fadeUp} transition={{ duration: 0.5, delay: 0.1 }}>
-        <h2 className="text-xl font-display font-semibold mb-4">Fem dimensjoner</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {dimensions.map((d, i) => {
-            const Icon = dimensionIcons[i];
-            return (
-              <Card key={d.id} className="group hover:shadow-md transition-shadow">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                      <Icon className="w-5 h-5 text-primary" />
+        {loading ? (
+          <div className="text-sm text-muted-foreground">Laster…</div>
+        ) : analyses.length === 0 ? (
+          <Card className="border" style={{ borderColor: "#e5e7eb", borderRadius: 10 }}>
+            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+              <Inbox className="w-10 h-10 mb-3" style={{ color: "#d1d5db" }} />
+              <p className="text-sm font-medium" style={{ color: "#374151" }}>
+                Ingen analyser ennå
+              </p>
+              <p className="text-xs mt-1" style={{ color: "#6b7280" }}>
+                Start med å velge en kommune.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-2">
+            {analyses.map((a) => {
+              const done = a.total_score != null;
+              const date = new Date(a.created_at).toLocaleDateString("nb-NO", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              });
+              return (
+                <Card
+                  key={a.id}
+                  className="border cursor-pointer hover:shadow-sm transition-shadow"
+                  style={{ borderColor: "#e5e7eb", borderRadius: 10 }}
+                  onClick={() => navigate(`/resultater?id=${a.id}`)}
+                >
+                  <CardContent className="flex items-center justify-between py-4 px-5">
+                    <div className="flex items-center gap-4">
+                      <span className="font-semibold text-sm" style={{ color: "#0f0b2d" }}>
+                        {a.municipality_name}
+                      </span>
+                      <span className="text-xs" style={{ color: "#6b7280" }}>
+                        {date}
+                      </span>
                     </div>
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground">{d.id}</p>
-                      <CardTitle className="text-base">{d.name}</CardTitle>
+                    <div className="flex items-center gap-3">
+                      <Badge
+                        className="text-[11px] font-medium"
+                        style={{
+                          background: done ? "#ecfdf5" : "#fef3c7",
+                          color: done ? "#065f46" : "#92400e",
+                          border: "none",
+                        }}
+                      >
+                        {done ? "Fullført" : "Påbegynt"}
+                      </Badge>
+                      <Button variant="ghost" size="sm" className="gap-1 text-xs">
+                        Åpne <ArrowRight className="w-3 h-3" />
+                      </Button>
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">{d.questions.length} spørsmål</span>
-                    <span className="font-medium text-primary">{d.weight * 100}% vekt</span>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
       </motion.div>
 
-      {/* Maturity levels */}
-      <motion.div {...fadeUp} transition={{ duration: 0.5, delay: 0.2 }}>
-        <h2 className="text-xl font-display font-semibold mb-4">Modenhetsnivåer</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {maturityLevels.map((ml, i) => (
-            <Card key={ml.level} className="relative overflow-hidden">
-              <div className={cn("absolute top-0 left-0 w-1 h-full", levelColor(i))} />
-              <CardHeader>
-                <CardDescription>Nivå {ml.level}</CardDescription>
-                <CardTitle className="text-lg">{ml.name}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">{ml.description}</p>
-                <p className="text-xs text-muted-foreground mt-2">{ml.range[0]}–{ml.range[1]} poeng</p>
+      {/* Hva analysen gir deg */}
+      <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.1 }}>
+        <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: "#6b7280" }}>
+          Hva analysen gir deg
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {outputCards.map((c) => (
+            <Card
+              key={c.label}
+              className="border"
+              style={{ borderColor: "#e5e7eb", borderRadius: 10, padding: 20 }}
+            >
+              <CardContent className="p-0 space-y-2">
+                <span className="text-[32px] leading-none">{c.icon}</span>
+                <p className="font-bold text-[15px]" style={{ color: "#0f0b2d" }}>
+                  {c.label}
+                </p>
+                <p className="text-[13px] leading-snug" style={{ color: "#6b7280" }}>
+                  {c.body}
+                </p>
               </CardContent>
             </Card>
           ))}
@@ -116,13 +172,4 @@ export default function Dashboard() {
       </motion.div>
     </div>
   );
-}
-
-function cn(...classes: (string | undefined)[]) {
-  return classes.filter(Boolean).join(" ");
-}
-
-function levelColor(index: number) {
-  const colors = ["bg-level-1", "bg-level-2", "bg-level-3", "bg-level-4"];
-  return colors[index] || colors[0];
 }
