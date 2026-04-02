@@ -494,10 +494,11 @@ Deno.serve(async (req) => {
       protected_areas: protectedAreas,
     };
 
-    // Step 4: Fetch KOSTRA sector-level expenditure
-    const ssbResult = municipalityCode
-      ? await fetchAllSectorData(municipalityCode, municipality_name)
-      : { sectors: [], source: 'none' };
+    // Step 4: Fetch KOSTRA sector-level expenditure + property data in parallel
+    const [ssbResult, propertyData] = await Promise.all([
+      municipalityCode ? fetchAllSectorData(municipalityCode, municipality_name) : Promise.resolve({ sectors: [], source: 'none' }),
+      municipalityCode ? fetchSSBPropertyData(municipalityCode, municipality_name) : Promise.resolve(null),
+    ]);
 
     // Fallback: estimate sector budgets from population if SSB returned nothing
     let finalSectors = ssbResult.sectors;
