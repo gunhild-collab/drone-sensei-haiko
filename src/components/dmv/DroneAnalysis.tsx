@@ -1606,10 +1606,6 @@ export default function DroneAnalysis({
             <ErpBox />
           </div>
 
-          {/* Journey / timeline */}
-          <div id="modningsreise" className="mb-6 scroll-mt-6">
-            <JourneyBox />
-          </div>
 
           {/* Department × Drone matrix */}
           <div id="operasjoner" className="space-y-3 mb-6 scroll-mt-6">
