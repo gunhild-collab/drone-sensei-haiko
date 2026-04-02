@@ -414,6 +414,7 @@ function groupBrisMissions(missions: Array<{ t: string; n: number; rt: string; d
 const sidebarSections = [
   { id: "leseguide", label: "📖 Leseguide", icon: BookOpen },
   { id: "kommuneprofil", label: "🏘️ Kommuneprofil", icon: MapPin },
+  { id: "dronekart", label: "🗺️ Ditt dronekart", icon: Map },
   { id: "nokkeltall", label: "📊 Nøkkeltall", icon: Clock },
   { id: "brannstatistikk", label: "🔥 Brannstatistikk", icon: Flame },
   { id: "bris-analyse", label: "🚒 Utrykningsanalyse", icon: Siren },
@@ -425,6 +426,133 @@ const sidebarSections = [
   { id: "iks", label: "🤝 IKS-samarbeid", icon: Flame },
   { id: "implementering", label: "📅 Implementering", icon: ArrowRight },
 ];
+
+/* ─── Drone Map Hub Diagram ─── */
+function DroneMapHub({ departmentAnalyses, onClickDepartment }: {
+  departmentAnalyses: DroneAnalysisResult['department_analyses'];
+  onClickDepartment: (deptName: string) => void;
+}) {
+  const deptIconEmoji: Record<string, string> = {
+    'Brann og redning': '🔥', 'Tekniske tjenester - Vei': '🛣️', 'Vann og avløp': '💧',
+    'Byggesak / Eiendom': '🏗️', 'Naturforvaltning': '🌲', 'Helse og omsorg': '❤️',
+    'Plan og utvikling': '🗺️', 'Miljø og klima': '🌿',
+  };
+
+  const maxHours = Math.max(...departmentAnalyses.map(d => d.total_annual_hours), 1);
+  const total = departmentAnalyses.reduce((s, d) => s + d.total_annual_hours, 0);
+
+  // Priority based on hours
+  const getPriority = (hours: number): { label: string; color: string; bgColor: string; ringColor: string } => {
+    const pct = hours / maxHours;
+    if (pct >= 0.6) return { label: 'Høy', color: 'hsl(var(--destructive))', bgColor: 'hsl(var(--destructive) / 0.08)', ringColor: 'hsl(var(--destructive) / 0.3)' };
+    if (pct >= 0.25) return { label: 'Medium', color: 'hsl(var(--chart-3))', bgColor: 'hsl(var(--chart-3) / 0.08)', ringColor: 'hsl(var(--chart-3) / 0.3)' };
+    return { label: 'Lav', color: 'hsl(var(--muted-foreground))', bgColor: 'hsl(var(--muted) / 0.5)', ringColor: 'hsl(var(--border))' };
+  };
+
+  const cx = 300, cy = 250, radius = 180;
+  const nodeRadius = 52;
+
+  return (
+    <Card id="dronekart" className="mb-6 scroll-mt-6 overflow-hidden">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2">
+          🗺️ Ditt dronekart
+        </CardTitle>
+        <CardDescription>Klikk på en avdeling for å navigere til operasjonene</CardDescription>
+      </CardHeader>
+      <CardContent className="pb-4">
+        {/* Legend */}
+        <div className="flex flex-wrap gap-3 mb-3">
+          {[
+            { label: 'Høy prioritet', color: 'bg-destructive/20 border-destructive/40' },
+            { label: 'Medium', color: 'bg-chart-3/10 border-chart-3/30' },
+            { label: 'Lav', color: 'bg-muted border-border' },
+          ].map(l => (
+            <div key={l.label} className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+              <div className={cn("w-3 h-3 rounded-full border", l.color)} />
+              {l.label}
+            </div>
+          ))}
+          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground ml-auto">
+            Linjetykkelse = timer/år
+          </div>
+        </div>
+
+        <div className="w-full overflow-x-auto">
+          <svg viewBox="0 0 600 500" className="w-full max-w-[600px] mx-auto" style={{ minWidth: 400 }}>
+            {/* Lines from center to nodes */}
+            {departmentAnalyses.map((dept, i) => {
+              const angle = (2 * Math.PI * i) / departmentAnalyses.length - Math.PI / 2;
+              const x = cx + radius * Math.cos(angle);
+              const y = cy + radius * Math.sin(angle);
+              const thickness = Math.max(1.5, (dept.total_annual_hours / maxHours) * 8);
+              const priority = getPriority(dept.total_annual_hours);
+              return (
+                <line
+                  key={`line-${i}`}
+                  x1={cx} y1={cy} x2={x} y2={y}
+                  stroke={priority.color}
+                  strokeWidth={thickness}
+                  strokeOpacity={0.35}
+                  strokeLinecap="round"
+                />
+              );
+            })}
+
+            {/* Center hub */}
+            <circle cx={cx} cy={cy} r={38} fill="hsl(var(--primary) / 0.1)" stroke="hsl(var(--primary))" strokeWidth={2.5} />
+            <text x={cx} y={cy - 8} textAnchor="middle" fontSize={20}>🚁</text>
+            <text x={cx} y={cy + 12} textAnchor="middle" fontSize={10} fontWeight={700} fill="hsl(var(--primary))">Dronepark</text>
+            <text x={cx} y={cy + 24} textAnchor="middle" fontSize={9} fill="hsl(var(--muted-foreground))">{total} t/år</text>
+
+            {/* Department nodes */}
+            {departmentAnalyses.map((dept, i) => {
+              const angle = (2 * Math.PI * i) / departmentAnalyses.length - Math.PI / 2;
+              const x = cx + radius * Math.cos(angle);
+              const y = cy + radius * Math.sin(angle);
+              const priority = getPriority(dept.total_annual_hours);
+              const emoji = deptIconEmoji[dept.department] || '📋';
+              const shortName = dept.department.length > 16
+                ? dept.department.substring(0, 14) + '…'
+                : dept.department;
+              return (
+                <g
+                  key={`node-${i}`}
+                  className="cursor-pointer"
+                  onClick={() => onClickDepartment(dept.department)}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <circle
+                    cx={x} cy={y} r={nodeRadius}
+                    fill={priority.bgColor}
+                    stroke={priority.ringColor}
+                    strokeWidth={2}
+                  />
+                  <text x={x} y={y - 16} textAnchor="middle" fontSize={18}>{emoji}</text>
+                  <text x={x} y={y + 2} textAnchor="middle" fontSize={9} fontWeight={600} fill="hsl(var(--foreground))">
+                    {shortName}
+                  </text>
+                  <text x={x} y={y + 14} textAnchor="middle" fontSize={8} fill="hsl(var(--muted-foreground))">
+                    {dept.use_cases.length} bruksområder
+                  </text>
+                  <text x={x} y={y + 25} textAnchor="middle" fontSize={9} fontWeight={700} fill={priority.color}>
+                    {dept.total_annual_hours} t/år
+                  </text>
+                  {/* Priority badge */}
+                  <rect x={x - 14} y={y + 30} width={28} height={12} rx={6} fill={priority.color} fillOpacity={0.15} />
+                  <text x={x} y={y + 39} textAnchor="middle" fontSize={7} fontWeight={600} fill={priority.color}>
+                    {priority.label}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 function ReportSidebar({ activeSection }: { activeSection: string }) {
   return (
