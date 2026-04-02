@@ -70,6 +70,36 @@ async function fetchSSBPopulation(code: string, name: string): Promise<{ populat
   } catch { return null; }
 }
 
+// ── SSB Table 11814 (v2 API): actual municipal road km ──────────────────
+async function fetchSSBRoadKm(code: string, name: string): Promise<{ roadKm: number; year: string } | null> {
+  try {
+    const url = 'https://data.ssb.no/api/pxwebapi/v2/tables/11814/data?lang=no&outputFormat=json-stat2';
+    const resp = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const regionIdx = data.dimension?.KOKkommuneregion0000?.category?.index;
+    const contentIdx = data.dimension?.ContentsCode?.category?.index;
+    const timeIdx = data.dimension?.Tid?.category?.index;
+    if (!regionIdx || !contentIdx || !timeIdx) return null;
+    const r = regionIdx[code];
+    const c = contentIdx['KOSkmkommunevei0000'];
+    const t = Object.keys(timeIdx)[0]; // latest year
+    const tIdx = timeIdx[t];
+    if (r === undefined || c === undefined || tIdx === undefined) return null;
+    const sizes = data.size as number[];
+    const flatIdx = r * sizes[1] * sizes[2] + tIdx * sizes[2] + c;
+    const value = data.value?.[flatIdx];
+    if (typeof value === 'number' && value > 0) {
+      console.log(`SSB 11814: ${name} (${code}) → ${value} km kommunal vei (${t})`);
+      return { roadKm: value, year: t };
+    }
+    return null;
+  } catch (e) {
+    console.log('SSB 11814 road km fetch failed:', e);
+    return null;
+  }
+}
+
 // ── SSB Table 12362: Sector-level KOSTRA expenditure ────────────────────
 // Table 12362 dimensions: art, year, region, statistic variable, function
 // We query municipality codes directly and fall back to the latest non-null year
