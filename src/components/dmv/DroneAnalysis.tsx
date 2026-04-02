@@ -835,6 +835,22 @@ export default function DroneAnalysis({
             </CardContent>
           </Card>
 
+          {/* Drone Map Hub */}
+          <DroneMapHub
+            departmentAnalyses={analysis.department_analyses}
+            onClickDepartment={(deptName) => {
+              // Find the department section and scroll to it
+              const deptIdx = analysis.department_analyses.findIndex(d => d.department === deptName);
+              if (deptIdx >= 0) {
+                setExpandedDept(deptName);
+                setTimeout(() => {
+                  const el = document.getElementById(`dept-${deptIdx}`);
+                  el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
+              }
+            }}
+          />
+
           {/* Key metrics */}
           <div id="nokkeltall" className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 scroll-mt-6">
             <Card>
