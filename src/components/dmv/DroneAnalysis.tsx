@@ -1515,11 +1515,26 @@ export default function DroneAnalysis({
                 </div>
               )}
 
-              {/* Infrastructure quick stats */}
-              <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                {roadKm && <span className="flex items-center gap-1"><Route className="w-3 h-3" /> {roadKm.toLocaleString('nb-NO')} km vei</span>}
-                {vaKm && <span className="flex items-center gap-1"><Droplets className="w-3 h-3" /> {vaKm.toLocaleString('nb-NO')} km VA</span>}
-                {buildings && <span className="flex items-center gap-1"><Building2 className="w-3 h-3" /> {buildings.toLocaleString('nb-NO')} bygninger</span>}
+              {/* Infrastructure stats */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {roadKm != null && (
+                  <div className="bg-background rounded-lg p-3 border border-border">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Kommunale veier</p>
+                    <p className="text-sm font-semibold">{roadKm.toLocaleString('nb-NO')} km</p>
+                  </div>
+                )}
+                {buildings != null && (
+                  <div className="bg-background rounded-lg p-3 border border-border">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Bygninger</p>
+                    <p className="text-sm font-semibold">{buildings.toLocaleString('nb-NO')} stk</p>
+                  </div>
+                )}
+                {vaKm != null && (
+                  <div className="bg-background rounded-lg p-3 border border-border">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">VA-ledningsnett</p>
+                    <p className="text-sm font-semibold">{vaKm.toLocaleString('nb-NO')} km</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
