@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { LayoutDashboard, ClipboardCheck, BarChart3, Library, PanelLeft } from "lucide-react";
 import { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import {
   Sidebar,
   SidebarContent,
@@ -17,10 +18,10 @@ import {
 } from "@/components/ui/sidebar";
 
 const navItems = [
-  { to: "/", icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/vurdering", icon: ClipboardCheck, label: "Vurdering" },
-  { to: "/resultater", icon: BarChart3, label: "Resultater" },
-  { to: "/bruksomrader", icon: Library, label: "Bruksområder" },
+  { to: "/", icon: LayoutDashboard, label: "Dashboard", badge: null },
+  { to: "/vurdering", icon: ClipboardCheck, label: "Analyser", badge: null },
+  { to: "/resultater", icon: BarChart3, label: "Resultater", badge: null },
+  { to: "/bruksomrader", icon: Library, label: "Bruksområder", badge: "37" },
 ];
 
 /* ─── Context so children can request collapse ─── */
@@ -43,35 +44,49 @@ function AppSidebar() {
   const collapsed = state === "collapsed";
 
   return (
-    <Sidebar collapsible="icon">
-      <SidebarContent>
+    <Sidebar collapsible="icon" className="border-none">
+      <SidebarContent
+        className="!bg-transparent"
+        style={{ background: 'linear-gradient(180deg, #e91e8c 0%, #7c3aed 100%)' }}
+      >
         {/* Brand */}
         <div className={cn("p-4 transition-all", collapsed ? "px-2" : "p-6")}>
           <Link to="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-sidebar-primary flex items-center justify-center flex-shrink-0">
-              <span className="text-sidebar-primary-foreground font-display font-bold text-lg">H</span>
+            <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
+              <span className="text-white font-display font-bold text-lg">H</span>
             </div>
             {!collapsed && (
               <div>
-                <h1 className="font-display font-bold text-sidebar-foreground text-lg leading-tight">Haiko DMV</h1>
-                <p className="text-xs text-sidebar-foreground/60">Drone Modenhetsvurdering</p>
+                <h1 className="font-display font-bold text-white text-lg leading-tight">Haiko Radar</h1>
+                <p className="text-xs text-white/60">Kommuneanalyse for droner</p>
               </div>
             )}
           </Link>
         </div>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Navigasjon</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-white/50">Navigasjon</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.map(item => {
                 const active = location.pathname === item.to;
                 return (
                   <SidebarMenuItem key={item.to}>
-                    <SidebarMenuButton asChild isActive={active} tooltip={item.label}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={active}
+                      tooltip={item.label}
+                      className={cn(
+                        "text-white/80 hover:text-white hover:bg-white/10 [&>svg]:text-white/80",
+                        active && "bg-white/15 text-white [&>svg]:text-white"
+                      )}
+                    >
                       <Link to={item.to}>
                         <item.icon className="w-5 h-5" />
-                        <span>{item.label}</span>
+                        <span className="flex-1">{item.label}</span>
+                        {item.badge && !collapsed && (
+                          <span className="ml-auto text-[10px] font-bold bg-white/20 text-white rounded-full px-2 py-0.5">{item.badge}</span>
+                        )}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -82,9 +97,9 @@ function AppSidebar() {
         </SidebarGroup>
 
         {!collapsed && (
-          <div className="mt-auto p-4 m-3 rounded-lg bg-sidebar-accent">
-            <p className="text-xs text-sidebar-foreground/60">Versjon 1.0</p>
-            <p className="text-xs text-sidebar-foreground/40 mt-1">© 2026 Haiko</p>
+          <div className="mt-auto p-4 m-3">
+            <p className="text-xs text-white font-bold">Haiko AS</p>
+            <a href="https://haiko.no" target="_blank" rel="noopener" className="text-[11px] text-white/60 hover:text-white/80 transition-colors">haiko.no</a>
           </div>
         )}
       </SidebarContent>

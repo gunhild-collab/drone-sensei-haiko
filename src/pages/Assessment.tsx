@@ -141,13 +141,14 @@ export default function Assessment() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <Card>
             <CardHeader>
-              <CardTitle className="text-2xl font-display">Ny vurdering</CardTitle>
-              <CardDescription>Velg kommune og fyll inn ditt navn for å starte.</CardDescription>
+              <CardTitle className="text-2xl font-display">Start ny analyse</CardTitle>
+              <CardDescription>Velg kommune. Vi henter data og bygger analysen automatisk.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
                 <Label>Kommune</Label>
                 <KommuneCombobox value={municipalityName} onValueChange={setMunicipalityName} />
+                <p className="text-[12px]" style={{ color: '#6b7280' }}>Alle 357 norske kommuner er tilgjengelige</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="assessor">Vurderer</Label>
