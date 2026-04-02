@@ -1631,74 +1631,133 @@ export default function DroneAnalysis({
             />
           </div>
 
-          {/* Drone fleet */}
-          <div id="droneflate" className="space-y-3 mb-6 scroll-mt-6">
+          {/* Drone fleet — Haiko anbefaler */}
+          <div id="droneflate" className="space-y-4 mb-6 scroll-mt-6">
             <h2 className="text-lg font-display font-semibold flex items-center gap-2">
-              <Plane className="w-5 h-5 text-primary" /> 🚁 Anbefalt droneflåte
+              <Plane className="w-5 h-5 text-[#6858f8]" /> ✨ Haiko anbefaler
             </h2>
-            <div className="space-y-3">
-              {analysis.drone_fleet.map((drone, i) => (
-                <Card key={i}>
-                  <CardContent className="pt-4 pb-3 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-sm">{drone.recommended_model}</p>
-                        <p className="text-xs text-muted-foreground">{drone.drone_type}</p>
+            <p className="text-sm text-muted-foreground">
+              Basert på kommunens avdelinger, bruksområder og geografi — her er droneflåten vi anbefaler.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {analysis.drone_fleet.map((drone, i) => {
+                const isPrimary = i === 0;
+                const d = drone as any;
+                const specItems = [
+                  d.max_flight_time_min && { icon: '⏱️', label: 'Flytid', value: `${d.max_flight_time_min} min` },
+                  d.needs_thermal && { icon: '🌡️', label: 'Kamera', value: 'Termisk + RGB' },
+                  !d.needs_thermal && { icon: '📷', label: 'Kamera', value: 'RGB' },
+                  d.needs_rtk && { icon: '📍', label: 'Presisjon', value: 'RTK' },
+                  d.needs_lidar && { icon: '📐', label: 'Sensor', value: 'LiDAR' },
+                  d.autonomous && { icon: '🤖', label: 'Type', value: 'Autonom stasjon' },
+                  !d.autonomous && { icon: '🎮', label: 'Type', value: 'Manuell / felt' },
+                ].filter(Boolean) as { icon: string; label: string; value: string }[];
+
+                return (
+                  <Card
+                    key={i}
+                    className={cn(
+                      "relative overflow-hidden transition-shadow flex flex-col",
+                      isPrimary
+                        ? "border-[#6858f8]/40 shadow-lg shadow-[#6858f8]/10 ring-1 ring-[#6858f8]/20"
+                        : "border-border hover:shadow-md"
+                    )}
+                  >
+                    {isPrimary && (
+                      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#ff66c4] to-[#6858f8]" />
+                    )}
+
+                    <CardContent className="pt-5 pb-4 flex flex-col flex-1 space-y-4">
+                      {/* Badge */}
+                      {isPrimary && (
+                        <Badge className="self-start bg-gradient-to-r from-[#ff66c4] to-[#6858f8] text-white border-0 text-[10px]">
+                          ⭐ Prioritert innkjøp
+                        </Badge>
+                      )}
+
+                      {/* Image placeholder */}
+                      <div className={cn(
+                        "w-full h-28 rounded-lg flex items-center justify-center text-4xl",
+                        isPrimary ? "bg-[#6858f8]/[0.06]" : "bg-muted/50"
+                      )}>
+                        {d.autonomous ? '🏠🚁' : drone.drone_type?.toLowerCase().includes('fixed') ? '✈️' : '🚁'}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="text-xs">×{drone.quantity}</Badge>
-                        <p className="text-sm font-semibold text-primary">
+
+                      {/* Name + type */}
+                      <div>
+                        <p className={cn("font-display font-semibold", isPrimary ? "text-base" : "text-sm")}>
+                          {drone.recommended_model}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{drone.drone_type}</p>
+                        {drone.quantity > 1 && (
+                          <Badge variant="secondary" className="text-[10px] mt-1">×{drone.quantity} enheter</Badge>
+                        )}
+                      </div>
+
+                      {/* Price */}
+                      <div className={cn(
+                        "rounded-lg px-3 py-2 text-center",
+                        isPrimary ? "bg-[#6858f8]/[0.06]" : "bg-muted/50"
+                      )}>
+                        <p className={cn(
+                          "font-display font-bold text-lg",
+                          isPrimary ? "text-[#6858f8]" : "text-foreground"
+                        )}>
                           {drone.estimated_cost_nok.toLocaleString('nb-NO')} NOK
                         </p>
+                        <p className="text-[10px] text-muted-foreground">estimert pris</p>
                       </div>
-                    </div>
 
-                    {(drone as any).why_chosen && (
-                      <div className="bg-primary/5 rounded-lg p-3 border border-primary/10">
-                        <p className="text-xs font-medium text-primary mb-1">Hvorfor denne dronen?</p>
-                        <p className="text-xs text-foreground">{(drone as any).why_chosen}</p>
-                      </div>
-                    )}
-
-                    <div className="flex flex-wrap gap-1.5">
-                      {(drone as any).autonomous && <Badge variant="outline" className="text-[10px]">🤖 Autonom dronestasjon</Badge>}
-                      {(drone as any).needs_thermal && <Badge variant="outline" className="text-[10px]">🌡️ Termisk kamera</Badge>}
-                      {(drone as any).needs_rtk && <Badge variant="outline" className="text-[10px]">📍 RTK-presisjon</Badge>}
-                      {(drone as any).needs_lidar && <Badge variant="outline" className="text-[10px]">📐 LiDAR</Badge>}
-                      {(drone as any).max_flight_time_min && <Badge variant="outline" className="text-[10px]">⏱️ {(drone as any).max_flight_time_min} min flytid</Badge>}
-                    </div>
-
-                    {drone.key_features && drone.key_features.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {drone.key_features.map((f, fi) => (
-                          <Badge key={fi} variant="secondary" className="text-[10px]">{f}</Badge>
+                      {/* Specs grid */}
+                      <div className="grid grid-cols-2 gap-2">
+                        {specItems.slice(0, 4).map((spec, si) => (
+                          <div key={si} className="flex items-center gap-1.5 text-xs">
+                            <span className="text-sm">{spec.icon}</span>
+                            <div>
+                              <p className="text-[10px] text-muted-foreground leading-tight">{spec.label}</p>
+                              <p className="font-medium leading-tight">{spec.value}</p>
+                            </div>
+                          </div>
                         ))}
                       </div>
-                    )}
 
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Deles mellom avdelinger</p>
-                      <div className="flex flex-wrap gap-1">
-                        {drone.shared_between.map(dept => (
-                          <Badge key={dept} variant="outline" className="text-[10px]">{dept}</Badge>
-                        ))}
-                      </div>
-                    </div>
+                      {/* Why chosen */}
+                      {d.why_chosen && (
+                        <p className="text-xs text-muted-foreground italic border-l-2 border-[#6858f8]/30 pl-2">
+                          {d.why_chosen}
+                        </p>
+                      )}
 
-                    {(drone as any).covers_use_cases && (drone as any).covers_use_cases.length > 0 && (
-                      <div>
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Dekker bruksområder</p>
+                      {/* Passer til */}
+                      <div className="mt-auto pt-3 border-t border-border">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5">Passer til</p>
                         <div className="flex flex-wrap gap-1">
-                          {(drone as any).covers_use_cases.map((uc: string) => (
-                            <Badge key={uc} variant="secondary" className="text-[10px]">{uc}</Badge>
+                          {drone.shared_between.map(dept => (
+                            <Badge key={dept} variant="outline" className="text-[10px]">{dept}</Badge>
                           ))}
                         </div>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
+
+            {/* Total fleet cost */}
+            <Card className="border-[#6858f8]/20 bg-gradient-to-r from-[#6858f8]/[0.03] to-[#ff66c4]/[0.03]">
+              <CardContent className="py-4 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-display font-semibold">Total flåtekostnad</p>
+                  <p className="text-xs text-muted-foreground">
+                    {analysis.drone_fleet.length} droner · {analysis.drone_fleet.reduce((s, d) => s + d.quantity, 0)} enheter totalt
+                  </p>
+                </div>
+                <p className="text-2xl font-display font-bold text-[#6858f8]">
+                  {analysis.drone_fleet.reduce((s, d) => s + d.estimated_cost_nok * d.quantity, 0).toLocaleString('nb-NO')} NOK
+                </p>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Certification plan */}
