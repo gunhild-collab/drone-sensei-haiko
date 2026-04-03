@@ -24,8 +24,10 @@ import OperationsEconomyTab from "@/components/dmv/OperationsEconomyTab";
 import {
   ChevronLeft, ChevronRight, CheckCircle2, Target, Shield, Cpu,
   Building2, Network, MapPin, Users, Route, Droplets, Plane,
-  TreePine, AlertTriangle, Flame, Loader2, Save
+  TreePine, AlertTriangle, Flame, Loader2, Save, Mountain, Info
 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
