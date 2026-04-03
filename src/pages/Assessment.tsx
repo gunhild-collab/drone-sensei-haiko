@@ -70,6 +70,7 @@ export default function Assessment() {
     terrainType: "" as string,
     settlementPattern: "" as string,
   });
+  const [selectedUseCases, setSelectedUseCases] = useState<string[]>([]);
   const topRef = useRef<HTMLDivElement>(null);
   const { profile, loading: profileLoading, saving, updateRisk, updateOperations, populateFromKostra, save: saveProfile } = useMunicipalityProfile(municipalityName);
 
