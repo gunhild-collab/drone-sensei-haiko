@@ -604,6 +604,31 @@ ${bris_mission_data ? `11. BRIS-ANALYSE: Basert på oppdragsdataen, lag en detal
       }
     }
 
+    // POST-PROCESSING: Enrich drone_fleet with algorithmic data
+    if (algorithmicFleet.length > 0 && analysis.drone_fleet) {
+      // Map AI drone_fleet entries to algorithmic data for price/score accuracy
+      for (const aiDrone of analysis.drone_fleet) {
+        const match = algorithmicFleet.find((af: any) => 
+          af.drone_id === aiDrone.drone_id || 
+          af.drone?.toLowerCase().includes(aiDrone.recommended_model?.toLowerCase()) ||
+          aiDrone.recommended_model?.toLowerCase().includes(af.model?.toLowerCase())
+        );
+        if (match) {
+          // Use algorithmic price if AI didn't set one or used archetype defaults
+          if (match.price_nok && (!aiDrone.estimated_cost_nok || aiDrone.estimated_cost_nok === 450000 || aiDrone.estimated_cost_nok === 1200000)) {
+            aiDrone.estimated_cost_nok = match.price_nok;
+          }
+          if (!aiDrone.drone_id) aiDrone.drone_id = match.drone_id;
+          if (!aiDrone.covers_use_cases || aiDrone.covers_use_cases.length === 0) {
+            aiDrone.covers_use_cases = match.covered.map((c: any) => c.use_case_id);
+          }
+        }
+      }
+    }
+
+    // Attach algorithmic fleet data for frontend reference
+    analysis._algorithmic_fleet = algorithmicFleet;
+
     return new Response(JSON.stringify({ success: true, analysis }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
