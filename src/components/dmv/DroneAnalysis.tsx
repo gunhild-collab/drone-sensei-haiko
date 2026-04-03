@@ -1429,6 +1429,7 @@ export default function DroneAnalysis({
   const [expandedDept, setExpandedDept] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState("leseguide");
   const [expandedPhase, setExpandedPhase] = useState<number | null>(null);
+  const [preferEuropean, setPreferEuropean] = useState(false);
 
   // Intersection observer for active sidebar tracking
   useEffect(() => {
@@ -1479,6 +1480,7 @@ export default function DroneAnalysis({
             sector_data: sectorData,
             fire_stats: fireStats,
             bris_mission_data: brisMissionData,
+            prefer_european: preferEuropean,
           },
         });
         if (fnError) throw new Error(fnError.message);
@@ -1491,7 +1493,7 @@ export default function DroneAnalysis({
       }
     };
     run();
-  }, [municipalityName, population, areaKm2, roadKm, vaKm, buildings, terrainType, densityPerKm2, departments, iksPartners, fireDeptName, fireDeptType, alarmSentralName, regionMunicipalities, sectorData, fireStats, brisMissionData]);
+  }, [municipalityName, population, areaKm2, roadKm, vaKm, buildings, terrainType, densityPerKm2, departments, iksPartners, fireDeptName, fireDeptType, alarmSentralName, regionMunicipalities, sectorData, fireStats, brisMissionData, preferEuropean]);
 
   if (loading) {
     return (
@@ -1505,6 +1507,22 @@ export default function DroneAnalysis({
             <p className="text-sm text-muted-foreground">AI vurderer droneoperasjoner for {municipalityName}...</p>
           </div>
         </div>
+        <Card className="border-primary/15">
+          <CardContent className="pt-4 pb-3">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={preferEuropean}
+                onChange={e => setPreferEuropean(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-border accent-primary"
+              />
+              <div>
+                <p className="text-sm font-semibold">🇪🇺 Foretrekk europeisk/nordisk produsent</p>
+                <p className="text-xs text-muted-foreground">Vekter droner fra europeiske og nordiske produsenter høyere i anbefalingene. Kinesiske produsenter (f.eks. DJI) vil fortsatt vises, men nedprioriteres.</p>
+              </div>
+            </label>
+          </CardContent>
+        </Card>
         <div className="space-y-4">
           {[1, 2, 3].map(i => <Skeleton key={i} className="h-32 w-full rounded-xl" />)}
         </div>
@@ -1550,7 +1568,7 @@ export default function DroneAnalysis({
       <div className="flex-1 max-w-4xl space-y-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           {/* Header */}
-          <div className="flex items-center gap-3 mb-6">
+          <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-primary" />
             </div>
@@ -1558,6 +1576,22 @@ export default function DroneAnalysis({
               <h1 className="text-2xl font-display font-bold">Mulighetsrom — {municipalityName}</h1>
               <p className="text-sm text-muted-foreground">{analysis.summary}</p>
             </div>
+          </div>
+
+          {/* European preference toggle */}
+          <div className="mb-6 p-3 rounded-lg border border-border bg-muted/30 flex items-center justify-between gap-3">
+            <label className="flex items-center gap-2 cursor-pointer text-sm">
+              <input
+                type="checkbox"
+                checked={preferEuropean}
+                onChange={e => setPreferEuropean(e.target.checked)}
+                className="w-4 h-4 rounded border-border accent-primary"
+              />
+              <span className="font-medium">🇪🇺 Foretrekk europeisk/nordisk produsent</span>
+            </label>
+            {preferEuropean && (
+              <Badge variant="secondary" className="text-[10px]">Aktiv — europeiske droner vektes høyere</Badge>
+            )}
           </div>
 
           {/* How to read this report */}

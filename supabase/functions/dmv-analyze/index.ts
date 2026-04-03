@@ -109,7 +109,7 @@ serve(async (req) => {
       municipality_name, population, area_km2, road_km, va_km, buildings,
       terrain_type, density_per_km2, departments, iks_partners,
       fire_dept_name, fire_dept_type, alarm_sentral_name, region_municipalities,
-      sector_data, fire_stats, bris_mission_data,
+      sector_data, fire_stats, bris_mission_data, prefer_european,
     } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -300,6 +300,7 @@ INSTRUKSJONER:
 4. Hvis kostnadsdata mangler, si eksplisitt at data mangler i stedet for å finne på tall.
 5. For HVER operasjon: bruk NØYAKTIG operationType, easaCategory og certRequirement fra databasen
 6. DRONEFLÅTE — VELG SPESIFIKKE DRONER FRA DATABASEN:
+${prefer_european ? `   ⚠️ VIKTIG: Kommunen foretrekker europeiske/nordiske produsenter. Prioriter droner fra europeiske og nordiske produsenter (Norge, Sverige, Danmark, Finland, Tyskland, Frankrike, Nederland osv.) høyere enn kinesiske (f.eks. DJI). Kinesiske droner KAN fortsatt velges hvis de er klart overlegne teknisk, men forklar avveiningen og nevn europeiske alternativer.` : ''}
    - Bruk produsentens oppgitte maksimale flytid som referanse — IKKE oppgi km-rekkevidde som produsentdata.
    - Hvis du vil omtale typisk dekningsområde, bruk formuleringer som "typisk dekningsområde i denne analysen er X–Y km fra stasjonen basert på flytid og sikkerhetsmarginer" — tydelig merket som scenario/estimat.
    - Match utstyrbehov: Trenger operasjonene termisk? RTK? LiDAR? Payload?
