@@ -1787,6 +1787,7 @@ export default function DroneAnalysis({
               </CardContent>
             </Card>
           </div>
+          </div>
 
           {/* ─── Brannstatistikk fra BRIS — tabbed ─── */}
           {brisMissionData && (() => {
