@@ -219,7 +219,7 @@ function scoreMarketMaturity(drone: Record<string, any>): number {
   return 50;
 }
 
-function calculateScore(drone: Record<string, any>, useCase: Record<string, any>): { total_score: number; breakdown: Record<string, number> } {
+function calculateScore(drone: Record<string, any>, useCase: Record<string, any>): { total_score: number; breakdown: Record<string, number>; advisories: string[] } {
   const scores: Record<string, number> = {
     drone_type_match: scoreDroneTypeMatch(drone, useCase),
     sensor_match: scoreSensorMatch(drone, useCase),
@@ -227,16 +227,28 @@ function calculateScore(drone: Record<string, any>, useCase: Record<string, any>
     easa_certification: scoreEasaCertification(drone),
     deployment_ease: scoreDeploymentEase(drone, useCase),
     eu_availability: scoreEuAvailability(drone),
-    weather_rating: scoreWeatherRating(drone),
     overshoot_penalty: scoreOvershootPenalty(drone, useCase),
     market_maturity: scoreMarketMaturity(drone),
   };
 
   const total = Object.keys(WEIGHTS).reduce((sum, k) => sum + scores[k] * WEIGHTS[k], 0);
 
+  // Advisory flags (not part of score)
+  const advisories: string[] = [];
+  const ip = (drone.ip_rating || '').toUpperCase();
+  const wind = Number(drone.wind_resistance_ms) || 0;
+  if (!ip) advisories.push('Ingen IP-rating oppgitt — vurder værrobusthet');
+  if (wind === 0) advisories.push('Ingen vindtoleranse oppgitt');
+
+  const cClass = (drone.c_class || '').toUpperCase();
+  if (!cClass || cClass === 'NONE' || cClass === 'N/A') {
+    advisories.push('Ingen C-klasse — krever SORA-vurdering for operasjonstillatelse');
+  }
+
   return {
     total_score: Math.round(total * 10) / 10,
     breakdown: Object.fromEntries(Object.entries(scores).map(([k, v]) => [k, Math.round(v * 10) / 10])),
+    advisories,
   };
 }
 
