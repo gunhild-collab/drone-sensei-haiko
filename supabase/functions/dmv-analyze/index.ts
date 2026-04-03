@@ -168,6 +168,36 @@ serve(async (req) => {
     console.log(`[${municipality_name}] Matched ${relevantUCs.length}/${VERIFIED_USE_CASES.length} use cases`);
     console.log(`[${municipality_name}] Matched UC IDs: ${relevantUCs.map((uc) => uc.id).join(', ')}`);
 
+    // ─── Call platform-recommend algorithm for data-driven fleet ───
+    const relevantUcIds = relevantUCs.map((uc: any) => uc.id);
+    let algorithmicFleet: any[] = [];
+    let algorithmicPerUseCase: Record<string, any[]> = {};
+    try {
+      const platformRecommendUrl = `${supabaseUrl}/functions/v1/platform-recommend`;
+      const prResponse = await fetch(platformRecommendUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseServiceKey}`,
+        },
+        body: JSON.stringify({
+          municipality_name,
+          use_case_ids: relevantUcIds,
+          max_platforms: 5,
+          prefer_european: prefer_european || false,
+        }),
+      });
+      if (prResponse.ok) {
+        const prData = await prResponse.json();
+        algorithmicFleet = prData.fleet || [];
+        algorithmicPerUseCase = prData.per_use_case_top || {};
+        console.log(`[${municipality_name}] Algorithm fleet: ${algorithmicFleet.map((f: any) => f.drone).join(', ')}`);
+      } else {
+        console.warn(`[${municipality_name}] platform-recommend failed: ${prResponse.status}`);
+      }
+    } catch (prErr) {
+      console.warn(`[${municipality_name}] platform-recommend error:`, prErr);
+    }
     // Build IKS/fire department context
     const iksContext = fire_dept_name
       ? `BRANNVESEN: ${fire_dept_name} (type: ${fire_dept_type || 'ukjent'})
@@ -289,7 +319,15 @@ C) REDUSERE antall biler som sendes ut (f.eks. ved å verifisere omfang først)
 For hver kategori: estimer antall oppdrag per år som kan påvirkes, potensiell tidsbesparelse, og reduksjon i bilutskjøring.
 Husk at drone fra stasjon typisk er på stedet innen 2-5 minutter i dekningsområdet.` : ''}
 
-TILGJENGELIG DRONEDATABASE (velg fra disse basert på behov):
+ALGORITMISK ANBEFALT DRONEFLÅTE (fra scoringsalgoritmen — BRUK DISSE):
+${algorithmicFleet.length > 0 
+  ? algorithmicFleet.map((f: any, i: number) => `${i+1}. ${f.drone} (type: ${f.drone_type}, pris: ${f.price_eur || 'ukjent'} EUR / ${f.price_nok ? f.price_nok.toLocaleString('nb-NO') + ' NOK' : 'ukjent NOK'})
+   Score: ${f.avg_score}/100 | Dekker ${f.covers_n_use_cases} bruksområder: ${f.covered.map((c: any) => c.use_case).join(', ')}
+   Avdelinger: ${f.departments.join(', ')}
+   ${f.advisories?.length ? 'OBS: ' + f.advisories.join('; ') : ''}`).join('\n\n')
+  : 'Algoritmen returnerte ingen resultater — velg fra DRONE_CATALOG basert på kravene.'}
+
+TILGJENGELIG DRONEDATABASE (for referanse og detaljer):
 ${JSON.stringify(DRONE_CATALOG.map(d => ({
   id: d.id, name: d.name, type: d.type, flight_time_min: d.max_flight_time_min,
   thermal: d.has_thermal, rtk: d.has_rtk, lidar: d.has_lidar, payload_kg: d.payload_kg,
@@ -309,14 +347,13 @@ INSTRUKSJONER:
 3. Når du omtaler avdelingsøkonomi eller brannøkonomi, bruk tallene over fra SSB tabell 12362 inkludert årsverk og ikke generaliser mellom kommuner.
 4. Hvis kostnadsdata mangler, si eksplisitt at data mangler i stedet for å finne på tall.
 5. For HVER operasjon: bruk NØYAKTIG operationType, easaCategory og certRequirement fra databasen
-6. DRONEFLÅTE — VELG SPESIFIKKE DRONER FRA DATABASEN:
-${prefer_european ? `   ⚠️ VIKTIG: Kommunen foretrekker europeiske/nordiske produsenter. Prioriter droner fra europeiske og nordiske produsenter (Norge, Sverige, Danmark, Finland, Tyskland, Frankrike, Nederland osv.) høyere enn kinesiske (f.eks. DJI). Kinesiske droner KAN fortsatt velges hvis de er klart overlegne teknisk, men forklar avveiningen og nevn europeiske alternativer.` : ''}
-   - Bruk produsentens oppgitte maksimale flytid som referanse — IKKE oppgi km-rekkevidde som produsentdata.
-   - Hvis du vil omtale typisk dekningsområde, bruk formuleringer som "typisk dekningsområde i denne analysen er X–Y km fra stasjonen basert på flytid og sikkerhetsmarginer" — tydelig merket som scenario/estimat.
+6. DRONEFLÅTE — BRUK DEN ALGORITMISKE ANBEFALINGEN:
+   ⚠️ VIKTIG: Droneflåten er allerede valgt av scoringsalgoritmen basert på 9 vektede faktorer (type-match, sensorer, pris, EASA-sertifisering, deployering, tilgjengelighet, overshoot, markedsmodenhet).
+   Du SKAL bruke dronene fra "ALGORITMISK ANBEFALT DRONEFLÅTE" over — IKKE velg andre droner med mindre algoritmen ikke returnerte resultater.
+   For HVER drone: forklar HVORFOR den er valgt basert på kommunens behov. Bruk produsentens oppgitte maksimale flytid som referanse.
+${prefer_european ? `   ⚠️ Kommunen foretrekker europeiske/nordiske produsenter — algoritmen har allerede vektet dette.` : ''}
    - Match utstyrbehov: Trenger operasjonene termisk? RTK? LiDAR? Payload?
-   - Vurder autonom drift: Beredskapsoperasjoner krever dronestasjon. Planlagte oppdrag kan bruke manuell drone.
    - Vurder sambruk: Hvilke avdelinger kan dele same drone basert på overlappende behov?
-   - Velg den billigste dronen som dekker behovet — ikke anbefal dyrere enn nødvendig.
    - For HVER drone: forklar HVORFOR den er valgt (flytid, utstyr, bruksområder). ALDRI bruk formuleringer som "rekkevidde på ~X km".
 7. ${fire_dept_type === 'IKS'
     ? `For IKS-brannvesenet ${fire_dept_name}: vurder om dronestasjonen kan dekke hele IKS-området med partnerkommuner: ${(iks_partners || []).join(', ')}`
@@ -566,6 +603,31 @@ ${bris_mission_data ? `11. BRIS-ANALYSE: Basert på oppdragsdataen, lag en detal
         }
       }
     }
+
+    // POST-PROCESSING: Enrich drone_fleet with algorithmic data
+    if (algorithmicFleet.length > 0 && analysis.drone_fleet) {
+      // Map AI drone_fleet entries to algorithmic data for price/score accuracy
+      for (const aiDrone of analysis.drone_fleet) {
+        const match = algorithmicFleet.find((af: any) => 
+          af.drone_id === aiDrone.drone_id || 
+          af.drone?.toLowerCase().includes(aiDrone.recommended_model?.toLowerCase()) ||
+          aiDrone.recommended_model?.toLowerCase().includes(af.model?.toLowerCase())
+        );
+        if (match) {
+          // Use algorithmic price if AI didn't set one or used archetype defaults
+          if (match.price_nok && (!aiDrone.estimated_cost_nok || aiDrone.estimated_cost_nok === 450000 || aiDrone.estimated_cost_nok === 1200000)) {
+            aiDrone.estimated_cost_nok = match.price_nok;
+          }
+          if (!aiDrone.drone_id) aiDrone.drone_id = match.drone_id;
+          if (!aiDrone.covers_use_cases || aiDrone.covers_use_cases.length === 0) {
+            aiDrone.covers_use_cases = match.covered.map((c: any) => c.use_case_id);
+          }
+        }
+      }
+    }
+
+    // Attach algorithmic fleet data for frontend reference
+    analysis._algorithmic_fleet = algorithmicFleet;
 
     return new Response(JSON.stringify({ success: true, analysis }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
