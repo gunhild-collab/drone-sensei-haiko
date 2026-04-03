@@ -1840,7 +1840,7 @@ export default function DroneAnalysis({
           </div>
 
           {/* Drone fleet — Haiko anbefaler */}
-          <div id="droneflate" className="space-y-4 mb-6 scroll-mt-6">
+          <div id="droneflate" className="-mx-4 px-4 py-6 rounded-2xl bg-secondary/60 space-y-4 scroll-mt-6">
             <h2 className="text-lg font-display font-semibold flex items-center gap-2">
               <Plane className="w-5 h-5 text-[#6858f8]" /> ✨ Haiko anbefaler
             </h2>
