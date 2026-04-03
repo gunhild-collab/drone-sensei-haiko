@@ -1593,21 +1593,6 @@ export default function DroneAnalysis({
             </div>
           </div>
 
-          {/* European preference toggle */}
-          <div className="mb-6 p-3 rounded-lg border border-border bg-muted/30 flex items-center justify-between gap-3">
-            <label className="flex items-center gap-2 cursor-pointer text-sm">
-              <input
-                type="checkbox"
-                checked={preferEuropean}
-                onChange={e => setPreferEuropean(e.target.checked)}
-                className="w-4 h-4 rounded border-border accent-primary"
-              />
-              <span className="font-medium">🇪🇺 Foretrekk europeisk/nordisk produsent</span>
-            </label>
-            {preferEuropean && (
-              <Badge variant="secondary" className="text-[10px]">Aktiv — europeiske droner vektes høyere</Badge>
-            )}
-          </div>
 
           {/* Collapsible guide + glossary */}
           <Collapsible id="leseguide" className="mb-6 scroll-mt-6">
