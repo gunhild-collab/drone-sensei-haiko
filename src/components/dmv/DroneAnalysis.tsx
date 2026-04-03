@@ -1753,7 +1753,11 @@ export default function DroneAnalysis({
           />
 
           {/* Key metrics */}
-          <div id="nokkeltall" className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 scroll-mt-6">
+          <div id="nokkeltall" className="-mx-4 px-4 py-6 rounded-2xl bg-secondary/60 scroll-mt-6">
+          <h2 className="text-lg font-display font-semibold flex items-center gap-2 mb-4">
+            📊 Nøkkeltall
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <Card>
               <CardContent className="pt-4 pb-3 text-center">
                 <Plane className="w-5 h-5 mx-auto text-primary mb-1" />
