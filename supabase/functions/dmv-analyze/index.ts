@@ -97,6 +97,16 @@ KRITISKE SERTIFISERINGSREGLER — bryt disse ALDRI:
    - Use cases (UC-001 osv.), implementeringsplan og IKS-samarbeid er ANBEFALINGER, ikke vedtatte planer.
 `;
 
+function estimateMaxMissionDistance(area_km2: number | null, road_km: number | null, population: number | null): { multirotor_km: number; fixedwing_km: number } {
+  // Based on flight time and safety margins, not manufacturer range specs
+  const area = area_km2 || 200;
+  const radius = Math.sqrt(area / Math.PI);
+  return {
+    multirotor_km: Math.min(radius * 0.4, 15),  // ~50 min flight time, conservative
+    fixedwing_km: Math.min(radius * 1.2, 50),    // ~2h flight time
+  };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
