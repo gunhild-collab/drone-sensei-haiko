@@ -20,6 +20,7 @@ import { findFireDepartment, findAlarmSentral, getPartnerMunicipalities, get110R
 import DepartmentEditor, { type ActiveDepartment } from "@/components/dmv/DepartmentEditor";
 import DroneAnalysis from "@/components/dmv/DroneAnalysis";
 import UseCaseSelector from "@/components/dmv/UseCaseSelector";
+import ExistingDronesSection from "@/components/dmv/ExistingDronesSection";
 import RiskProfileTab from "@/components/dmv/RiskProfileTab";
 import OperationsEconomyTab from "@/components/dmv/OperationsEconomyTab";
 import {
@@ -71,6 +72,7 @@ export default function Assessment() {
     settlementPattern: "" as string,
   });
   const [selectedUseCases, setSelectedUseCases] = useState<string[]>([]);
+  const [existingDrones, setExistingDrones] = useState<{ id: string; model: string; department: string; useCase: string }[]>([]);
   const topRef = useRef<HTMLDivElement>(null);
   const { profile, loading: profileLoading, saving, updateRisk, updateOperations, populateFromKostra, save: saveProfile } = useMunicipalityProfile(municipalityName);
 
@@ -402,6 +404,13 @@ export default function Assessment() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Existing drones */}
+              <ExistingDronesSection
+                departments={departments}
+                value={existingDrones}
+                onChange={setExistingDrones}
+              />
 
               {/* Use cases */}
               <UseCaseSelector
