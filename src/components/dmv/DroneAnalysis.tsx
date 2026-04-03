@@ -1604,10 +1604,22 @@ export default function DroneAnalysis({
             )}
           </div>
 
-          {/* How to read this report */}
-          <div id="leseguide" className="mb-6 scroll-mt-6">
-            <HowToReadBox />
-          </div>
+          {/* Collapsible guide + glossary */}
+          <Collapsible id="leseguide" className="mb-6 scroll-mt-6">
+            <CollapsibleTrigger className="flex items-center gap-2 w-full text-left group">
+              <BookOpen className="w-4 h-4 text-primary" />
+              <span className="text-sm font-display font-semibold">📚 Ordliste og veiledning</span>
+              <ChevronRight className="w-4 h-4 text-muted-foreground ml-auto transition-transform group-data-[state=open]:rotate-90" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-4 mt-3">
+              <HowToReadBox />
+              <InfoBox title="Ordliste — nøkkelbegreper" icon={<BookOpen className="w-4 h-4" />}>
+                <GlossaryTerms />
+              </InfoBox>
+              <OpsManualBox hasSpecific={hasSpecificCategory} />
+              <ErpBox />
+            </CollapsibleContent>
+          </Collapsible>
 
           {/* Maturity roadmap — prominent position */}
           <div id="modningsreise" className="mb-6 scroll-mt-6">
