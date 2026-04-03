@@ -163,16 +163,17 @@ function scoreDeploymentEase(drone: Record<string, any>, useCase: Record<string,
 
 function scoreEuAvailability(drone: Record<string, any>): number {
   const country = (drone.country_of_manufacturer || '').toLowerCase();
-  const euCountries = ['norge', 'sverige', 'danmark', 'finland', 'tyskland', 'frankrike',
-    'nederland', 'belgia', 'sveits', 'østerrike', 'slovenia', 'estland',
-    'latvia', 'tsjekkia', 'italia', 'spania', 'portugal', 'polen'];
+  const nordicCountries = ['norge', 'sverige', 'danmark', 'finland', 'island'];
+  const euCountries = ['tyskland', 'frankrike', 'nederland', 'belgia', 'sveits',
+    'østerrike', 'slovenia', 'estland', 'latvia', 'tsjekkia', 'italia',
+    'spania', 'portugal', 'polen'];
 
-  if (country.includes('norge')) return 100;
+  if (nordicCountries.some(c => country.includes(c))) return 100; // Nordic = top tier
   if (euCountries.some(c => country.includes(c))) return 90;
   if (country.includes('kina')) return 60;
   if (country.includes('usa')) return 65;
   if (country.includes('israel')) return 55;
-  return 40;
+  return 50;
 }
 
 function scoreWeatherRating(drone: Record<string, any>): number {
