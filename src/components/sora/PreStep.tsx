@@ -80,11 +80,13 @@ export default function PreStep({
     setCalendarOpen(false);
   };
 
+  const { drones: DRONE_DATABASE } = useDronePlatforms();
+
   const filteredDrones = useMemo(() => {
     if (!droneSearch) return DRONE_DATABASE;
     const q = droneSearch.toLowerCase();
     return DRONE_DATABASE.filter(d => d.name.toLowerCase().includes(q) || d.manufacturer.toLowerCase().includes(q));
-  }, [droneSearch]);
+  }, [droneSearch, DRONE_DATABASE]);
 
   return (
     <div className="min-h-screen bg-sora-bg flex items-center justify-center px-4 font-sora">

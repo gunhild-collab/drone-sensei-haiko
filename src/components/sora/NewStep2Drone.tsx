@@ -12,6 +12,7 @@ const inputClass = "w-full bg-[#1a1a2e] border border-[#2a2a3e] rounded-lg px-4 
 
 export default function NewStep2Drone({ selectedDrone, onSelect }: Props) {
   const [search, setSearch] = useState('');
+  const { drones: DRONE_DATABASE } = useDronePlatforms();
 
   const filtered = useMemo(() => {
     if (!search.trim()) return DRONE_DATABASE;
@@ -21,7 +22,7 @@ export default function NewStep2Drone({ selectedDrone, onSelect }: Props) {
       d.manufacturer.toLowerCase().includes(q) ||
       d.categoryClass.toLowerCase().includes(q)
     );
-  }, [search]);
+  }, [search, DRONE_DATABASE]);
 
   return (
     <div className="space-y-6">
