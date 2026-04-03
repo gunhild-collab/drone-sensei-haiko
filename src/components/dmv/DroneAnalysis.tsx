@@ -1429,6 +1429,7 @@ export default function DroneAnalysis({
   const [expandedDept, setExpandedDept] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState("leseguide");
   const [expandedPhase, setExpandedPhase] = useState<number | null>(null);
+  const [preferEuropean, setPreferEuropean] = useState(false);
 
   // Intersection observer for active sidebar tracking
   useEffect(() => {
