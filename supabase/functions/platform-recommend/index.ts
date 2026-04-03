@@ -233,10 +233,18 @@ function scoreOvershootPenalty(drone: Record<string, any>, useCase: Record<strin
 
 function scoreMarketMaturity(drone: Record<string, any>): number {
   const mfr = (drone.manufacturer || '').toLowerCase();
-  if (['dji', 'parrot', 'autel'].some(m => mfr.includes(m))) return 95;
-  if (['quantum', 'wingtra', 'delair', 'flyability', 'schiebel', 'elistair', 'skydio', 'percepto'].some(m => mfr.includes(m))) return 85;
-  if (['acecore', 'c-astral', 'germandrones', 'avy', 'deltaquad', 'elevonx', 'robot aviation', 'nordic'].some(m => mfr.includes(m))) return 70;
-  return 50;
+  const model = (drone.model || '').toLowerCase();
+  let base = 50;
+
+  if (['dji', 'parrot', 'autel'].some(m => mfr.includes(m))) base = 95;
+  else if (['quantum', 'wingtra', 'delair', 'flyability', 'schiebel', 'elistair', 'skydio', 'percepto'].some(m => mfr.includes(m))) base = 85;
+  else if (['acecore', 'c-astral', 'germandrones', 'avy', 'deltaquad', 'elevonx', 'robot aviation', 'nordic'].some(m => mfr.includes(m))) base = 70;
+
+  // Prefer newer generation models when manufacturer has multiple (e.g. Dock 3 > Dock 2)
+  if (model.includes('dock 3') || model.includes('matrice 4')) base = Math.min(base + 5, 100);
+  if (model.includes('dock 2') || model.includes('matrice 3')) base = Math.max(base - 3, 0);
+
+  return base;
 }
 
 function calculateScore(drone: Record<string, any>, useCase: Record<string, any>): { total_score: number; breakdown: Record<string, number>; advisories: string[] } {
