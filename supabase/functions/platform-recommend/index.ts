@@ -425,9 +425,9 @@ Deno.serve(async (req) => {
     const { fleet, uncovered } = optimizeFleet(allDrones, useCases, max_platforms);
 
     // Also compute per-use-case top matches for detailed view
-    const perUseCaseTop: Record<string, Array<{ drone: string; drone_id: string; score: number; breakdown: Record<string, number> }>> = {};
+    const perUseCaseTop: Record<string, Array<{ drone: string; drone_id: string; score: number; breakdown: Record<string, number>; advisories: string[] }>> = {};
     for (const uc of useCases) {
-      const matches: Array<{ drone: string; drone_id: string; score: number; breakdown: Record<string, number> }> = [];
+      const matches: Array<{ drone: string; drone_id: string; score: number; breakdown: Record<string, number>; advisories: string[] }> = [];
       for (const d of allDrones) {
         const [passed] = hardFilter(d, uc);
         if (!passed) continue;
@@ -438,6 +438,7 @@ Deno.serve(async (req) => {
             drone_id: d.id,
             score: s.total_score,
             breakdown: s.breakdown,
+            advisories: s.advisories,
           });
         }
       }
