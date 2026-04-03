@@ -403,7 +403,13 @@ export default function Assessment() {
                 </CardContent>
               </Card>
 
-              <Card>
+              {/* Use cases */}
+              <UseCaseSelector
+                departments={departments}
+                selectedUseCases={selectedUseCases}
+                onSelectionChange={setSelectedUseCases}
+              />
+
                 <CardHeader>
                   <CardTitle className="text-lg font-display">Utvidet kommuneprofil</CardTitle>
                   <CardDescription>Risikobilde og driftsdata — data hentes automatisk fra SSB/KOSTRA der mulig.</CardDescription>
