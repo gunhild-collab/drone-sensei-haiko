@@ -1970,7 +1970,7 @@ export default function DroneAnalysis({
 
           {/* Certification plan — Pilotprofil cards */}
           {analysis.certification_plan && analysis.certification_plan.pilot_groups.length > 0 && (
-            <div id="sertifisering" className="space-y-3 mb-6 scroll-mt-6">
+            <div id="sertifisering" className="-mx-4 px-4 py-6 rounded-2xl bg-muted/30 space-y-3 scroll-mt-6">
               <h2 className="text-lg font-display font-semibold flex items-center gap-2">
                 <GraduationCap className="w-5 h-5 text-primary" /> 🎓 Sertifiseringsplan
               </h2>
