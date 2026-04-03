@@ -310,7 +310,97 @@ export default function Assessment() {
                 population={overrides.population || 8000}
               />
 
-              {/* Enrichment tabs: Risk + Operations */}
+              {/* Geography section */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg font-display">Geografi</CardTitle>
+                  <CardDescription>Påvirker rekkevidde og plattformkrav — hentes automatisk der mulig</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Kommuneareal */}
+                    <div className="flex items-center gap-3">
+                      <MapPin className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                      <Label className="w-28 text-sm">Kommuneareal</Label>
+                      <Input
+                        type="number"
+                        value={geoData.areaKm2 ?? ""}
+                        onChange={e => setGeoData(prev => ({ ...prev, areaKm2: e.target.value === "" ? null : parseFloat(e.target.value) }))}
+                        className="max-w-[140px]"
+                      />
+                      <span className="text-xs text-muted-foreground">km²</span>
+                    </div>
+
+                    {/* Kystlinje */}
+                    <div className="flex items-center gap-3">
+                      <Route className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                      <Label className="w-28 text-sm">Kystlinje</Label>
+                      <Input
+                        type="number"
+                        value={geoData.coastlineKm ?? ""}
+                        onChange={e => setGeoData(prev => ({ ...prev, coastlineKm: e.target.value === "" ? null : parseFloat(e.target.value) }))}
+                        className="max-w-[140px]"
+                        placeholder="0 = ingen"
+                      />
+                      <span className="text-xs text-muted-foreground">km</span>
+                    </div>
+
+                    {/* Terrengtype */}
+                    <div className="flex items-center gap-3">
+                      <Mountain className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                      <Label className="w-28 text-sm">Terrengtype</Label>
+                      <Select value={geoData.terrainType} onValueChange={v => setGeoData(prev => ({ ...prev, terrainType: v }))}>
+                        <SelectTrigger className="max-w-[140px]">
+                          <SelectValue placeholder="Velg..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="flatland">Flatland</SelectItem>
+                          <SelectItem value="kupert">Kupert</SelectItem>
+                          <SelectItem value="fjell">Fjell</SelectItem>
+                          <SelectItem value="blandet">Blandet</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="w-4 h-4 text-muted-foreground cursor-help flex-shrink-0" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-[220px]">
+                            <p className="text-xs">Kupert og fjellterreng krever lengre rekkevidde og BVLOS-kapasitet</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+
+                    {/* Bebyggelsesmønster */}
+                    <div className="flex items-center gap-3">
+                      <Building2 className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                      <Label className="w-28 text-sm">Bebyggelse</Label>
+                      <Select value={geoData.settlementPattern} onValueChange={v => setGeoData(prev => ({ ...prev, settlementPattern: v }))}>
+                        <SelectTrigger className="max-w-[140px]">
+                          <SelectValue placeholder="Velg..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="tett">Tett</SelectItem>
+                          <SelectItem value="spredt">Spredt</SelectItem>
+                          <SelectItem value="blandet">Blandet</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="w-4 h-4 text-muted-foreground cursor-help flex-shrink-0" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-[220px]">
+                            <p className="text-xs">Spredt bebyggelse øker verdien av lang rekkevidde og autonom drift</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg font-display">Utvidet kommuneprofil</CardTitle>
