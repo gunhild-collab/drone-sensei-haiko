@@ -62,15 +62,19 @@ export type Database = {
           camera_specs: string | null
           category: string
           characteristic_dimension: number | null
+          country_of_manufacturer: string | null
           created_at: string
           drone_type: string
           easa_category: string | null
+          ground_station_model: string | null
+          ground_station_price_eur: string | null
           has_parachute: boolean | null
           has_remote_id: boolean | null
           has_rtk: boolean | null
           has_thermal: boolean | null
           id: string
           ip_rating: string | null
+          launch_method: string | null
           manufacturer: string
           max_altitude: number | null
           max_flight_time_min: number | null
@@ -81,6 +85,7 @@ export type Database = {
           name: string | null
           notes: string | null
           payload_kg: number | null
+          price_eur_estimate: string | null
           price_nok_estimate: number | null
           propulsion: string | null
           requires_cert: string | null
@@ -96,15 +101,19 @@ export type Database = {
           camera_specs?: string | null
           category: string
           characteristic_dimension?: number | null
+          country_of_manufacturer?: string | null
           created_at?: string
           drone_type?: string
           easa_category?: string | null
+          ground_station_model?: string | null
+          ground_station_price_eur?: string | null
           has_parachute?: boolean | null
           has_remote_id?: boolean | null
           has_rtk?: boolean | null
           has_thermal?: boolean | null
           id?: string
           ip_rating?: string | null
+          launch_method?: string | null
           manufacturer: string
           max_altitude?: number | null
           max_flight_time_min?: number | null
@@ -115,6 +124,7 @@ export type Database = {
           name?: string | null
           notes?: string | null
           payload_kg?: number | null
+          price_eur_estimate?: string | null
           price_nok_estimate?: number | null
           propulsion?: string | null
           requires_cert?: string | null
@@ -130,15 +140,19 @@ export type Database = {
           camera_specs?: string | null
           category?: string
           characteristic_dimension?: number | null
+          country_of_manufacturer?: string | null
           created_at?: string
           drone_type?: string
           easa_category?: string | null
+          ground_station_model?: string | null
+          ground_station_price_eur?: string | null
           has_parachute?: boolean | null
           has_remote_id?: boolean | null
           has_rtk?: boolean | null
           has_thermal?: boolean | null
           id?: string
           ip_rating?: string | null
+          launch_method?: string | null
           manufacturer?: string
           max_altitude?: number | null
           max_flight_time_min?: number | null
@@ -149,6 +163,7 @@ export type Database = {
           name?: string | null
           notes?: string | null
           payload_kg?: number | null
+          price_eur_estimate?: string | null
           price_nok_estimate?: number | null
           propulsion?: string | null
           requires_cert?: string | null
