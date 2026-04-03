@@ -269,6 +269,7 @@ interface FleetEntry {
   departments: string[];
   avg_score: number;
   breakdown_avg: Record<string, number>;
+  advisories: string[];
 }
 
 function optimizeFleet(
