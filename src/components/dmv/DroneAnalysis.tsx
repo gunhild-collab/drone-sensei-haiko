@@ -1829,17 +1829,6 @@ export default function DroneAnalysis({
             );
           })()}
 
-          {/* ─── Ordliste section: Glossary + OpsManual + ERP ─── */}
-          <div id="ordliste" className="space-y-4 mb-6 scroll-mt-6">
-            <h2 className="text-lg font-display font-semibold flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-primary" /> 📚 Ordliste og veiledning
-            </h2>
-            <InfoBox title="Ordliste — nøkkelbegreper" icon={<BookOpen className="w-4 h-4" />}>
-              <GlossaryTerms />
-            </InfoBox>
-            <OpsManualBox hasSpecific={hasSpecificCategory} />
-            <ErpBox />
-          </div>
 
 
           {/* Department × Drone matrix */}
