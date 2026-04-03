@@ -301,11 +301,31 @@ interface FleetEntry {
   advisories: string[];
 }
 
+// Superseded model pairs: [old pattern, new pattern]
+// When both exist in the catalog, the old model is removed from consideration
+const SUPERSEDED_MODELS: [string, string][] = [
+  ['dock 2 + matrice 3d', 'dock 3 + matrice 4d'],
+  ['dock 2 + matrice 3td', 'dock 3 + matrice 4td'],
+];
+
+function filterSupersededModels(drones: Record<string, any>[]): Record<string, any>[] {
+  const modelSet = new Set(drones.map(d => (d.model || '').toLowerCase()));
+  return drones.filter(d => {
+    const m = (d.model || '').toLowerCase();
+    for (const [old, newer] of SUPERSEDED_MODELS) {
+      if (m === old && modelSet.has(newer)) return false;
+    }
+    return true;
+  });
+}
+
 function optimizeFleet(
   drones: Record<string, any>[],
   useCases: Record<string, any>[],
   maxPlatforms: number = 5,
 ): { fleet: FleetEntry[]; uncovered: number } {
+  // Remove superseded models (e.g. Dock 2 when Dock 3 exists)
+  const activeDrones = filterSupersededModels(drones);
   // Pre-filter and score all combinations
   const scored: Record<string, Record<string, { total_score: number; breakdown: Record<string, number> }>> = {};
   for (const d of drones) {
