@@ -11,7 +11,7 @@ const corsHeaders = {
 const DRONE_ARCHETYPES = {
   multirotor: {
     type: "Multirotor (autonom BVLOS fra dronestasjon)",
-    example: "DJI Dock 2 + Matrice 4T / tilsvarende",
+    example: "DJI Dock 3 + Matrice 4TD / tilsvarende",
     costNok: 450000,
     features: ["Termisk kamera", "RTK", "Autonom start/landing", "Vær-robust dock", "4G/5G-oppkobling"],
   },
