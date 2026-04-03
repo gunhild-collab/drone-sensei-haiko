@@ -168,6 +168,36 @@ serve(async (req) => {
     console.log(`[${municipality_name}] Matched ${relevantUCs.length}/${VERIFIED_USE_CASES.length} use cases`);
     console.log(`[${municipality_name}] Matched UC IDs: ${relevantUCs.map((uc) => uc.id).join(', ')}`);
 
+    // ─── Call platform-recommend algorithm for data-driven fleet ───
+    const relevantUcIds = relevantUCs.map((uc: any) => uc.id);
+    let algorithmicFleet: any[] = [];
+    let algorithmicPerUseCase: Record<string, any[]> = {};
+    try {
+      const platformRecommendUrl = `${supabaseUrl}/functions/v1/platform-recommend`;
+      const prResponse = await fetch(platformRecommendUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseServiceKey}`,
+        },
+        body: JSON.stringify({
+          municipality_name,
+          use_case_ids: relevantUcIds,
+          max_platforms: 5,
+          prefer_european: prefer_european || false,
+        }),
+      });
+      if (prResponse.ok) {
+        const prData = await prResponse.json();
+        algorithmicFleet = prData.fleet || [];
+        algorithmicPerUseCase = prData.per_use_case_top || {};
+        console.log(`[${municipality_name}] Algorithm fleet: ${algorithmicFleet.map((f: any) => f.drone).join(', ')}`);
+      } else {
+        console.warn(`[${municipality_name}] platform-recommend failed: ${prResponse.status}`);
+      }
+    } catch (prErr) {
+      console.warn(`[${municipality_name}] platform-recommend error:`, prErr);
+    }
     // Build IKS/fire department context
     const iksContext = fire_dept_name
       ? `BRANNVESEN: ${fire_dept_name} (type: ${fire_dept_type || 'ukjent'})
