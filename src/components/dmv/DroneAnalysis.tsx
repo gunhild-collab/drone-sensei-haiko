@@ -1582,9 +1582,14 @@ export default function DroneAnalysis({
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-primary" />
             </div>
-            <div>
-              <h1 className="text-2xl font-display font-bold">Mulighetsrom — {municipalityName}</h1>
-              <p className="text-sm text-muted-foreground">{analysis.summary}</p>
+            <h1 className="text-2xl font-display font-bold">Mulighetsrom — {municipalityName}</h1>
+          </div>
+
+          {/* AI summary bubble */}
+          <div className="mb-6 rounded-xl p-4 text-white" style={{ background: 'linear-gradient(135deg, #e91e8c 0%, #7c3aed 100%)' }}>
+            <div className="flex items-start gap-3">
+              <span className="text-2xl flex-shrink-0">💡</span>
+              <p className="text-sm leading-relaxed font-medium">{analysis.summary}</p>
             </div>
           </div>
 
