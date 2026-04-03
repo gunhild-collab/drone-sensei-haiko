@@ -45,6 +45,13 @@ function hardFilter(drone: Record<string, any>, useCase: Record<string, any>): [
     if (!cat.includes('dock') && !launch.includes('dock')) return [false, 'Krever dock-system, drone har ikke'];
   }
 
+  // Payload check — cargo use cases (e.g. medisinsk transport) need real payload
+  const minPayload = Number(useCase.min_payload_kg) || 0;
+  if (minPayload > 0) {
+    const dronePayload = Number(drone.payload_kg) || 0;
+    if (dronePayload < minPayload) return [false, `Payload ${dronePayload} kg < krav ${minPayload} kg`];
+  }
+
   return [true, ''];
 }
 
@@ -226,10 +233,19 @@ function scoreOvershootPenalty(drone: Record<string, any>, useCase: Record<strin
 
 function scoreMarketMaturity(drone: Record<string, any>): number {
   const mfr = (drone.manufacturer || '').toLowerCase();
-  if (['dji', 'parrot', 'autel'].some(m => mfr.includes(m))) return 95;
-  if (['quantum', 'wingtra', 'delair', 'flyability', 'schiebel', 'elistair', 'skydio', 'percepto'].some(m => mfr.includes(m))) return 85;
-  if (['acecore', 'c-astral', 'germandrones', 'avy', 'deltaquad', 'elevonx', 'robot aviation', 'nordic'].some(m => mfr.includes(m))) return 70;
-  return 50;
+  const model = (drone.model || '').toLowerCase();
+  let base = 50;
+
+  if (['dji', 'parrot', 'autel'].some(m => mfr.includes(m))) base = 95;
+  else if (['quantum', 'wingtra', 'delair', 'flyability', 'schiebel', 'elistair', 'skydio', 'percepto'].some(m => mfr.includes(m))) base = 85;
+  else if (['acecore', 'c-astral', 'germandrones', 'avy', 'deltaquad', 'elevonx', 'robot aviation', 'nordic'].some(m => mfr.includes(m))) base = 70;
+
+  // Strongly prefer newer generation models when manufacturer has multiple
+  // Dock 3 / Matrice 4 series supersedes Dock 2 / Matrice 3 series
+  if (model.includes('dock 3') || model.includes('matrice 4')) base = 100;
+  else if (model.includes('dock 2') || model.includes('matrice 3')) base = 50; // Significant penalty for superseded models
+
+  return base;
 }
 
 function calculateScore(drone: Record<string, any>, useCase: Record<string, any>): { total_score: number; breakdown: Record<string, number>; advisories: string[] } {
@@ -285,14 +301,34 @@ interface FleetEntry {
   advisories: string[];
 }
 
+// Superseded model pairs: [old pattern, new pattern]
+// When both exist in the catalog, the old model is removed from consideration
+const SUPERSEDED_MODELS: [string, string][] = [
+  ['dock 2 + matrice 3d', 'dock 3 + matrice 4d'],
+  ['dock 2 + matrice 3td', 'dock 3 + matrice 4td'],
+];
+
+function filterSupersededModels(drones: Record<string, any>[]): Record<string, any>[] {
+  const modelSet = new Set(drones.map(d => (d.model || '').toLowerCase()));
+  return drones.filter(d => {
+    const m = (d.model || '').toLowerCase();
+    for (const [old, newer] of SUPERSEDED_MODELS) {
+      if (m === old && modelSet.has(newer)) return false;
+    }
+    return true;
+  });
+}
+
 function optimizeFleet(
   drones: Record<string, any>[],
   useCases: Record<string, any>[],
   maxPlatforms: number = 5,
 ): { fleet: FleetEntry[]; uncovered: number } {
+  // Remove superseded models (e.g. Dock 2 when Dock 3 exists)
+  const activeDrones = filterSupersededModels(drones);
   // Pre-filter and score all combinations
   const scored: Record<string, Record<string, { total_score: number; breakdown: Record<string, number> }>> = {};
-  for (const d of drones) {
+  for (const d of activeDrones) {
     const dId = d.id;
     scored[dId] = {};
     for (const uc of useCases) {
@@ -332,7 +368,7 @@ function optimizeFleet(
 
     if (!bestDroneId) break;
 
-    const d = drones.find(dr => dr.id === bestDroneId)!;
+    const d = activeDrones.find(dr => dr.id === bestDroneId)!;
     const newCoveredIds = Object.keys(scored[bestDroneId]).filter(uid => uncoveredSet.has(uid));
     const ucDetails = newCoveredIds.map(uid => {
       const uc = useCases.find(u => u.use_case_id === uid)!;

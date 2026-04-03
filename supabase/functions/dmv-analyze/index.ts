@@ -11,7 +11,7 @@ const corsHeaders = {
 const DRONE_ARCHETYPES = {
   multirotor: {
     type: "Multirotor (autonom BVLOS fra dronestasjon)",
-    example: "DJI Dock 2 + Matrice 4T / tilsvarende",
+    example: "DJI Dock 3 + Matrice 4TD / tilsvarende",
     costNok: 450000,
     features: ["Termisk kamera", "RTK", "Autonom start/landing", "Vær-robust dock", "4G/5G-oppkobling"],
   },
@@ -239,7 +239,7 @@ Kommunen drifter droner fra en eller flere faste dronestasjoner — dronen start
 Kun et fåtall unntaksoperasjoner (broinspeksjon, tunnelportal, vernebygninger) krever manuell VLOS.
 
 DET FINNES KUN TO DRONETYPER:
-1. MULTIROTOR (autonom BVLOS fra dronestasjon): Kompakt multirotor med dock (f.eks. DJI Dock 2 + Matrice 3D/3TD).
+1. MULTIROTOR (autonom BVLOS fra dronestasjon): Kompakt multirotor med dock (f.eks. DJI Dock 3 + Matrice 4D/4TD).
    - Brukes til: lokale inspeksjoner, termisk, SAR, beredskap, bygningsdokumentasjon
    - Opptil ca. 50 minutter maksimal flytid under ideelle forhold ifølge produsent (reell operativ flytid ofte lavere)
    - Pris ca. ${DRONE_ARCHETYPES.multirotor.costNok.toLocaleString('nb-NO')} NOK per enhet
