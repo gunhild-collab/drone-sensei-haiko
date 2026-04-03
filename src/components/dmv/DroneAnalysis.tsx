@@ -1827,7 +1827,7 @@ export default function DroneAnalysis({
 
 
           {/* Department × Drone matrix */}
-          <div id="operasjoner" className="space-y-3 mb-6 scroll-mt-6">
+          <div id="operasjoner" className="-mx-4 px-4 py-6 rounded-2xl bg-muted/30 space-y-3 scroll-mt-6">
             <h2 className="text-lg font-display font-semibold flex items-center gap-2">
               <Shield className="w-5 h-5 text-primary" /> ⚙️ Operasjoner per avdeling
             </h2>
