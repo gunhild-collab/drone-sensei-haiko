@@ -405,6 +405,13 @@ export default function Assessment() {
                 </CardContent>
               </Card>
 
+              {/* Existing drones */}
+              <ExistingDronesSection
+                departments={departments}
+                value={existingDrones}
+                onChange={setExistingDrones}
+              />
+
               {/* Use cases */}
               <UseCaseSelector
                 departments={departments}
