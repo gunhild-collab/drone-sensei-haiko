@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { Search, Plane } from "lucide-react";
-import { DRONE_DATABASE, DroneSpec } from "@/data/droneDatabase";
+import { DroneSpec } from "@/data/droneDatabase";
+import { useDronePlatforms } from "@/hooks/useDronePlatforms";
 
 interface Props {
   selectedDrone: DroneSpec | null;
