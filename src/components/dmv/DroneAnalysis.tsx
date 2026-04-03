@@ -2014,7 +2014,7 @@ export default function DroneAnalysis({
             const breakevenPct = 50; // 18 months out of 36
 
             return (
-              <div id="implementering" className="space-y-4 mb-6 scroll-mt-6">
+              <div id="implementering" className="-mx-4 px-4 py-6 rounded-2xl bg-secondary/60 space-y-4 scroll-mt-6">
                 <h2 className="text-lg font-display font-semibold flex items-center gap-2">
                   📅 Implementeringsplan
                 </h2>
