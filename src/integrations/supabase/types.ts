@@ -61,20 +61,33 @@ export type Database = {
           c_class: string | null
           camera_specs: string | null
           category: string
+          characteristic_dimension: number | null
           created_at: string
+          drone_type: string
           easa_category: string | null
+          has_parachute: boolean | null
+          has_remote_id: boolean | null
           has_rtk: boolean | null
+          has_thermal: boolean | null
           id: string
           ip_rating: string | null
           manufacturer: string
+          max_altitude: number | null
           max_flight_time_min: number | null
           max_range_km: number | null
+          max_speed: number | null
           max_takeoff_weight_kg: number | null
           model: string
+          name: string | null
+          notes: string | null
+          payload_kg: number | null
           price_nok_estimate: number | null
+          propulsion: string | null
           requires_cert: string | null
           sensor_types: string[] | null
+          slug: string | null
           suitable_use_cases: string[] | null
+          supports_bvlos: boolean | null
           url: string | null
           wind_resistance_ms: number | null
         }
@@ -82,20 +95,33 @@ export type Database = {
           c_class?: string | null
           camera_specs?: string | null
           category: string
+          characteristic_dimension?: number | null
           created_at?: string
+          drone_type?: string
           easa_category?: string | null
+          has_parachute?: boolean | null
+          has_remote_id?: boolean | null
           has_rtk?: boolean | null
+          has_thermal?: boolean | null
           id?: string
           ip_rating?: string | null
           manufacturer: string
+          max_altitude?: number | null
           max_flight_time_min?: number | null
           max_range_km?: number | null
+          max_speed?: number | null
           max_takeoff_weight_kg?: number | null
           model: string
+          name?: string | null
+          notes?: string | null
+          payload_kg?: number | null
           price_nok_estimate?: number | null
+          propulsion?: string | null
           requires_cert?: string | null
           sensor_types?: string[] | null
+          slug?: string | null
           suitable_use_cases?: string[] | null
+          supports_bvlos?: boolean | null
           url?: string | null
           wind_resistance_ms?: number | null
         }
@@ -103,20 +129,33 @@ export type Database = {
           c_class?: string | null
           camera_specs?: string | null
           category?: string
+          characteristic_dimension?: number | null
           created_at?: string
+          drone_type?: string
           easa_category?: string | null
+          has_parachute?: boolean | null
+          has_remote_id?: boolean | null
           has_rtk?: boolean | null
+          has_thermal?: boolean | null
           id?: string
           ip_rating?: string | null
           manufacturer?: string
+          max_altitude?: number | null
           max_flight_time_min?: number | null
           max_range_km?: number | null
+          max_speed?: number | null
           max_takeoff_weight_kg?: number | null
           model?: string
+          name?: string | null
+          notes?: string | null
+          payload_kg?: number | null
           price_nok_estimate?: number | null
+          propulsion?: string | null
           requires_cert?: string | null
           sensor_types?: string[] | null
+          slug?: string | null
           suitable_use_cases?: string[] | null
+          supports_bvlos?: boolean | null
           url?: string | null
           wind_resistance_ms?: number | null
         }
