@@ -19,6 +19,7 @@ import { getSuggestedDepartments } from "@/data/departmentTemplates";
 import { findFireDepartment, findAlarmSentral, getPartnerMunicipalities, get110RegionMunicipalities, findIKSPartners, getIKSPartnerMunicipalities } from "@/data/iksData";
 import DepartmentEditor, { type ActiveDepartment } from "@/components/dmv/DepartmentEditor";
 import DroneAnalysis from "@/components/dmv/DroneAnalysis";
+import UseCaseSelector from "@/components/dmv/UseCaseSelector";
 import RiskProfileTab from "@/components/dmv/RiskProfileTab";
 import OperationsEconomyTab from "@/components/dmv/OperationsEconomyTab";
 import {
@@ -69,6 +70,7 @@ export default function Assessment() {
     terrainType: "" as string,
     settlementPattern: "" as string,
   });
+  const [selectedUseCases, setSelectedUseCases] = useState<string[]>([]);
   const topRef = useRef<HTMLDivElement>(null);
   const { profile, loading: profileLoading, saving, updateRisk, updateOperations, populateFromKostra, save: saveProfile } = useMunicipalityProfile(municipalityName);
 
@@ -400,6 +402,13 @@ export default function Assessment() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Use cases */}
+              <UseCaseSelector
+                departments={departments}
+                selectedUseCases={selectedUseCases}
+                onSelectionChange={setSelectedUseCases}
+              />
 
               <Card>
                 <CardHeader>
