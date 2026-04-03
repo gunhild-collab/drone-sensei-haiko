@@ -399,6 +399,7 @@ Deno.serve(async (req) => {
       use_case_ids,
       department_names,
       max_platforms = 5,
+      prefer_european = false,
       // Legacy params still supported
       maturity_level,
       budget_range,
@@ -406,6 +407,9 @@ Deno.serve(async (req) => {
       municipal_data = {},
       area_km2,
     } = await req.json();
+
+    // Set scoring weights based on European preference
+    WEIGHTS = prefer_european ? { ...EU_PREFERRED_WEIGHTS } : { ...DEFAULT_WEIGHTS };
 
     // Fetch drones and use cases from DB
     const [dronesRes, ucRes] = await Promise.all([
