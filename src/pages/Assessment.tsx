@@ -63,6 +63,12 @@ export default function Assessment() {
     buildings: null as number | null,
     vaKm: null as number | null,
   });
+  const [geoData, setGeoData] = useState({
+    areaKm2: null as number | null,
+    coastlineKm: null as number | null,
+    terrainType: "" as string,
+    settlementPattern: "" as string,
+  });
   const topRef = useRef<HTMLDivElement>(null);
   const { profile, loading: profileLoading, saving, updateRisk, updateOperations, populateFromKostra, save: saveProfile } = useMunicipalityProfile(municipalityName);
 
