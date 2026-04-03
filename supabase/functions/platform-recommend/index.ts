@@ -240,9 +240,10 @@ function scoreMarketMaturity(drone: Record<string, any>): number {
   else if (['quantum', 'wingtra', 'delair', 'flyability', 'schiebel', 'elistair', 'skydio', 'percepto'].some(m => mfr.includes(m))) base = 85;
   else if (['acecore', 'c-astral', 'germandrones', 'avy', 'deltaquad', 'elevonx', 'robot aviation', 'nordic'].some(m => mfr.includes(m))) base = 70;
 
-  // Prefer newer generation models when manufacturer has multiple (e.g. Dock 3 > Dock 2)
-  if (model.includes('dock 3') || model.includes('matrice 4')) base = Math.min(base + 5, 100);
-  if (model.includes('dock 2') || model.includes('matrice 3')) base = Math.max(base - 3, 0);
+  // Strongly prefer newer generation models when manufacturer has multiple
+  // Dock 3 / Matrice 4 series supersedes Dock 2 / Matrice 3 series
+  if (model.includes('dock 3') || model.includes('matrice 4')) base = 100;
+  else if (model.includes('dock 2') || model.includes('matrice 3')) base = 50; // Significant penalty for superseded models
 
   return base;
 }
