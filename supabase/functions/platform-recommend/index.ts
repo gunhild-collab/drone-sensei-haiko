@@ -52,8 +52,8 @@ function hardFilter(drone: Record<string, any>, useCase: Record<string, any>): [
 // STEG 2: SOFT SCORING (0–100)
 // ============================================================
 
-const WEIGHTS: Record<string, number> = {
-  drone_type_match: 0.25,  // Increased from 0.20 (redistributed weather weight)
+const DEFAULT_WEIGHTS: Record<string, number> = {
+  drone_type_match: 0.25,
   sensor_match: 0.15,
   price_fit: 0.15,
   easa_certification: 0.12,
@@ -61,8 +61,21 @@ const WEIGHTS: Record<string, number> = {
   eu_availability: 0.08,
   overshoot_penalty: 0.10,
   market_maturity: 0.05,
-  // weather_rating removed from scoring — reported as advisory flag instead
 };
+
+// When prefer_european=true, eu_availability gets boosted significantly
+const EU_PREFERRED_WEIGHTS: Record<string, number> = {
+  drone_type_match: 0.20,
+  sensor_match: 0.13,
+  price_fit: 0.13,
+  easa_certification: 0.10,
+  deployment_ease: 0.09,
+  eu_availability: 0.22,  // Boosted from 0.08 → 0.22
+  overshoot_penalty: 0.08,
+  market_maturity: 0.05,
+};
+
+let WEIGHTS: Record<string, number> = { ...DEFAULT_WEIGHTS };
 
 function scoreDroneTypeMatch(drone: Record<string, any>, useCase: Record<string, any>): number {
   const dType = (drone.drone_type || '').toLowerCase();
