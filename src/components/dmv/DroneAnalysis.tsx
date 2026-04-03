@@ -1480,6 +1480,7 @@ export default function DroneAnalysis({
             sector_data: sectorData,
             fire_stats: fireStats,
             bris_mission_data: brisMissionData,
+            prefer_european: preferEuropean,
           },
         });
         if (fnError) throw new Error(fnError.message);
