@@ -410,6 +410,7 @@ export default function Assessment() {
                 onSelectionChange={setSelectedUseCases}
               />
 
+              <Card>
                 <CardHeader>
                   <CardTitle className="text-lg font-display">Utvidet kommuneprofil</CardTitle>
                   <CardDescription>Risikobilde og driftsdata — data hentes automatisk fra SSB/KOSTRA der mulig.</CardDescription>
