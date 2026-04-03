@@ -1799,7 +1799,7 @@ export default function DroneAnalysis({
             const droneGroups = grouped.filter(g => g.droneScenario);
 
             return (
-              <div id="brannstatistikk" className="space-y-4 mb-6 scroll-mt-6">
+              <div id="brannstatistikk" className="-mx-4 px-4 py-6 rounded-2xl space-y-4 scroll-mt-6" style={{ background: 'hsl(0 84% 60% / 0.04)' }}>
                 <h2 className="text-lg font-display font-semibold flex items-center gap-2">
                   <Flame className="w-5 h-5 text-destructive" /> 🔥 Brannstatistikk ({yearKey})
                 </h2>
