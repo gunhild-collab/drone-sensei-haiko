@@ -271,10 +271,16 @@ export default function Assessment() {
                     )}
                     <p className="text-xs text-muted-foreground">
                       {fireDept.type === 'IKS'
-                        ? `Brannvesenet deler ressurser med ${fireDeptPartners.length} nabokommuner. Dronestasjonen kan stasjoneres sentralt.`
+                        ? `Brannvesenet deler ressurser med ${fireDeptPartners.length} nabokommuner.`
                         : fireDept.type === 'KF'
                         ? 'Kommunalt foretak — egen brannberedskap.'
                         : 'Enkeltkommunalt brannvesen.'}
+                    </p>
+                    {fireDept.type === 'IKS' && (
+                      <p className="text-xs text-primary font-medium">
+                        🚁 Dronestasjonen kan stasjoneres sentralt og betjene alle eierkommuner i IKS-et.
+                      </p>
+                    )}
                     </p>
                     {alarmSentral && (
                       <p className="text-xs text-muted-foreground">
