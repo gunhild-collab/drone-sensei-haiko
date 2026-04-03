@@ -1575,7 +1575,7 @@ export default function DroneAnalysis({
       <ReportSidebar activeSection={activeSection} />
 
       {/* Main content */}
-      <div className="flex-1 max-w-4xl space-y-6">
+      <div className="flex-1 max-w-4xl space-y-10">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           {/* Header */}
           <div className="flex items-center gap-3 mb-4">
