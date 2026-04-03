@@ -958,17 +958,27 @@ function DroneMapHub({ departmentAnalyses, onClickDepartment }: {
 
         <div className="w-full overflow-x-auto">
           <svg viewBox="0 0 600 500" className="w-full max-w-[600px] mx-auto" style={{ minWidth: 400 }}>
-            {/* Lines from center to nodes */}
+            {/* Lines from center hub edge to node edge */}
             {departmentAnalyses.map((dept, i) => {
               const angle = (2 * Math.PI * i) / departmentAnalyses.length - Math.PI / 2;
-              const x = cx + radius * Math.cos(angle);
-              const y = cy + radius * Math.sin(angle);
+              const nx = cx + radius * Math.cos(angle);
+              const ny = cy + radius * Math.sin(angle);
+              const dx = nx - cx;
+              const dy = ny - cy;
+              const dist = Math.sqrt(dx * dx + dy * dy);
+              const ux = dx / dist;
+              const uy = dy / dist;
+              // Start at edge of center hub (r=38), end at edge of dept node (r=52)
+              const x1 = cx + ux * 40;
+              const y1 = cy + uy * 40;
+              const x2 = nx - ux * 54;
+              const y2 = ny - uy * 54;
               const thickness = Math.max(1.5, (dept.total_annual_hours / maxHours) * 8);
               const priority = getPriority(dept.total_annual_hours);
               return (
                 <line
                   key={`line-${i}`}
-                  x1={cx} y1={cy} x2={x} y2={y}
+                  x1={x1} y1={y1} x2={x2} y2={y2}
                   stroke={priority.color}
                   strokeWidth={thickness}
                   strokeOpacity={0.35}
