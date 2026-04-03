@@ -53,15 +53,15 @@ function hardFilter(drone: Record<string, any>, useCase: Record<string, any>): [
 // ============================================================
 
 const WEIGHTS: Record<string, number> = {
-  drone_type_match: 0.20,
+  drone_type_match: 0.25,  // Increased from 0.20 (redistributed weather weight)
   sensor_match: 0.15,
   price_fit: 0.15,
   easa_certification: 0.12,
   deployment_ease: 0.10,
   eu_availability: 0.08,
-  weather_rating: 0.05,
   overshoot_penalty: 0.10,
   market_maturity: 0.05,
+  // weather_rating removed from scoring — reported as advisory flag instead
 };
 
 function scoreDroneTypeMatch(drone: Record<string, any>, useCase: Record<string, any>): number {
@@ -118,10 +118,10 @@ function scoreSensorMatch(drone: Record<string, any>, useCase: Record<string, an
 
 function scorePriceFit(drone: Record<string, any>): number {
   const priceStr = drone.price_eur_estimate || '';
-  if (priceStr === 'Fetch quote' || !priceStr) return 40;
+  if (!priceStr || priceStr === 'Fetch quote') return 75; // Unknown price = neutral, not penalized
 
   const numbers = priceStr.replace(/\s/g, '').match(/\d+/g);
-  if (!numbers) return 40;
+  if (!numbers) return 75;
   const price = Number(numbers[0]);
 
   if (price <= 1000) return 95;
@@ -136,14 +136,15 @@ function scorePriceFit(drone: Record<string, any>): number {
 
 function scoreEasaCertification(drone: Record<string, any>): number {
   const cClass = (drone.c_class || '').toUpperCase();
-  if (!cClass || cClass === 'NONE' || cClass === 'N/A') return 30;
+  // No C-class = requires SORA pathway (extra cost/effort), but NOT disqualifying
+  if (!cClass || cClass === 'NONE' || cClass === 'N/A') return 65;
   if (cClass.includes('C6')) return 100;
   if (cClass.includes('C5')) return 95;
   if (cClass.includes('C2')) return 90;
   if (cClass.includes('C1')) return 90;
   if (cClass.includes('C3')) return 85;
   if (cClass.includes('C0')) return 85;
-  return 50;
+  return 65;
 }
 
 function scoreDeploymentEase(drone: Record<string, any>, useCase: Record<string, any>): number {
@@ -162,16 +163,17 @@ function scoreDeploymentEase(drone: Record<string, any>, useCase: Record<string,
 
 function scoreEuAvailability(drone: Record<string, any>): number {
   const country = (drone.country_of_manufacturer || '').toLowerCase();
-  const euCountries = ['norge', 'sverige', 'danmark', 'finland', 'tyskland', 'frankrike',
-    'nederland', 'belgia', 'sveits', 'østerrike', 'slovenia', 'estland',
-    'latvia', 'tsjekkia', 'italia', 'spania', 'portugal', 'polen'];
+  const nordicCountries = ['norge', 'sverige', 'danmark', 'finland', 'island'];
+  const euCountries = ['tyskland', 'frankrike', 'nederland', 'belgia', 'sveits',
+    'østerrike', 'slovenia', 'estland', 'latvia', 'tsjekkia', 'italia',
+    'spania', 'portugal', 'polen'];
 
-  if (country.includes('norge')) return 100;
+  if (nordicCountries.some(c => country.includes(c))) return 100; // Nordic = top tier
   if (euCountries.some(c => country.includes(c))) return 90;
   if (country.includes('kina')) return 60;
   if (country.includes('usa')) return 65;
   if (country.includes('israel')) return 55;
-  return 40;
+  return 50;
 }
 
 function scoreWeatherRating(drone: Record<string, any>): number {
@@ -217,7 +219,7 @@ function scoreMarketMaturity(drone: Record<string, any>): number {
   return 50;
 }
 
-function calculateScore(drone: Record<string, any>, useCase: Record<string, any>): { total_score: number; breakdown: Record<string, number> } {
+function calculateScore(drone: Record<string, any>, useCase: Record<string, any>): { total_score: number; breakdown: Record<string, number>; advisories: string[] } {
   const scores: Record<string, number> = {
     drone_type_match: scoreDroneTypeMatch(drone, useCase),
     sensor_match: scoreSensorMatch(drone, useCase),
@@ -225,16 +227,28 @@ function calculateScore(drone: Record<string, any>, useCase: Record<string, any>
     easa_certification: scoreEasaCertification(drone),
     deployment_ease: scoreDeploymentEase(drone, useCase),
     eu_availability: scoreEuAvailability(drone),
-    weather_rating: scoreWeatherRating(drone),
     overshoot_penalty: scoreOvershootPenalty(drone, useCase),
     market_maturity: scoreMarketMaturity(drone),
   };
 
   const total = Object.keys(WEIGHTS).reduce((sum, k) => sum + scores[k] * WEIGHTS[k], 0);
 
+  // Advisory flags (not part of score)
+  const advisories: string[] = [];
+  const ip = (drone.ip_rating || '').toUpperCase();
+  const wind = Number(drone.wind_resistance_ms) || 0;
+  if (!ip) advisories.push('Ingen IP-rating oppgitt — vurder værrobusthet');
+  if (wind === 0) advisories.push('Ingen vindtoleranse oppgitt');
+
+  const cClass = (drone.c_class || '').toUpperCase();
+  if (!cClass || cClass === 'NONE' || cClass === 'N/A') {
+    advisories.push('Ingen C-klasse — krever SORA-vurdering for operasjonstillatelse');
+  }
+
   return {
     total_score: Math.round(total * 10) / 10,
     breakdown: Object.fromEntries(Object.entries(scores).map(([k, v]) => [k, Math.round(v * 10) / 10])),
+    advisories,
   };
 }
 
@@ -255,6 +269,7 @@ interface FleetEntry {
   departments: string[];
   avg_score: number;
   breakdown_avg: Record<string, number>;
+  advisories: string[];
 }
 
 function optimizeFleet(
@@ -325,6 +340,10 @@ function optimizeFleet(
       ) / 10;
     }
 
+    // Collect advisories for this drone (from first UC match)
+    const firstUcScore = scored[bestDroneId][newCoveredIds[0]];
+    const droneAdvisories = firstUcScore.advisories || [];
+
     fleet.push({
       drone_id: d.id,
       drone: `${d.manufacturer} ${d.model}`,
@@ -338,6 +357,7 @@ function optimizeFleet(
       departments: [...new Set(ucDetails.map(x => x.department))].sort(),
       avg_score: Math.round(ucDetails.reduce((s, x) => s + x.score, 0) / ucDetails.length * 10) / 10,
       breakdown_avg: breakdownAvg,
+      advisories: droneAdvisories,
     });
 
     for (const uid of newCoveredIds) uncoveredSet.delete(uid);
@@ -405,9 +425,9 @@ Deno.serve(async (req) => {
     const { fleet, uncovered } = optimizeFleet(allDrones, useCases, max_platforms);
 
     // Also compute per-use-case top matches for detailed view
-    const perUseCaseTop: Record<string, Array<{ drone: string; drone_id: string; score: number; breakdown: Record<string, number> }>> = {};
+    const perUseCaseTop: Record<string, Array<{ drone: string; drone_id: string; score: number; breakdown: Record<string, number>; advisories: string[] }>> = {};
     for (const uc of useCases) {
-      const matches: Array<{ drone: string; drone_id: string; score: number; breakdown: Record<string, number> }> = [];
+      const matches: Array<{ drone: string; drone_id: string; score: number; breakdown: Record<string, number>; advisories: string[] }> = [];
       for (const d of allDrones) {
         const [passed] = hardFilter(d, uc);
         if (!passed) continue;
@@ -418,6 +438,7 @@ Deno.serve(async (req) => {
             drone_id: d.id,
             score: s.total_score,
             breakdown: s.breakdown,
+            advisories: s.advisories,
           });
         }
       }
