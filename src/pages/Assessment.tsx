@@ -101,6 +101,11 @@ export default function Assessment() {
           buildings: data.drone_relevance?.estimated_buildings ?? null,
           vaKm: data.drone_relevance?.estimated_va_km ?? null,
         });
+        // Auto-populate geography
+        setGeoData(prev => ({
+          ...prev,
+          areaKm2: data.area_km2 ?? null,
+        }));
         // Initialize departments based on population
         const suggested = getSuggestedDepartments(pop || 8000);
         setDepartments(suggested.map((d, i) => ({
