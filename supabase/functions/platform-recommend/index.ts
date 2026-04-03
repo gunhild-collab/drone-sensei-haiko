@@ -45,6 +45,13 @@ function hardFilter(drone: Record<string, any>, useCase: Record<string, any>): [
     if (!cat.includes('dock') && !launch.includes('dock')) return [false, 'Krever dock-system, drone har ikke'];
   }
 
+  // Payload check — cargo use cases (e.g. medisinsk transport) need real payload
+  const minPayload = Number(useCase.min_payload_kg) || 0;
+  if (minPayload > 0) {
+    const dronePayload = Number(drone.payload_kg) || 0;
+    if (dronePayload < minPayload) return [false, `Payload ${dronePayload} kg < krav ${minPayload} kg`];
+  }
+
   return [true, ''];
 }
 
