@@ -73,6 +73,7 @@ export default function Assessment() {
   });
   const [selectedUseCases, setSelectedUseCases] = useState<string[]>([]);
   const [existingDrones, setExistingDrones] = useState<{ id: string; model: string; department: string; useCase: string }[]>([]);
+  const [budgetTier, setBudgetTier] = useState<string>("");
   const topRef = useRef<HTMLDivElement>(null);
   const { profile, loading: profileLoading, saving, updateRisk, updateOperations, populateFromKostra, save: saveProfile } = useMunicipalityProfile(municipalityName);
 
@@ -411,6 +412,47 @@ export default function Assessment() {
                 value={existingDrones}
                 onChange={setExistingDrones}
               />
+
+              {/* Budget tier */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg font-display">Budsjett</CardTitle>
+                  <CardDescription>Omtrentlig ramme for droneinvestering. Påvirker hvilke plattformer som anbefales.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {[
+                      { id: "under50k", label: "Under 50 000 kr", sub: "Enkel plattform" },
+                      { id: "50k-150k", label: "50 000 – 150 000 kr", sub: "Standard flåte" },
+                      { id: "150k-500k", label: "150 000 – 500 000 kr", sub: "Avansert flåte" },
+                      { id: "over500k", label: "Over 500 000 kr", sub: "Autonomt program" },
+                    ].map(tier => (
+                      <button
+                        key={tier.id}
+                        type="button"
+                        onClick={() => setBudgetTier(tier.id)}
+                        className={cn(
+                          "rounded-lg border p-3 text-left transition-all",
+                          budgetTier === tier.id
+                            ? "border-primary bg-primary/5 ring-2 ring-primary/20"
+                            : "border-border hover:border-primary/40"
+                        )}
+                      >
+                        <p className="text-sm font-semibold leading-tight">{tier.label}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">{tier.sub}</p>
+                      </button>
+                    ))}
+                  </div>
+                  {budgetTier && (
+                    <p className="text-xs text-muted-foreground">
+                      {budgetTier === "under50k" && "Dekker 1 multirotor for visuell inspeksjon og kartlegging"}
+                      {budgetTier === "50k-150k" && "Dekker 1–2 plattformer med termisk og RTK-kapasitet"}
+                      {budgetTier === "150k-500k" && "Dekker flåte med fixed-wing, dock eller spesialsensorer"}
+                      {budgetTier === "over500k" && "Dekker autonomt drone-in-a-box program med BVLOS"}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
 
               {/* Use cases */}
               <UseCaseSelector
