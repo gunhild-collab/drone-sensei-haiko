@@ -118,10 +118,10 @@ function scoreSensorMatch(drone: Record<string, any>, useCase: Record<string, an
 
 function scorePriceFit(drone: Record<string, any>): number {
   const priceStr = drone.price_eur_estimate || '';
-  if (priceStr === 'Fetch quote' || !priceStr) return 40;
+  if (!priceStr || priceStr === 'Fetch quote') return 75; // Unknown price = neutral, not penalized
 
   const numbers = priceStr.replace(/\s/g, '').match(/\d+/g);
-  if (!numbers) return 40;
+  if (!numbers) return 75;
   const price = Number(numbers[0]);
 
   if (price <= 1000) return 95;
