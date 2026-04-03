@@ -368,7 +368,7 @@ function optimizeFleet(
 
     if (!bestDroneId) break;
 
-    const d = drones.find(dr => dr.id === bestDroneId)!;
+    const d = activeDrones.find(dr => dr.id === bestDroneId)!;
     const newCoveredIds = Object.keys(scored[bestDroneId]).filter(uid => uncoveredSet.has(uid));
     const ucDetails = newCoveredIds.map(uid => {
       const uc = useCases.find(u => u.use_case_id === uid)!;
