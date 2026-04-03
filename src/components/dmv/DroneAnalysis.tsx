@@ -1507,6 +1507,22 @@ export default function DroneAnalysis({
             <p className="text-sm text-muted-foreground">AI vurderer droneoperasjoner for {municipalityName}...</p>
           </div>
         </div>
+        <Card className="border-primary/15">
+          <CardContent className="pt-4 pb-3">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={preferEuropean}
+                onChange={e => setPreferEuropean(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-border accent-primary"
+              />
+              <div>
+                <p className="text-sm font-semibold">🇪🇺 Foretrekk europeisk/nordisk produsent</p>
+                <p className="text-xs text-muted-foreground">Vekter droner fra europeiske og nordiske produsenter høyere i anbefalingene. Kinesiske produsenter (f.eks. DJI) vil fortsatt vises, men nedprioriteres.</p>
+              </div>
+            </label>
+          </CardContent>
+        </Card>
         <div className="space-y-4">
           {[1, 2, 3].map(i => <Skeleton key={i} className="h-32 w-full rounded-xl" />)}
         </div>
