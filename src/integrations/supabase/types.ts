@@ -591,6 +591,84 @@ export type Database = {
         }
         Relationships: []
       }
+      use_case_requirements: {
+        Row: {
+          cost_driver_notes: string | null
+          created_at: string
+          department: string
+          description: string | null
+          easa_min_category: string | null
+          frequency: string | null
+          id: string
+          max_mtow_kg: number | null
+          min_flight_time_min: number | null
+          min_range_km: number | null
+          min_resolution_mp: number | null
+          preferred_drone_type: string[] | null
+          priority_score: number | null
+          required_sensors: string[] | null
+          requires_bvlos: boolean | null
+          requires_dock: boolean | null
+          requires_lidar: boolean | null
+          requires_rtk: boolean | null
+          requires_thermal: boolean | null
+          shared_departments: string[] | null
+          use_case_id: string
+          use_case_name: string
+          use_case_name_en: string | null
+        }
+        Insert: {
+          cost_driver_notes?: string | null
+          created_at?: string
+          department: string
+          description?: string | null
+          easa_min_category?: string | null
+          frequency?: string | null
+          id?: string
+          max_mtow_kg?: number | null
+          min_flight_time_min?: number | null
+          min_range_km?: number | null
+          min_resolution_mp?: number | null
+          preferred_drone_type?: string[] | null
+          priority_score?: number | null
+          required_sensors?: string[] | null
+          requires_bvlos?: boolean | null
+          requires_dock?: boolean | null
+          requires_lidar?: boolean | null
+          requires_rtk?: boolean | null
+          requires_thermal?: boolean | null
+          shared_departments?: string[] | null
+          use_case_id: string
+          use_case_name: string
+          use_case_name_en?: string | null
+        }
+        Update: {
+          cost_driver_notes?: string | null
+          created_at?: string
+          department?: string
+          description?: string | null
+          easa_min_category?: string | null
+          frequency?: string | null
+          id?: string
+          max_mtow_kg?: number | null
+          min_flight_time_min?: number | null
+          min_range_km?: number | null
+          min_resolution_mp?: number | null
+          preferred_drone_type?: string[] | null
+          priority_score?: number | null
+          required_sensors?: string[] | null
+          requires_bvlos?: boolean | null
+          requires_dock?: boolean | null
+          requires_lidar?: boolean | null
+          requires_rtk?: boolean | null
+          requires_thermal?: boolean | null
+          shared_departments?: string[] | null
+          use_case_id?: string
+          use_case_name?: string
+          use_case_name_en?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
