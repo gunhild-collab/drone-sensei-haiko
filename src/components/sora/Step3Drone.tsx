@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { Search, Check, Plane } from "lucide-react";
-import { DroneSpec, DRONE_DATABASE } from "@/data/droneDatabase";
+import { DroneSpec } from "@/data/droneDatabase";
+import { useDronePlatforms } from "@/hooks/useDronePlatforms";
 
 interface Props {
   selectedDrone: DroneSpec | null;
@@ -13,12 +14,13 @@ const valueClass = "text-sora-text font-semibold text-sm";
 
 export default function Step3Drone({ selectedDrone, onSelect }: Props) {
   const [search, setSearch] = useState('');
+  const { drones: DRONE_DATABASE } = useDronePlatforms();
 
   const filtered = useMemo(() => {
     if (!search) return DRONE_DATABASE;
     const q = search.toLowerCase();
     return DRONE_DATABASE.filter(d => d.name.toLowerCase().includes(q) || d.manufacturer.toLowerCase().includes(q));
-  }, [search]);
+  }, [search, DRONE_DATABASE]);
 
   return (
     <div className="space-y-6">

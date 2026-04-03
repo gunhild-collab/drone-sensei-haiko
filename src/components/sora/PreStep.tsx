@@ -4,7 +4,8 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { DroneSpec, DRONE_DATABASE } from "@/data/droneDatabase";
+import { DroneSpec } from "@/data/droneDatabase";
+import { useDronePlatforms } from "@/hooks/useDronePlatforms";
 import HaikoLogo from "./HaikoLogo";
 
 interface BrregUnit {
@@ -79,11 +80,13 @@ export default function PreStep({
     setCalendarOpen(false);
   };
 
+  const { drones: DRONE_DATABASE } = useDronePlatforms();
+
   const filteredDrones = useMemo(() => {
     if (!droneSearch) return DRONE_DATABASE;
     const q = droneSearch.toLowerCase();
     return DRONE_DATABASE.filter(d => d.name.toLowerCase().includes(q) || d.manufacturer.toLowerCase().includes(q));
-  }, [droneSearch]);
+  }, [droneSearch, DRONE_DATABASE]);
 
   return (
     <div className="min-h-screen bg-sora-bg flex items-center justify-center px-4 font-sora">
