@@ -602,6 +602,7 @@ export type Database = {
           id: string
           max_mtow_kg: number | null
           min_flight_time_min: number | null
+          min_payload_kg: number | null
           min_range_km: number | null
           min_resolution_mp: number | null
           preferred_drone_type: string[] | null
@@ -627,6 +628,7 @@ export type Database = {
           id?: string
           max_mtow_kg?: number | null
           min_flight_time_min?: number | null
+          min_payload_kg?: number | null
           min_range_km?: number | null
           min_resolution_mp?: number | null
           preferred_drone_type?: string[] | null
@@ -652,6 +654,7 @@ export type Database = {
           id?: string
           max_mtow_kg?: number | null
           min_flight_time_min?: number | null
+          min_payload_kg?: number | null
           min_range_km?: number | null
           min_resolution_mp?: number | null
           preferred_drone_type?: string[] | null
