@@ -281,7 +281,6 @@ export default function Assessment() {
                         🚁 Dronestasjonen kan stasjoneres sentralt og betjene alle eierkommuner i IKS-et.
                       </p>
                     )}
-                    </p>
                     {alarmSentral && (
                       <p className="text-xs text-muted-foreground">
                         110-sentral: {alarmSentral.name} ({alarmSentral.region}) — dekker {regionMunicipalities.length} kommuner i regionen.
