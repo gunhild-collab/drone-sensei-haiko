@@ -19,6 +19,7 @@ import { getSuggestedDepartments } from "@/data/departmentTemplates";
 import { findFireDepartment, findAlarmSentral, getPartnerMunicipalities, get110RegionMunicipalities, findIKSPartners, getIKSPartnerMunicipalities } from "@/data/iksData";
 import DepartmentEditor, { type ActiveDepartment } from "@/components/dmv/DepartmentEditor";
 import DroneAnalysis from "@/components/dmv/DroneAnalysis";
+import UseCaseSelector from "@/components/dmv/UseCaseSelector";
 import RiskProfileTab from "@/components/dmv/RiskProfileTab";
 import OperationsEconomyTab from "@/components/dmv/OperationsEconomyTab";
 import {
