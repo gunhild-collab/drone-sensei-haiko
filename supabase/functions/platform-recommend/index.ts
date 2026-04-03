@@ -328,7 +328,7 @@ function optimizeFleet(
   const activeDrones = filterSupersededModels(drones);
   // Pre-filter and score all combinations
   const scored: Record<string, Record<string, { total_score: number; breakdown: Record<string, number> }>> = {};
-  for (const d of drones) {
+  for (const d of activeDrones) {
     const dId = d.id;
     scored[dId] = {};
     for (const uc of useCases) {
