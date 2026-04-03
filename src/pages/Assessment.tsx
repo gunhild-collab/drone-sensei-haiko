@@ -20,6 +20,7 @@ import { findFireDepartment, findAlarmSentral, getPartnerMunicipalities, get110R
 import DepartmentEditor, { type ActiveDepartment } from "@/components/dmv/DepartmentEditor";
 import DroneAnalysis from "@/components/dmv/DroneAnalysis";
 import UseCaseSelector from "@/components/dmv/UseCaseSelector";
+import ExistingDronesSection from "@/components/dmv/ExistingDronesSection";
 import RiskProfileTab from "@/components/dmv/RiskProfileTab";
 import OperationsEconomyTab from "@/components/dmv/OperationsEconomyTab";
 import {
