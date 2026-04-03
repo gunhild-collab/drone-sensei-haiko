@@ -101,6 +101,10 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const db = createClient(supabaseUrl, supabaseServiceKey);
+
     const {
       municipality_name, population, area_km2, road_km, va_km, buildings,
       terrain_type, density_per_km2, departments, iks_partners,
@@ -111,10 +115,42 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
+    // Fetch drone catalog and use cases from DB
+    const [droneRes, ucRes] = await Promise.all([
+      db.from('drone_platforms').select('id,name,manufacturer,model,drone_type,category,max_takeoff_weight_kg,max_flight_time_min,max_range_km,has_thermal,has_rtk,sensor_types,payload_kg,ip_rating,wind_resistance_ms,price_nok_estimate,price_eur_estimate,launch_method,supports_bvlos,c_class,easa_category,notes'),
+      db.from('use_case_requirements').select('*'),
+    ]);
+
+    const DRONE_CATALOG = (droneRes.data || []).map((d: any) => ({
+      id: d.id, name: d.name || `${d.manufacturer} ${d.model}`, type: d.drone_type,
+      manufacturer: d.manufacturer, model: d.model,
+      mtom_kg: d.max_takeoff_weight_kg, max_flight_time_min: d.max_flight_time_min,
+      has_thermal: d.has_thermal || false, has_rtk: d.has_rtk || false,
+      has_lidar: ((d.sensor_types || []) as string[]).some((s: string) => s.toLowerCase().includes('lidar')),
+      payload_kg: d.payload_kg || 0, ip_rating: d.ip_rating,
+      max_wind_ms: d.wind_resistance_ms, price_nok: d.price_nok_estimate,
+      autonomous_dock: (d.category || '').toLowerCase().includes('dock') || (d.launch_method || '').toLowerCase().includes('dock'),
+      best_for: [], not_for: [], description_no: d.notes || '',
+    }));
+
+    // Map DB use cases to the format the prompt expects
+    const VERIFIED_USE_CASES = (ucRes.data || []).map((uc: any) => ({
+      id: uc.use_case_id, name: uc.use_case_name, department: uc.department,
+      operationType: uc.requires_bvlos ? 'BVLOS' : 'VLOS',
+      easaCategory: uc.easa_min_category || 'Spesifikk kategori',
+      certRequirement: uc.easa_min_category || 'STS-01 + BVLOS-tillatelse',
+      droneArchetype: (uc.preferred_drone_type || []).some((t: string) => t.toLowerCase().includes('fixed')) ? 'fixedWing' : 'multirotor',
+      priority: uc.priority_score >= 8 ? 'Høy' : uc.priority_score >= 5 ? 'Medium' : 'Lav',
+      flightHoursFormula: uc.cost_driver_notes || '10 timer/år flat',
+      needsThermal: uc.requires_thermal || false,
+      needsRtk: uc.requires_rtk || false,
+      notes: uc.description || '',
+    }));
+
     // Filter use cases to only those matching active departments — PRECISE matching
     const deptNames = (departments || []) as string[];
 
-    const relevantUCs = VERIFIED_USE_CASES.filter((uc) =>
+    const relevantUCs = VERIFIED_USE_CASES.filter((uc: any) =>
       matchDepartments(uc.department, deptNames)
     );
 
