@@ -117,6 +117,7 @@ export default function RiskProfileTab({ data, onChange, loading }: Props) {
             </div>
           </CardContent>
         </Card>
+      )}
     </div>
   );
 }
