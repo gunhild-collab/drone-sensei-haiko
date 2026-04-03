@@ -136,14 +136,15 @@ function scorePriceFit(drone: Record<string, any>): number {
 
 function scoreEasaCertification(drone: Record<string, any>): number {
   const cClass = (drone.c_class || '').toUpperCase();
-  if (!cClass || cClass === 'NONE' || cClass === 'N/A') return 30;
+  // No C-class = requires SORA pathway (extra cost/effort), but NOT disqualifying
+  if (!cClass || cClass === 'NONE' || cClass === 'N/A') return 65;
   if (cClass.includes('C6')) return 100;
   if (cClass.includes('C5')) return 95;
   if (cClass.includes('C2')) return 90;
   if (cClass.includes('C1')) return 90;
   if (cClass.includes('C3')) return 85;
   if (cClass.includes('C0')) return 85;
-  return 50;
+  return 65;
 }
 
 function scoreDeploymentEase(drone: Record<string, any>, useCase: Record<string, any>): number {
