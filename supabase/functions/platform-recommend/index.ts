@@ -340,6 +340,10 @@ function optimizeFleet(
       ) / 10;
     }
 
+    // Collect advisories for this drone (from first UC match)
+    const firstUcScore = scored[bestDroneId][newCoveredIds[0]];
+    const droneAdvisories = firstUcScore.advisories || [];
+
     fleet.push({
       drone_id: d.id,
       drone: `${d.manufacturer} ${d.model}`,
@@ -353,6 +357,7 @@ function optimizeFleet(
       departments: [...new Set(ucDetails.map(x => x.department))].sort(),
       avg_score: Math.round(ucDetails.reduce((s, x) => s + x.score, 0) / ucDetails.length * 10) / 10,
       breakdown_avg: breakdownAvg,
+      advisories: droneAdvisories,
     });
 
     for (const uid of newCoveredIds) uncoveredSet.delete(uid);
