@@ -1575,7 +1575,7 @@ export default function DroneAnalysis({
       <ReportSidebar activeSection={activeSection} />
 
       {/* Main content */}
-      <div className="flex-1 max-w-4xl space-y-6">
+      <div className="flex-1 max-w-4xl space-y-10">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           {/* Header */}
           <div className="flex items-center gap-3 mb-4">
@@ -1753,7 +1753,11 @@ export default function DroneAnalysis({
           />
 
           {/* Key metrics */}
-          <div id="nokkeltall" className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 scroll-mt-6">
+          <div id="nokkeltall" className="-mx-4 px-4 py-6 rounded-2xl bg-secondary/60 scroll-mt-6">
+          <h2 className="text-lg font-display font-semibold flex items-center gap-2 mb-4">
+            📊 Nøkkeltall
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <Card>
               <CardContent className="pt-4 pb-3 text-center">
                 <Plane className="w-5 h-5 mx-auto text-primary mb-1" />
@@ -1783,6 +1787,7 @@ export default function DroneAnalysis({
               </CardContent>
             </Card>
           </div>
+          </div>
 
           {/* ─── Brannstatistikk fra BRIS — tabbed ─── */}
           {brisMissionData && (() => {
@@ -1794,7 +1799,7 @@ export default function DroneAnalysis({
             const droneGroups = grouped.filter(g => g.droneScenario);
 
             return (
-              <div id="brannstatistikk" className="space-y-4 mb-6 scroll-mt-6">
+              <div id="brannstatistikk" className="-mx-4 px-4 py-6 rounded-2xl space-y-4 scroll-mt-6" style={{ background: 'hsl(0 84% 60% / 0.04)' }}>
                 <h2 className="text-lg font-display font-semibold flex items-center gap-2">
                   <Flame className="w-5 h-5 text-destructive" /> 🔥 Brannstatistikk ({yearKey})
                 </h2>
@@ -1822,7 +1827,7 @@ export default function DroneAnalysis({
 
 
           {/* Department × Drone matrix */}
-          <div id="operasjoner" className="space-y-3 mb-6 scroll-mt-6">
+          <div id="operasjoner" className="-mx-4 px-4 py-6 rounded-2xl bg-muted/30 space-y-3 scroll-mt-6">
             <h2 className="text-lg font-display font-semibold flex items-center gap-2">
               <Shield className="w-5 h-5 text-primary" /> ⚙️ Operasjoner per avdeling
             </h2>
@@ -1835,7 +1840,7 @@ export default function DroneAnalysis({
           </div>
 
           {/* Drone fleet — Haiko anbefaler */}
-          <div id="droneflate" className="space-y-4 mb-6 scroll-mt-6">
+          <div id="droneflate" className="-mx-4 px-4 py-6 rounded-2xl bg-secondary/60 space-y-4 scroll-mt-6">
             <h2 className="text-lg font-display font-semibold flex items-center gap-2">
               <Plane className="w-5 h-5 text-[#6858f8]" /> ✨ Haiko anbefaler
             </h2>
@@ -1965,7 +1970,7 @@ export default function DroneAnalysis({
 
           {/* Certification plan — Pilotprofil cards */}
           {analysis.certification_plan && analysis.certification_plan.pilot_groups.length > 0 && (
-            <div id="sertifisering" className="space-y-3 mb-6 scroll-mt-6">
+            <div id="sertifisering" className="-mx-4 px-4 py-6 rounded-2xl bg-muted/30 space-y-3 scroll-mt-6">
               <h2 className="text-lg font-display font-semibold flex items-center gap-2">
                 <GraduationCap className="w-5 h-5 text-primary" /> 🎓 Sertifiseringsplan
               </h2>
@@ -2009,7 +2014,7 @@ export default function DroneAnalysis({
             const breakevenPct = 50; // 18 months out of 36
 
             return (
-              <div id="implementering" className="space-y-4 mb-6 scroll-mt-6">
+              <div id="implementering" className="-mx-4 px-4 py-6 rounded-2xl bg-secondary/60 space-y-4 scroll-mt-6">
                 <h2 className="text-lg font-display font-semibold flex items-center gap-2">
                   📅 Implementeringsplan
                 </h2>
