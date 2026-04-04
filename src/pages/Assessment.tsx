@@ -17,6 +17,7 @@ import { useMunicipalityProfile } from "@/hooks/useMunicipalityProfile";
 import { evaluationApi, KostraData } from "@/lib/evaluationApi";
 import { getSuggestedDepartments } from "@/data/departmentTemplates";
 import { findFireDepartment, findAlarmSentral, getPartnerMunicipalities, get110RegionMunicipalities, findIKSPartners, getIKSPartnerMunicipalities } from "@/data/iksData";
+import { calculateIksRange } from "@/data/municipalityCoordinates";
 import DepartmentEditor, { type ActiveDepartment } from "@/components/dmv/DepartmentEditor";
 import DroneAnalysis from "@/components/dmv/DroneAnalysis";
 import UseCaseSelector from "@/components/dmv/UseCaseSelector";
@@ -294,11 +295,39 @@ export default function Assessment() {
                         ? 'Kommunalt foretak — egen brannberedskap.'
                         : 'Enkeltkommunalt brannvesen.'}
                     </p>
-                    {fireDept.type === 'IKS' && (
-                      <p className="text-xs text-primary font-medium">
-                        🚁 Dronestasjonen kan stasjoneres sentralt og betjene alle eierkommuner i IKS-et.
-                      </p>
-                    )}
+                    {fireDept.type === 'IKS' && (() => {
+                      const rangeResult = calculateIksRange(fireDept.municipalities);
+                      return (
+                        <div className="space-y-2">
+                          <p className="text-xs text-primary font-medium">
+                            🚁 Dronestasjonen kan stasjoneres sentralt og betjene alle eierkommuner i IKS-et.
+                          </p>
+                          {rangeResult && (
+                            <div className="bg-secondary/60 rounded-lg p-3 space-y-2">
+                              <p className="text-xs font-semibold flex items-center gap-1.5">
+                                <Route className="w-3.5 h-3.5 text-primary" />
+                                Minimumskrav til rekkevidde: <span className="text-primary">{rangeResult.maxRangeKm} km</span>
+                              </p>
+                              <p className="text-[11px] text-muted-foreground">
+                                Basert på stasjon i {rangeResult.centerMunicipality} (geografisk sentrum).
+                              </p>
+                              <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                                {rangeResult.distances.map(d => (
+                                  <div key={d.municipality} className="flex items-center justify-between text-[11px]">
+                                    <span className={d.municipality === rangeResult.centerMunicipality ? 'font-semibold' : ''}>
+                                      {d.municipality}
+                                    </span>
+                                    <span className="text-muted-foreground tabular-nums">
+                                      {d.distToEdge} km
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                     {alarmSentral && (
                       <p className="text-xs text-muted-foreground">
                         110-sentral: {alarmSentral.name} ({alarmSentral.region}) — dekker {regionMunicipalities.length} kommuner i regionen.
