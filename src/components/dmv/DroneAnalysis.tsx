@@ -1017,7 +1017,6 @@ export default function DroneAnalysis({
   const totalSoftwareCostNOK = Math.round(swRec.totalEurYear * EUR_TO_NOK);
 
   // ── PDF generation ──
-  const [generatingPdf, setGeneratingPdf] = useState(false);
 
   const handleDownloadPdf = useCallback(async () => {
     if (!fleetResult || !analysis) return;
