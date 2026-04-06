@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import type { BrisMissionData } from "@/hooks/useMunicipalityProfile";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
