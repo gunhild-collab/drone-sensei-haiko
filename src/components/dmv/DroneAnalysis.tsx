@@ -16,10 +16,13 @@ import type { KostraSectorData } from "@/lib/evaluationApi";
 import type { ActiveDepartment } from "./DepartmentEditor";
 import { useSoftwareStack, getRecommendedSoftware, formatSoftwarePriceNOK } from "@/hooks/useSoftwareStack";
 import type { SoftwareProduct } from "@/hooks/useSoftwareStack";
-import TimeSavingsSection from "./TimeSavingsSection";
+import TimeSavingsSection, { computeTasks } from "./TimeSavingsSection";
 import DroneHubSection from "./DroneHubSection";
 import DigitalTwinSection from "./DigitalTwinSection";
 import CoUseSection from "./CoUseSection";
+import { pdf } from "@react-pdf/renderer";
+import { saveAs } from "file-saver";
+import { RadarPdfDocument, type RadarPdfData } from "./RadarPdfDocument";
 import {
   fetchAndScoreFleet, formatNOK, formatNOKRaw, EUR_TO_NOK,
   COUNTRY_FLAGS, SOFTWARE_CATEGORY_MAP,
