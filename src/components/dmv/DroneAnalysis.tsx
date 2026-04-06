@@ -150,8 +150,9 @@ const navSections = [
    Sticky Topbar
    ═══════════════════════════════════════════════════ */
 
-function StickyTopbar({ municipalityName, activeSection, onBack }: {
+function StickyTopbar({ municipalityName, activeSection, onBack, onDownloadPdf, generatingPdf }: {
   municipalityName: string; activeSection: string; onBack: () => void;
+  onDownloadPdf: () => void; generatingPdf: boolean;
 }) {
   return (
     <div className="sticky top-0 z-50 bg-card/95 backdrop-blur-md border-b border-border">
@@ -179,8 +180,13 @@ function StickyTopbar({ municipalityName, activeSection, onBack }: {
           </Button>
           <Button size="sm" className="text-xs gap-1.5 font-display font-semibold"
             style={{ background: 'linear-gradient(135deg, #FF66C4, #685BF8)' }}
-            onClick={() => window.print()}>
-            <Download className="w-3.5 h-3.5" /> PDF
+            onClick={onDownloadPdf}
+            disabled={generatingPdf}>
+            {generatingPdf ? (
+              <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Genererer...</>
+            ) : (
+              <><Download className="w-3.5 h-3.5" /> PDF</>
+            )}
           </Button>
         </div>
       </div>
