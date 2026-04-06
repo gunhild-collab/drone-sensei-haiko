@@ -1,27 +1,30 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import type { BrisMissionData } from "@/hooks/useMunicipalityProfile";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Loader2, Plane, Shield, GraduationCap, Clock, DollarSign, Users, MapPin,
+  Loader2, Plane, Shield, GraduationCap, Clock, Users, MapPin,
   ChevronRight, ChevronDown, AlertTriangle, Flame, Route, Droplets,
   Building2, TreePine, Heart, Map, Leaf, Sparkles, ArrowRight,
-  Info, BookOpen, Siren, Milestone, Home, Download, Settings2
+  Info, BookOpen, Siren, Milestone, Home, Download, Settings2, Check
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import type { KostraSectorData } from "@/lib/evaluationApi";
 import type { ActiveDepartment } from "./DepartmentEditor";
-import { useSoftwareStack, getRecommendedSoftware, formatSoftwarePrice, formatSoftwarePriceNOK } from "@/hooks/useSoftwareStack";
+import { useSoftwareStack, getRecommendedSoftware, formatSoftwarePriceNOK } from "@/hooks/useSoftwareStack";
 import type { SoftwareProduct } from "@/hooks/useSoftwareStack";
 import TimeSavingsSection from "./TimeSavingsSection";
 import DroneHubSection from "./DroneHubSection";
 import DigitalTwinSection from "./DigitalTwinSection";
 import CoUseSection from "./CoUseSection";
-
-const EUR_TO_NOK = 11.5;
+import {
+  fetchAndScoreFleet, formatNOK, formatNOKRaw, EUR_TO_NOK,
+  COUNTRY_FLAGS, SOFTWARE_CATEGORY_MAP,
+  type FleetResult, type ScoredDrone, type DMAProduct,
+} from "@/lib/droneFleetEngine";
 
 /* ═══════════════════════════════════════════════════
    Types
@@ -125,7 +128,7 @@ interface Props {
 }
 
 /* ═══════════════════════════════════════════════════
-   Nav Sections
+   Nav
    ═══════════════════════════════════════════════════ */
 
 const navSections = [
@@ -144,14 +147,8 @@ const navSections = [
    Sticky Topbar
    ═══════════════════════════════════════════════════ */
 
-function StickyTopbar({
-  municipalityName,
-  activeSection,
-  onBack,
-}: {
-  municipalityName: string;
-  activeSection: string;
-  onBack: () => void;
+function StickyTopbar({ municipalityName, activeSection, onBack }: {
+  municipalityName: string; activeSection: string; onBack: () => void;
 }) {
   return (
     <div className="sticky top-0 z-50 bg-card/95 backdrop-blur-md border-b border-border">
@@ -163,16 +160,12 @@ function StickyTopbar({
         </div>
         <nav className="hidden md:flex items-center gap-0.5 overflow-x-auto">
           {navSections.map((s) => (
-            <button
-              key={s.id}
+            <button key={s.id}
               onClick={() => document.getElementById(s.id)?.scrollIntoView({ behavior: "smooth", block: "start" })}
               className={cn(
                 "px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-colors whitespace-nowrap",
-                activeSection === s.id
-                  ? "text-primary border-b-2 border-primary"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
+                activeSection === s.id ? "text-primary border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"
+              )}>
               {s.label}
             </button>
           ))}
@@ -181,12 +174,9 @@ function StickyTopbar({
           <Button variant="ghost" size="sm" className="text-xs gap-1.5 hidden sm:flex" onClick={onBack}>
             <Settings2 className="w-3.5 h-3.5" /> Juster
           </Button>
-          <Button
-            size="sm"
-            className="text-xs gap-1.5 font-display font-semibold"
+          <Button size="sm" className="text-xs gap-1.5 font-display font-semibold"
             style={{ background: 'linear-gradient(135deg, #FF66C4, #685BF8)' }}
-            onClick={() => window.print()}
-          >
+            onClick={() => window.print()}>
             <Download className="w-3.5 h-3.5" /> PDF
           </Button>
         </div>
@@ -196,31 +186,25 @@ function StickyTopbar({
 }
 
 /* ═══════════════════════════════════════════════════
-   Hero / Sammendrag Section
+   Hero / Sammendrag
    ═══════════════════════════════════════════════════ */
 
-function HeroSection({
-  municipalityName, analysis, departments,
-}: {
+function HeroSection({ municipalityName, analysis, departments, fleetResult }: {
   municipalityName: string;
   analysis: DroneAnalysisResult;
   departments: ActiveDepartment[];
+  fleetResult: FleetResult;
 }) {
   const activeDepts = departments.filter(d => d.enabled);
   const totalUseCases = analysis.department_analyses.reduce((s, d) => s + d.use_cases.length, 0);
-  const totalFleetCost = analysis.drone_fleet.reduce((s, d) => s + d.estimated_cost_nok * d.quantity, 0);
   const annualSavings = analysis.drone_mission_savings?.total_annual_savings_nok;
   const savingsDisplay = annualSavings
-    ? `${(annualSavings / 1000).toFixed(0)}k–${((annualSavings * 1.4) / 1000).toFixed(0)}k kr`
-    : `${(totalFleetCost * 0.3 / 1000).toFixed(0)}k–${(totalFleetCost * 0.6 / 1000).toFixed(0)}k kr`;
-  const paybackMonths = annualSavings && annualSavings > 0
-    ? Math.round((totalFleetCost / annualSavings) * 12) : null;
+    ? `${formatNOKRaw(annualSavings)}–${formatNOKRaw(annualSavings * 1.4)}`
+    : 'Beregnes';
 
-  const droneTypeIcon = (type: string) => {
-    const t = type.toLowerCase();
-    if (t.includes('dock') || t.includes('autonom')) return '🏠';
-    if (t.includes('fixed') || t.includes('wing')) return '✈️';
-    return '🚁';
+  const getFlag = (d: ScoredDrone) => {
+    const country = d.product.manufacturers?.country || '';
+    return COUNTRY_FLAGS[country] || '🌐';
   };
 
   return (
@@ -249,25 +233,17 @@ function HeroSection({
       <div className="mt-8 space-y-3">
         <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#999' }}>Anbefalt flåte</p>
         <div className="flex flex-wrap gap-3">
-          {analysis.drone_fleet.map((d, i) => (
+          {fleetResult.fleet.map((d, i) => (
             <div key={i} className="flex items-center gap-3 bg-card rounded-xl border border-border px-4 py-3 shadow-sm">
-              <span className="text-2xl">{droneTypeIcon(d.drone_type)}</span>
+              <span className="text-2xl">{getFlag(d)}</span>
               <div>
-                <p className="text-sm font-display font-semibold" style={{ color: '#1C0059' }}>{d.recommended_model}</p>
+                <p className="text-sm font-display font-semibold" style={{ color: '#1C0059' }}>{d.product.product_name}</p>
                 <p className="text-xs" style={{ color: '#999' }}>
-                  Dekker {d.shared_between.length} avd. · {d.estimated_cost_nok > 0 ? `€${Math.round(d.estimated_cost_nok / EUR_TO_NOK).toLocaleString('nb-NO')}` : 'Tilbud'}
+                  {d.roleLabel} · {formatNOK(d.product.price_eur, !!d.product.quote_required)}
                 </p>
               </div>
             </div>
           ))}
-        </div>
-        <div className="flex flex-wrap items-center gap-4 mt-2">
-          <p className="text-sm font-display font-semibold" style={{ color: '#1C0059' }}>
-            Estimert flåtekostnad: {totalFleetCost.toLocaleString('nb-NO')} kr
-          </p>
-          {paybackMonths && paybackMonths > 0 && paybackMonths < 120 && (
-            <p className="text-sm" style={{ color: '#10B981' }}>· Tilbakebetalt innen ~{paybackMonths} måneder</p>
-          )}
         </div>
       </div>
     </section>
@@ -275,95 +251,102 @@ function HeroSection({
 }
 
 /* ═══════════════════════════════════════════════════
-   Fleet Section with Software Stack
+   Fleet Section — NEW role-based cards + coverage matrix + cost table
    ═══════════════════════════════════════════════════ */
 
-function FleetSection({
-  analysis, departments, softwareData,
-}: {
-  analysis: DroneAnalysisResult;
-  departments: ActiveDepartment[];
+function FleetSection({ fleetResult, softwareData, analysis }: {
+  fleetResult: FleetResult;
   softwareData: SoftwareProduct[];
+  analysis: DroneAnalysisResult;
 }) {
-  const getDroneUseCases = (drone: DroneAnalysisResult['drone_fleet'][0]) => {
-    const result: Record<string, string[]> = {};
-    for (const dept of analysis.department_analyses) {
-      const matching = dept.use_cases.filter(uc => {
-        const ucType = (uc.drone_type || '').toLowerCase();
-        const droneModel = drone.recommended_model.toLowerCase();
-        const droneType = drone.drone_type.toLowerCase();
-        return (
-          drone.shared_between.some(s => dept.department.includes(s) || s.includes(dept.department)) ||
-          ucType.includes(droneType) || droneModel.includes(ucType) ||
-          ucType.includes('multirotor') && (droneType.includes('multirotor') || droneModel.includes('dock') || droneModel.includes('matrice')) ||
-          ucType.includes('fixed') && droneType.includes('fixed')
-        );
-      });
-      if (matching.length > 0) result[dept.department] = matching.map(uc => uc.name);
+  const { fleet, coverageMatrix, totalCoveredTags, totalRequiredTags } = fleetResult;
+
+  // Software per drone based on matched tags
+  const getDroneSoftware = (drone: ScoredDrone) => {
+    const swCategories = new Set<string>();
+    drone.matchedTags.forEach(tag => {
+      (SOFTWARE_CATEGORY_MAP[tag] || []).forEach(cat => swCategories.add(cat));
+    });
+    const matching = softwareData.filter(sw => swCategories.has(sw.category));
+    // Deduplicate by category, pick best per category
+    const byCategory = new Map<string, SoftwareProduct>();
+    for (const sw of matching) {
+      const existing = byCategory.get(sw.category);
+      if (!existing) { byCategory.set(sw.category, sw); continue; }
+      // Prefer European > open source > API
+      const isEu = (c: string) => ['switzerland','germany','france','netherlands','denmark','finland','norway','sweden','belgium','italy','spain','united kingdom','latvia'].includes(c.toLowerCase());
+      const scoreA = (isEu(sw.vendor_country) ? 10 : 0) + (sw.api_available ? 3 : 0) + (sw.open_source ? 1 : 0);
+      const scoreB = (isEu(existing.vendor_country) ? 10 : 0) + (existing.api_available ? 3 : 0) + (existing.open_source ? 1 : 0);
+      if (scoreA > scoreB) byCategory.set(sw.category, sw);
     }
-    return result;
+    return Array.from(byCategory.values());
   };
 
-  const droneTypeIcon = (type: string) => {
-    const t = type.toLowerCase();
-    if (t.includes('dock') || t.includes('autonom')) return '🏠';
-    if (t.includes('fixed') || t.includes('wing')) return '✈️';
-    return '🚁';
+  // Category labels for software
+  const SW_CAT_LABELS: Record<string, string> = {
+    photogrammetry: "Kartlegging",
+    gis_integration: "GIS",
+    inspection_analytics: "Inspeksjon",
+    digital_twin: "Digital tvilling",
+    mission_control: "Oppdragsstyring",
+    thermal_analysis: "Termisk",
+    agriculture: "Jordbruk",
+    fleet_management: "Flåtestyring",
+    flight_planning: "Flyplanlegging",
+    utm_airspace: "UTM",
+    data_processing: "Dataprosessering",
   };
 
-  // Software recommendation
-  const activeDeptNames = analysis.department_analyses.map(d => d.department);
-  const swRec = getRecommendedSoftware(softwareData, activeDeptNames, analysis.drone_fleet.length);
+  // Cost calculations
+  const allSwItems: { sw: SoftwareProduct; label: string }[] = [];
+  const seenSwIds = new Set<string>();
+  fleet.forEach(d => {
+    getDroneSoftware(d).forEach(sw => {
+      if (!seenSwIds.has(sw.id)) {
+        seenSwIds.add(sw.id);
+        allSwItems.push({ sw, label: SW_CAT_LABELS[sw.category] || sw.category });
+      }
+    });
+  });
 
-  // Costs
-  const totalHardwareCost = analysis.drone_fleet.reduce((s, d) => s + d.estimated_cost_nok * d.quantity, 0);
-  const totalSoftwareCostEUR = swRec.totalEurYear;
-  const totalSoftwareCostNOK = Math.round(totalSoftwareCostEUR * EUR_TO_NOK);
-  const regulatoryCostNOK = 80000; // estimate
-  const trainingCostNOK = 25000;
-  const totalYear1 = totalHardwareCost + totalSoftwareCostNOK + regulatoryCostNOK + trainingCostNOK;
-  const ongoingAnnual = totalSoftwareCostNOK + 15000; // sw + maintenance
+  const totalSwEurYear = allSwItems.reduce((s, item) => s + (item.sw.price_eur_year || 0), 0);
+  const totalSwNokYear = Math.round(totalSwEurYear * EUR_TO_NOK);
+  const accessoriesNok = 60000; // batteries, cases, etc.
+  const regulatoryNok = fleet.length * 40000; // SORA per drone type
+  const certNok = 5000;
+  const trainingNok = 50000;
+  const hwHasQuotes = fleet.every(d => d.product.quote_required || d.product.price_eur === null);
+  const totalHwNok = fleet.reduce((s, d) => s + ((d.product.price_eur || 0) * EUR_TO_NOK), 0);
 
-  // Comparison
-  const haikoCount = analysis.drone_fleet.length;
-  const haikoCost = totalHardwareCost;
-  const haikoUseCases = analysis.department_analyses.reduce((s, d) => s + d.use_cases.length, 0);
-  const haikoDepts = analysis.department_analyses.length;
-  const siloCount = Math.max(haikoCount + 2, 5);
-  const siloCost = Math.round(haikoCost * 1.6);
-  const siloUseCases = Math.round(haikoUseCases * 0.6);
-  const siloDepts = Math.min(haikoDepts, 3);
-  const savings = siloCost - haikoCost;
+  const getFlag = (d: ScoredDrone) => {
+    const country = d.product.manufacturers?.country || '';
+    return COUNTRY_FLAGS[country] || '🌐';
+  };
+
+  const sensorText = (d: DMAProduct) => {
+    const parts: string[] = [];
+    if (d.sensor_1) parts.push(d.sensor_1);
+    if (d.sensor_2) parts.push(d.sensor_2);
+    return parts.length > 0 ? parts.join(' + ') : 'RGB';
+  };
 
   return (
     <section id="flate" className="scroll-mt-16 space-y-8">
       <div>
         <h2 className="text-xl md:text-2xl font-display font-bold" style={{ color: '#1C0059' }}>Anbefalt droneflåte</h2>
         <p className="text-sm mt-1" style={{ color: '#555' }}>
-          Basert på kommunens bruksområder, geografi og budsjettramme
+          Basert på kommunens bruksområder, geografi og budsjettramme — rollebasert utvelgelse
         </p>
       </div>
 
-      {/* Platform cards */}
+      {/* Fleet cards */}
       <div className="space-y-6">
-        {analysis.drone_fleet.map((drone, i) => {
-          const d = drone as any;
+        {fleet.map((drone, i) => {
+          const p = drone.product;
           const isPrimary = i === 0;
-          const deptUcs = getDroneUseCases(drone);
-          const totalUcs = Object.values(deptUcs).reduce((s, arr) => s + arr.length, 0);
-          const specs = [
-            d.max_flight_time_min && { icon: '⏱', label: 'Flygetid', value: `${d.max_flight_time_min} min` },
-            { icon: '📏', label: 'Rekkevidde', value: d.max_range_km ? `${d.max_range_km} km` : '—' },
-            { icon: '⚖️', label: 'Vekt', value: d.max_takeoff_weight_kg ? `${d.max_takeoff_weight_kg} kg` : '—' },
-            { icon: '🌡', label: 'Sensor', value: d.needs_thermal ? 'RGB + Termisk' : d.needs_lidar ? 'RGB + LiDAR' : 'RGB' },
-            { icon: '📡', label: 'BVLOS', value: d.autonomous || d.drone_type?.toLowerCase().includes('dock') ? 'Ja' : 'Nei' },
-            d.c_class && { icon: '🏷', label: 'C-merking', value: d.c_class },
-            d.ip_rating && { icon: '🛡', label: 'IP-rating', value: d.ip_rating },
-          ].filter(Boolean) as { icon: string; label: string; value: string }[];
-
-          // Software for this drone's departments
-          const droneDepts = Object.keys(deptUcs);
-          const droneSw = getRecommendedSoftware(softwareData, droneDepts, 1);
+          const droneSw = getDroneSoftware(drone);
+          const flag = getFlag(drone);
+          const country = p.manufacturers?.country || '';
 
           return (
             <div key={i} className="bg-card rounded-2xl border border-border p-6 md:p-8 relative overflow-hidden"
@@ -374,13 +357,14 @@ function FleetSection({
                 {/* Left */}
                 <div className="flex-1 min-w-0 space-y-4">
                   <div className="flex items-center gap-3">
-                    <span className="text-3xl">{droneTypeIcon(drone.drone_type)}</span>
+                    <span className="text-3xl">{flag}</span>
                     <div>
                       <h3 className="text-lg font-display font-bold" style={{ color: '#1C0059' }}>
-                        {drone.recommended_model}
-                        {drone.quantity > 1 && <span className="text-sm font-normal text-muted-foreground ml-2">×{drone.quantity}</span>}
+                        {p.product_name}
                       </h3>
-                      <p className="text-sm" style={{ color: '#999' }}>{drone.drone_type}</p>
+                      <p className="text-sm" style={{ color: '#999' }}>
+                        {p.aircraft_type || p.category} · {country}
+                      </p>
                     </div>
                     {isPrimary && (
                       <Badge className="ml-auto text-xs border-0 text-white" style={{ background: 'linear-gradient(135deg, #FF66C4, #685BF8)' }}>
@@ -388,49 +372,59 @@ function FleetSection({
                       </Badge>
                     )}
                   </div>
-                  {d.why_chosen && <p className="text-sm leading-relaxed" style={{ color: '#555' }}>{d.why_chosen}</p>}
-                  {!d.why_chosen && (
-                    <p className="text-sm leading-relaxed" style={{ color: '#555' }}>
-                      Dekker {totalUcs} bruksområder på tvers av {Object.keys(deptUcs).length} avdelinger.
-                    </p>
-                  )}
-                  <div className="space-y-2">
-                    {Object.entries(deptUcs).map(([dept, ucs]) => (
-                      <div key={dept} className="flex flex-wrap items-center gap-1.5">
-                        <span className="text-xs font-semibold" style={{ color: '#1C0059' }}>{dept}:</span>
-                        {ucs.map((uc, j) => <Badge key={j} variant="secondary" className="text-[10px] font-normal">{uc}</Badge>)}
-                      </div>
-                    ))}
+
+                  {/* Role */}
+                  <div className="text-sm font-semibold uppercase tracking-wider" style={{ color: '#685BF8' }}>
+                    Rolle: {drone.roleLabel}
                   </div>
 
-                  {/* Software stack per drone */}
-                  {droneSw.items.length > 0 && (
-                    <div className="rounded-xl border border-border/60 p-4 mt-3" style={{ backgroundColor: "#FAFAF8" }}>
-                      <p className="text-xs font-semibold mb-2" style={{ color: "#685BF8" }}>📦 Anbefalt software-stack</p>
+                  {/* Matched use cases as badges */}
+                  <div>
+                    <p className="text-xs font-semibold mb-2" style={{ color: '#999' }}>DEKKER BRUKSOMRÅDER:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {drone.matchedTags.map((tag, j) => {
+                        const LABELS: Record<string, string> = {
+                          kartlegging: "Kartlegging", jordbruk: "Jordbruk", miljo: "Miljø",
+                          helse_transport: "Helse", inspeksjon_bygg: "Bygg", inspeksjon_bro: "Bro",
+                          inspeksjon_va: "VA", inspeksjon_vei: "Vei", digital_tvilling: "Tvilling",
+                          brann_sar: "Brann/SAR", beredskap: "Beredskap", overvaking: "Overvåking",
+                        };
+                        return <Badge key={j} variant="secondary" className="text-[10px]">{LABELS[tag] || tag}</Badge>;
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Software stack */}
+                  {droneSw.length > 0 && (
+                    <div className="rounded-xl border border-border/60 p-4" style={{ backgroundColor: "#FAFAF8" }}>
+                      <p className="text-xs font-semibold mb-2" style={{ color: "#685BF8" }}>📦 Anbefalt software:</p>
                       <div className="space-y-1.5">
-                        {droneSw.items.slice(0, 5).map((item, si) => (
+                        {droneSw.slice(0, 5).map((sw, si) => (
                           <div key={si} className="flex items-center justify-between text-xs">
                             <span style={{ color: "#555" }}>
-                              {item.label}: <strong style={{ color: "#1C0059" }}>{item.sw.name}</strong>{" "}
-                              <span style={{ color: "#999" }}>({item.sw.vendor_country})</span>
+                              {SW_CAT_LABELS[sw.category] || sw.category}: <strong style={{ color: "#1C0059" }}>{sw.name}</strong>
+                              {sw.vendor_country && <span style={{ color: "#999" }}> ({sw.vendor_country})</span>}
                             </span>
-                            <span style={{ color: "#685BF8" }}>{formatSoftwarePrice(item.sw)}</span>
+                            <span style={{ color: "#685BF8" }}>{formatSoftwarePriceNOK(sw)}</span>
                           </div>
                         ))}
                       </div>
-                      {droneSw.totalEurYear > 0 && (
-                        <p className="text-[10px] mt-2 pt-2 border-t border-border/50" style={{ color: "#999" }}>
-                          Est. software-kostnad: ~€{droneSw.totalEurYear.toLocaleString("nb-NO")}/år
-                        </p>
-                      )}
                     </div>
                   )}
                 </div>
 
-                {/* Right */}
+                {/* Right — specs + price */}
                 <div className="w-full md:w-[38%] space-y-4">
                   <div className="space-y-2">
-                    {specs.map((s, si) => (
+                    {[
+                      p.endurance_minutes && { icon: '⏱', label: 'Flygetid', value: `${p.endurance_minutes} min` },
+                      p.range_km && { icon: '📏', label: 'Rekkevidde', value: `${p.range_km} km` },
+                      p.mtow_kg && { icon: '⚖️', label: 'MTOW', value: `${p.mtow_kg} kg` },
+                      { icon: '🌡', label: 'Sensor', value: sensorText(p) },
+                      { icon: '📡', label: 'BVLOS', value: p.bvlos_ready ? 'Ja' : 'Nei' },
+                      p.ip_rating && { icon: '🛡', label: 'IP', value: p.ip_rating },
+                      p.launch_method && { icon: '🚀', label: 'Launch', value: p.launch_method },
+                    ].filter(Boolean).map((s: any, si) => (
                       <div key={si} className="flex items-center gap-2 text-sm">
                         <span className="w-5 text-center">{s.icon}</span>
                         <span style={{ color: '#999' }} className="w-24">{s.label}:</span>
@@ -439,15 +433,18 @@ function FleetSection({
                     ))}
                   </div>
                   <div className="rounded-xl border border-border p-4 text-center">
-                    {drone.estimated_cost_nok > 0 ? (
-                      <>
-                        <p className="text-xl font-display font-bold text-primary">€{Math.round(drone.estimated_cost_nok / EUR_TO_NOK).toLocaleString('nb-NO')}</p>
-                        <p className="text-xs" style={{ color: '#999' }}>ca. {drone.estimated_cost_nok.toLocaleString('nb-NO')} kr</p>
-                      </>
-                    ) : (
-                      <Button variant="outline" size="sm" className="text-xs gap-1.5" style={{ color: '#685BF8', borderColor: '#685BF8' }}>
-                        Be om tilbud fra produsent
-                      </Button>
+                    <p className="text-xl font-display font-bold" style={{ color: '#685BF8' }}>
+                      {formatNOK(p.price_eur, !!p.quote_required)}
+                    </p>
+                    {p.price_eur && !p.quote_required && (
+                      <p className="text-xs mt-1" style={{ color: '#999' }}>
+                        estimert pris
+                      </p>
+                    )}
+                    {(p.quote_required || !p.price_eur) && (
+                      <p className="text-xs mt-1" style={{ color: '#999' }}>
+                        Haiko innhenter tilbud
+                      </p>
                     )}
                   </div>
                 </div>
@@ -457,65 +454,126 @@ function FleetSection({
         })}
       </div>
 
+      {/* ═══ COVERAGE MATRIX ═══ */}
+      {coverageMatrix.length > 0 && (
+        <div className="bg-card rounded-2xl border border-border overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+          <div className="p-4 border-b border-border/50">
+            <p className="text-sm font-display font-semibold" style={{ color: '#1C0059' }}>Dekningsmatrise</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/20">
+                  <th className="text-left py-3 px-4 font-medium text-xs" style={{ color: '#999' }}></th>
+                  {fleet.map((d, i) => (
+                    <th key={i} className="text-center py-3 px-3 font-medium text-xs" style={{ color: '#1C0059' }}>
+                      {d.product.product_name.length > 18 ? d.product.product_name.substring(0, 16) + '…' : d.product.product_name}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {coverageMatrix.map((row, ri) => (
+                  <tr key={ri} className="border-b border-border/50 last:border-0">
+                    <td className="py-2.5 px-4 text-sm" style={{ color: '#555' }}>{row.label}</td>
+                    {row.drones.map((covered, ci) => (
+                      <td key={ci} className="py-2.5 px-3 text-center">
+                        {covered ? (
+                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/15 text-primary">
+                            <Check className="w-3.5 h-3.5" />
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2" style={{ borderColor: '#685BF8' }}>
+                  <td className="py-3 px-4 text-xs font-semibold" style={{ color: '#1C0059' }}>Bruksområder dekket:</td>
+                  {fleet.map((d, i) => (
+                    <td key={i} className="py-3 px-3 text-center text-xs font-semibold" style={{ color: '#685BF8' }}>
+                      {d.matchedTags.length}/{totalRequiredTags}
+                    </td>
+                  ))}
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* ═══ TOTAL SYSTEM COST TABLE ═══ */}
       <div className="rounded-2xl border-2 p-6" style={{ borderColor: "#685BF8", boxShadow: "0 2px 8px rgba(104,91,248,0.08)" }}>
         <h3 className="text-base font-display font-bold mb-4" style={{ color: "#1C0059" }}>
-          TOTAL SYSTEMKOSTNAD — ÅR 1
+          ESTIMERT SYSTEMKOSTNAD
         </h3>
-        <div className="space-y-3">
-          {[
-            { label: "Hardware (droner + tilbehør)", value: totalHardwareCost },
-            { label: "Software (årlig)", value: totalSoftwareCostNOK },
-            { label: "Regulatorisk (SORA-søknader)", value: regulatoryCostNOK },
-            { label: "Opplæring", value: trainingCostNOK },
-          ].map((row, i) => (
-            <div key={i} className="flex items-center justify-between py-2 border-b border-border/50">
-              <span className="text-sm" style={{ color: "#555" }}>{row.label}</span>
-              <span className="text-sm font-semibold" style={{ color: "#1C0059" }}>{row.value.toLocaleString("nb-NO")} kr</span>
+        <div className="space-y-1">
+          {/* Hardware */}
+          <p className="text-xs font-semibold uppercase tracking-wider pt-2" style={{ color: '#999' }}>Hardware</p>
+          {fleet.map((d, i) => (
+            <div key={i} className="flex items-center justify-between py-1.5 border-b border-border/30">
+              <span className="text-sm" style={{ color: "#555" }}>{d.product.product_name}</span>
+              <span className="text-sm font-medium" style={{ color: "#1C0059" }}>
+                {formatNOK(d.product.price_eur, !!d.product.quote_required)}
+              </span>
             </div>
           ))}
-          <div className="flex items-center justify-between py-3 border-t-2" style={{ borderColor: "#685BF8" }}>
+          <div className="flex items-center justify-between py-1.5 border-b border-border/30">
+            <span className="text-sm" style={{ color: "#555" }}>Tilbehør/batterier est.</span>
+            <span className="text-sm font-medium" style={{ color: "#1C0059" }}>{formatNOKRaw(accessoriesNok)}</span>
+          </div>
+
+          {/* Software */}
+          <p className="text-xs font-semibold uppercase tracking-wider pt-3" style={{ color: '#999' }}>Software (årlig)</p>
+          {allSwItems.map((item, i) => (
+            <div key={i} className="flex items-center justify-between py-1.5 border-b border-border/30">
+              <span className="text-sm" style={{ color: "#555" }}>{item.sw.name}</span>
+              <span className="text-sm font-medium" style={{ color: "#1C0059" }}>{formatSoftwarePriceNOK(item.sw)}</span>
+            </div>
+          ))}
+
+          {/* Regulatory */}
+          <p className="text-xs font-semibold uppercase tracking-wider pt-3" style={{ color: '#999' }}>Regulatorisk</p>
+          <div className="flex items-center justify-between py-1.5 border-b border-border/30">
+            <span className="text-sm" style={{ color: "#555" }}>{Math.ceil(fleet.length)} SORA-søknader est.</span>
+            <span className="text-sm font-medium" style={{ color: "#1C0059" }}>{formatNOKRaw(regulatoryNok)}</span>
+          </div>
+          <div className="flex items-center justify-between py-1.5 border-b border-border/30">
+            <span className="text-sm" style={{ color: "#555" }}>A2-sertifisering</span>
+            <span className="text-sm font-medium" style={{ color: "#1C0059" }}>{formatNOKRaw(certNok)}</span>
+          </div>
+
+          {/* Training */}
+          <p className="text-xs font-semibold uppercase tracking-wider pt-3" style={{ color: '#999' }}>Opplæring</p>
+          <div className="flex items-center justify-between py-1.5 border-b border-border/30">
+            <span className="text-sm" style={{ color: "#555" }}>Pilotopplæring (2 pers)</span>
+            <span className="text-sm font-medium" style={{ color: "#1C0059" }}>{formatNOKRaw(trainingNok)}</span>
+          </div>
+
+          {/* Totals */}
+          <div className="flex items-center justify-between py-3 mt-2 border-t-2" style={{ borderColor: "#685BF8" }}>
             <span className="text-sm font-bold" style={{ color: "#1C0059" }}>Totalt år 1</span>
-            <span className="text-lg font-display font-bold" style={{ color: "#685BF8" }}>{totalYear1.toLocaleString("nb-NO")} kr</span>
+            <span className="text-lg font-display font-bold" style={{ color: "#685BF8" }}>
+              {hwHasQuotes
+                ? `Tilbud + ${formatNOKRaw(accessoriesNok + totalSwNokYear + regulatoryNok + certNok + trainingNok)}`
+                : formatNOKRaw(Math.round(totalHwNok + accessoriesNok + totalSwNokYear + regulatoryNok + certNok + trainingNok))
+              }
+            </span>
           </div>
           <div className="flex items-center justify-between py-2">
             <span className="text-sm" style={{ color: "#999" }}>Løpende årlig (år 2+)</span>
-            <span className="text-sm font-medium" style={{ color: "#999" }}>{ongoingAnnual.toLocaleString("nb-NO")} kr</span>
+            <span className="text-sm font-medium" style={{ color: "#999" }}>
+              {totalSwNokYear > 0 ? `${formatNOKRaw(totalSwNokYear)}/år + vedlikehold` : 'Vedlikehold'}
+            </span>
           </div>
         </div>
-      </div>
 
-      {/* Comparison box */}
-      <div className="bg-muted/40 rounded-2xl border border-border p-6" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-        <h3 className="text-base font-display font-semibold mb-4" style={{ color: '#1C0059' }}>Uten sambruksplanlegging</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b">
-                <th className="text-left py-2 font-normal" style={{ color: '#999' }}></th>
-                <th className="text-center py-2 font-semibold" style={{ color: '#685BF8' }}>Haiko-anbefaling</th>
-                <th className="text-center py-2 font-normal" style={{ color: '#999' }}>Typisk silotilnærming</th>
-              </tr>
-            </thead>
-            <tbody style={{ color: '#555' }}>
-              {[
-                ['Antall plattformer', haikoCount, `${siloCount}–${siloCount + 2}`],
-                ['Total flåtekostnad', `${haikoCost.toLocaleString('nb-NO')} kr`, `${siloCost.toLocaleString('nb-NO')} kr`],
-                ['Bruksområder dekket', haikoUseCases, siloUseCases],
-                ['Avdelinger med nytte', haikoDepts, siloDepts],
-              ].map(([label, haiko, silo], i) => (
-                <tr key={i} className="border-b border-border/50">
-                  <td className="py-2.5">{label}</td>
-                  <td className="py-2.5 text-center font-semibold" style={{ color: '#1C0059' }}>{haiko}</td>
-                  <td className="py-2.5 text-center">{silo}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {savings > 0 && (
-          <p className="mt-4 text-sm font-semibold" style={{ color: '#10B981' }}>
-            Estimert besparelse med sambruk: {savings.toLocaleString('nb-NO')} kr
+        {hwHasQuotes && (
+          <p className="text-xs mt-3 pt-3 border-t border-border/50" style={{ color: '#999' }}>
+            Hvor «Tilbud» vises: Haiko innhenter priser og forhandler på vegne av kommunen som del av implementeringsprosessen.
           </p>
         )}
       </div>
@@ -524,39 +582,44 @@ function FleetSection({
 }
 
 /* ═══════════════════════════════════════════════════
-   Sambruk Section
+   Sambruk (matrix — kept but uses fleet engine data when available)
    ═══════════════════════════════════════════════════ */
 
-function SambrukSection({ analysis }: { analysis: DroneAnalysisResult }) {
+function SambrukSection({ analysis, fleetResult }: { analysis: DroneAnalysisResult; fleetResult: FleetResult }) {
   const activeDepts = analysis.department_analyses;
-  const fleet = analysis.drone_fleet;
+  const fleet = fleetResult.fleet;
 
-  const getDeptCountForDrone = (drone: typeof fleet[0], dept: typeof activeDepts[0]) => {
-    return dept.use_cases.filter(uc => {
-      const shared = drone.shared_between.some(s =>
-        dept.department.toLowerCase().includes(s.toLowerCase()) ||
-        s.toLowerCase().includes(dept.department.toLowerCase().split(' ')[0])
+  if (fleet.length === 0) return null;
+
+  // Map each department to tags
+  const deptTagMap: Record<string, string[]> = {};
+  for (const dept of activeDepts) {
+    const tags = new Set<string>();
+    dept.use_cases.forEach(uc => {
+      const ucTags = Object.entries(USE_CASE_TO_TAGS).find(([key]) =>
+        uc.name.toLowerCase().includes(key.toLowerCase()) || key.toLowerCase().includes(uc.name.toLowerCase().split(' ')[0])
       );
-      if (shared) return true;
-      const ucType = (uc.drone_type || '').toLowerCase();
-      const droneType = drone.drone_type.toLowerCase();
-      return ucType.includes(droneType) || droneType.includes(ucType);
-    }).length;
+      if (ucTags) ucTags[1].forEach(t => tags.add(t));
+    });
+    deptTagMap[dept.department] = Array.from(tags);
+  }
+
+  const getDeptOverlap = (drone: ScoredDrone, dept: typeof activeDepts[0]) => {
+    const deptTags = deptTagMap[dept.department] || [];
+    return drone.matchedTags.filter(t => deptTags.includes(t)).length;
   };
 
   const getCellColor = (count: number) => {
     if (count === 0) return 'bg-muted/30';
     if (count <= 2) return 'bg-primary/10';
-    if (count <= 4) return 'bg-primary/20';
-    return 'bg-primary/35';
+    return 'bg-primary/25';
   };
 
-  const droneUcCounts = fleet.map(d => ({
-    model: d.recommended_model,
-    total: activeDepts.reduce((s, dept) => s + getDeptCountForDrone(d, dept), 0),
-    deptCount: activeDepts.filter(dept => getDeptCountForDrone(d, dept) > 0).length,
+  const droneStats = fleet.map(d => ({
+    name: d.product.product_name,
+    deptCount: activeDepts.filter(dept => getDeptOverlap(d, dept) > 0).length,
   }));
-  const workhorse = [...droneUcCounts].sort((a, b) => b.total - a.total)[0];
+  const workhorse = [...droneStats].sort((a, b) => b.deptCount - a.deptCount)[0];
 
   return (
     <section id="sambruk" className="scroll-mt-16 space-y-6">
@@ -580,9 +643,9 @@ function SambrukSection({ analysis }: { analysis: DroneAnalysisResult }) {
             <tbody>
               {fleet.map((drone, i) => (
                 <tr key={i} className="border-b border-border/50">
-                  <td className="py-3 px-4 font-medium text-sm" style={{ color: '#1C0059' }}>{drone.recommended_model}</td>
+                  <td className="py-3 px-4 font-medium text-sm" style={{ color: '#1C0059' }}>{drone.product.product_name}</td>
                   {activeDepts.map(dept => {
-                    const count = getDeptCountForDrone(drone, dept);
+                    const count = getDeptOverlap(drone, dept);
                     return (
                       <td key={dept.department} className="py-3 px-3 text-center">
                         <div className={cn("inline-flex items-center justify-center w-8 h-8 rounded-lg text-xs font-semibold", getCellColor(count))}>
@@ -599,7 +662,7 @@ function SambrukSection({ analysis }: { analysis: DroneAnalysisResult }) {
       </div>
       {workhorse && (
         <p className="text-sm" style={{ color: '#555' }}>
-          <strong style={{ color: '#1C0059' }}>{workhorse.model}</strong> er kommunens arbeidshest — dekker bruksområder i {workhorse.deptCount} av {activeDepts.length} avdelinger.
+          <strong style={{ color: '#1C0059' }}>{workhorse.name}</strong> er kommunens arbeidshest — dekker bruksområder i {workhorse.deptCount} av {activeDepts.length} avdelinger.
         </p>
       )}
     </section>
@@ -611,9 +674,7 @@ function SambrukSection({ analysis }: { analysis: DroneAnalysisResult }) {
    ═══════════════════════════════════════════════════ */
 
 function ROISection({ analysis }: { analysis: DroneAnalysisResult }) {
-  const totalFleetCost = analysis.drone_fleet.reduce((s, d) => s + d.estimated_cost_nok * d.quantity, 0);
-  const annualSavings = analysis.drone_mission_savings?.total_annual_savings_nok || Math.round(totalFleetCost * 0.4);
-  const paybackMonths = annualSavings > 0 ? Math.round((totalFleetCost / annualSavings) * 12) : null;
+  const annualSavings = analysis.drone_mission_savings?.total_annual_savings_nok || 0;
 
   return (
     <section id="roi" className="scroll-mt-16 space-y-6">
@@ -623,9 +684,9 @@ function ROISection({ analysis }: { analysis: DroneAnalysisResult }) {
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
-          { value: `${(annualSavings / 1000).toFixed(0)}k kr`, label: 'Årlig besparelse', color: '#10B981' },
-          { value: `${(totalFleetCost / 1000).toFixed(0)}k kr`, label: 'Investering', color: '#1C0059' },
-          { value: `${paybackMonths || '—'} mnd`, label: 'Tilbakebetalt', color: '#1C0059' },
+          { value: annualSavings > 0 ? `${formatNOKRaw(annualSavings)}/år` : 'Beregnes', label: 'Årlig besparelse', color: '#10B981' },
+          { value: analysis.drone_mission_savings?.drone_replaceable_missions?.toString() || '—', label: 'Drone-oppdrag/år', color: '#1C0059' },
+          { value: analysis.drone_mission_savings?.categories?.length?.toString() || '—', label: 'Besparelseskategorier', color: '#1C0059' },
         ].map((item, i) => (
           <div key={i} className="bg-card rounded-2xl border border-border p-6 text-center" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
             <p className="text-3xl font-display font-bold" style={{ color: item.color }}>{item.value}</p>
@@ -643,7 +704,7 @@ function ROISection({ analysis }: { analysis: DroneAnalysisResult }) {
                 <p className="text-xs" style={{ color: '#999' }}>{cat.annual_missions} oppdrag/år</p>
               </div>
               <p className="text-sm font-semibold" style={{ color: '#10B981' }}>
-                {cat.annual_savings_nok ? `${(cat.annual_savings_nok / 1000).toFixed(0)}k kr/år` : '—'}
+                {cat.annual_savings_nok ? `${formatNOKRaw(cat.annual_savings_nok)}/år` : '—'}
               </p>
             </div>
           ))}
@@ -672,36 +733,10 @@ function RegulatorySection({ analysis }: { analysis: DroneAnalysisResult }) {
     { months: 'Måned 6–8', color: '#685BF8', items: ['Operasjonstillatelse mottatt', 'Oppstart BVLOS-operasjoner'] },
   ];
 
-  const costTable = [
-    { activity: 'A2-pilotsertifisering (per pilot)', cost: '8 000–12 000 kr', time: '2–3 dager' },
-    { activity: 'STS-sertifisering', cost: '15 000–25 000 kr', time: '1–2 uker' },
-    { activity: 'SORA-søknad (per operasjonstype)', cost: '40 000–80 000 kr', time: '4–8 uker' },
-    { activity: 'Operations Manual', cost: '25 000–50 000 kr', time: '2–4 uker' },
-  ];
-
-  // Regulatory ladder steps
   const ladderSteps = [
-    {
-      title: "A2-sertifikat",
-      subtitle: "VLOS-operasjon",
-      details: ["Manuell pilot", "<120m, <500m avstand"],
-      timeline: "Dag 1",
-      color: "#10B981",
-    },
-    {
-      title: "SORA-søknad",
-      subtitle: "BVLOS godkjent",
-      details: ["Remote pilot", "Dock-basert operasjon"],
-      timeline: "3–6 mnd",
-      color: "#F59E0B",
-    },
-    {
-      title: "LUC-sertifikat",
-      subtitle: "Selvgodkjenning",
-      details: ["Autonom drift", "Nye kommuner på dager"],
-      timeline: "12–18 mnd",
-      color: "#685BF8",
-    },
+    { title: "A2-sertifikat", subtitle: "VLOS-operasjon", details: ["Manuell pilot", "<120m, <500m avstand"], timeline: "Dag 1", color: "#10B981" },
+    { title: "SORA-søknad", subtitle: "BVLOS godkjent", details: ["Remote pilot", "Dock-basert operasjon"], timeline: "3–6 mnd", color: "#F59E0B" },
+    { title: "LUC-sertifikat", subtitle: "Selvgodkjenning", details: ["Autonom drift", "Nye kommuner på dager"], timeline: "12–18 mnd", color: "#685BF8" },
   ];
 
   return (
@@ -710,8 +745,6 @@ function RegulatorySection({ analysis }: { analysis: DroneAnalysisResult }) {
         <h2 className="text-xl md:text-2xl font-display font-bold" style={{ color: '#1C0059' }}>Regulatorisk veikart</h2>
         <p className="text-sm mt-1" style={{ color: '#555' }}>Hva som kreves for å fly lovlig med den anbefalte flåten</p>
       </div>
-
-      {/* Complexity summary */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           { label: 'Open-kategori', count: adjustedOpen, detail: 'A1/A2', badge: '✅ Enkelt', color: '#10B981' },
@@ -726,25 +759,20 @@ function RegulatorySection({ analysis }: { analysis: DroneAnalysisResult }) {
           </div>
         ))}
       </div>
-
-      {/* Regulatory Ladder — VLOS → BVLOS → Autonom */}
+      {/* Ladder */}
       <div className="bg-card rounded-2xl border border-border p-6" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
         <p className="text-sm font-display font-semibold mb-4" style={{ color: '#1C0059' }}>Fra VLOS til autonom — regulatorisk trappestige</p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {ladderSteps.map((step, i) => (
             <div key={i} className="rounded-xl border-2 p-5 relative" style={{ borderColor: step.color }}>
               <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ backgroundColor: step.color }}>
-                  {i + 1}
-                </div>
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ backgroundColor: step.color }}>{i + 1}</div>
                 <p className="text-xs font-semibold" style={{ color: step.color }}>{step.timeline}</p>
               </div>
               <p className="text-sm font-display font-bold" style={{ color: '#1C0059' }}>{step.title}</p>
               <p className="text-sm font-medium mt-0.5" style={{ color: '#555' }}>{step.subtitle}</p>
               <div className="mt-2 space-y-1">
-                {step.details.map((d, j) => (
-                  <p key={j} className="text-xs" style={{ color: '#999' }}>• {d}</p>
-                ))}
+                {step.details.map((d, j) => <p key={j} className="text-xs" style={{ color: '#999' }}>• {d}</p>)}
               </div>
               {i < ladderSteps.length - 1 && (
                 <div className="hidden md:block absolute top-1/2 -right-4 transform -translate-y-1/2 text-xl" style={{ color: step.color }}>→</div>
@@ -753,7 +781,6 @@ function RegulatorySection({ analysis }: { analysis: DroneAnalysisResult }) {
           ))}
         </div>
       </div>
-
       {/* Timeline */}
       <div className="bg-card rounded-2xl border border-border p-6 space-y-4" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
         <p className="text-sm font-display font-semibold" style={{ color: '#1C0059' }}>Tidslinje</p>
@@ -772,7 +799,6 @@ function RegulatorySection({ analysis }: { analysis: DroneAnalysisResult }) {
           ))}
         </div>
       </div>
-
       {soraCount > 0 && (
         <div className="bg-primary/5 rounded-2xl border border-primary/20 p-5">
           <p className="text-sm" style={{ color: '#555' }}>
@@ -780,28 +806,6 @@ function RegulatorySection({ analysis }: { analysis: DroneAnalysisResult }) {
           </p>
         </div>
       )}
-
-      {/* Cost table */}
-      <div className="bg-card rounded-2xl border border-border overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b bg-muted/20">
-              <th className="text-left py-3 px-4 font-medium text-xs" style={{ color: '#999' }}>Aktivitet</th>
-              <th className="text-center py-3 px-4 font-medium text-xs" style={{ color: '#999' }}>Kostnad</th>
-              <th className="text-center py-3 px-4 font-medium text-xs" style={{ color: '#999' }}>Tid</th>
-            </tr>
-          </thead>
-          <tbody>
-            {costTable.map((row, i) => (
-              <tr key={i} className="border-b border-border/50 last:border-0">
-                <td className="py-3 px-4" style={{ color: '#555' }}>{row.activity}</td>
-                <td className="py-3 px-4 text-center font-medium" style={{ color: '#1C0059' }}>{row.cost}</td>
-                <td className="py-3 px-4 text-center" style={{ color: '#999' }}>{row.time}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
     </section>
   );
 }
@@ -810,11 +814,8 @@ function RegulatorySection({ analysis }: { analysis: DroneAnalysisResult }) {
    CTA / Veien Videre
    ═══════════════════════════════════════════════════ */
 
-function CTASection({ municipalityName, analysis, iksPartners, fireDeptName }: {
-  municipalityName: string;
-  analysis: DroneAnalysisResult;
-  iksPartners: string[];
-  fireDeptName: string | null;
+function CTASection({ municipalityName, iksPartners, fireDeptName }: {
+  municipalityName: string; iksPartners: string[]; fireDeptName: string | null;
 }) {
   const phases = [
     {
@@ -862,7 +863,6 @@ function CTASection({ municipalityName, analysis, iksPartners, fireDeptName }: {
           </div>
         ))}
       </div>
-
       {iksPartners.length > 0 && fireDeptName && (
         <div className="bg-primary/5 rounded-2xl border border-primary/20 p-5">
           <p className="text-sm" style={{ color: '#555' }}>
@@ -870,8 +870,6 @@ function CTASection({ municipalityName, analysis, iksPartners, fireDeptName }: {
           </p>
         </div>
       )}
-
-      {/* CTA */}
       <div className="rounded-2xl p-8 text-center space-y-4" style={{ backgroundColor: '#1C0059' }}>
         <h3 className="text-xl font-display font-bold text-white">Klar for neste steg?</h3>
         <p className="text-sm text-white/80">Vi gjennomgår analysen sammen og planlegger Preflight Pro for {municipalityName}.</p>
@@ -891,6 +889,9 @@ function CTASection({ municipalityName, analysis, iksPartners, fireDeptName }: {
    Main Component
    ═══════════════════════════════════════════════════ */
 
+// Import USE_CASE_TO_TAGS for sambruk section
+import { USE_CASE_TO_TAGS } from "@/lib/droneFleetEngine";
+
 export default function DroneAnalysis({
   municipalityName, population, areaKm2, roadKm, vaKm, buildings,
   terrainType, densityPerKm2, departments, iksPartners,
@@ -901,7 +902,8 @@ export default function DroneAnalysis({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState("sammendrag");
-  const [preferEuropean, setPreferEuropean] = useState(false);
+  const [fleetResult, setFleetResult] = useState<FleetResult | null>(null);
+  const [fleetLoading, setFleetLoading] = useState(true);
   const { software: softwareData, loading: swLoading } = useSoftwareStack();
 
   // Intersection observer for sticky nav
@@ -911,22 +913,30 @@ export default function DroneAnalysis({
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
-          if (entry.isIntersecting) {
-            setActiveSection(entry.target.id);
-            break;
-          }
+          if (entry.isIntersecting) { setActiveSection(entry.target.id); break; }
         }
       },
       { rootMargin: "-80px 0px -60% 0px", threshold: 0.1 }
     );
-    ids.forEach(id => {
-      const el = document.getElementById(id);
-      if (el) observer.observe(el);
-    });
+    ids.forEach(id => { const el = document.getElementById(id); if (el) observer.observe(el); });
     return () => observer.disconnect();
   }, [analysis]);
 
-  // Fetch analysis
+  // Fetch fleet via new engine
+  useEffect(() => {
+    const activeDepts = departments.filter(d => d.enabled).map(d => d.name);
+    if (activeDepts.length === 0) return;
+    setFleetLoading(true);
+    // Collect all use case names from analysis (once available) OR from department names
+    const useCaseNames = analysis
+      ? analysis.department_analyses.flatMap(d => d.use_cases.map(uc => uc.name))
+      : activeDepts;
+    fetchAndScoreFleet(useCaseNames, areaKm2 || 100, 3)
+      .then(result => { setFleetResult(result); setFleetLoading(false); })
+      .catch(() => setFleetLoading(false));
+  }, [analysis, departments, areaKm2]);
+
+  // Fetch AI analysis from edge function
   useEffect(() => {
     const activeDepts = departments.filter(d => d.enabled).map(d => d.name);
     if (activeDepts.length === 0) return;
@@ -942,7 +952,7 @@ export default function DroneAnalysis({
             fire_dept_name: fireDeptName, fire_dept_type: fireDeptType,
             alarm_sentral_name: alarmSentralName, region_municipalities: regionMunicipalities,
             sector_data: sectorData, fire_stats: fireStats, bris_mission_data: brisMissionData,
-            prefer_european: preferEuropean,
+            prefer_european: false,
           },
         });
         if (fnError) throw new Error(fnError.message);
@@ -955,10 +965,10 @@ export default function DroneAnalysis({
       }
     };
     run();
-  }, [municipalityName, population, areaKm2, roadKm, vaKm, buildings, terrainType, densityPerKm2, departments, iksPartners, fireDeptName, fireDeptType, alarmSentralName, regionMunicipalities, sectorData, fireStats, brisMissionData, preferEuropean]);
+  }, [municipalityName, population, areaKm2, roadKm, vaKm, buildings, terrainType, densityPerKm2, departments, iksPartners, fireDeptName, fireDeptType, alarmSentralName, regionMunicipalities, sectorData, fireStats, brisMissionData]);
 
   // Loading state
-  if (loading) {
+  if (loading || fleetLoading) {
     return (
       <div className="min-h-screen" style={{ backgroundColor: '#FAFAFA' }}>
         <div className="max-w-[960px] mx-auto px-6 py-16 space-y-6">
@@ -970,16 +980,6 @@ export default function DroneAnalysis({
               <h1 className="text-2xl font-display font-bold" style={{ color: '#1C0059' }}>Analyserer mulighetsrom</h1>
               <p className="text-sm" style={{ color: '#999' }}>AI vurderer droneoperasjoner for {municipalityName}...</p>
             </div>
-          </div>
-          <div className="bg-card rounded-2xl border border-border p-4" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input type="checkbox" checked={preferEuropean} onChange={e => setPreferEuropean(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded border-border accent-primary" />
-              <div>
-                <p className="text-sm font-semibold" style={{ color: '#1C0059' }}>🇪🇺 Foretrekk europeisk/nordisk produsent</p>
-                <p className="text-xs" style={{ color: '#999' }}>Vekter droner fra europeiske og nordiske produsenter høyere.</p>
-              </div>
-            </label>
           </div>
           <div className="space-y-4">
             {[1, 2, 3].map(i => <Skeleton key={i} className="h-32 w-full rounded-2xl" />)}
@@ -1002,11 +1002,10 @@ export default function DroneAnalysis({
     );
   }
 
-  if (!analysis) return null;
+  if (!analysis || !fleetResult) return null;
 
   const activeDeptNames = departments.filter(d => d.enabled).map(d => d.name);
-  const totalFleetCost = analysis.drone_fleet.reduce((s, d) => s + d.estimated_cost_nok * d.quantity, 0);
-  const swRec = getRecommendedSoftware(softwareData, activeDeptNames, analysis.drone_fleet.length);
+  const swRec = getRecommendedSoftware(softwareData, activeDeptNames, fleetResult.fleet.length);
   const totalSoftwareCostNOK = Math.round(swRec.totalEurYear * EUR_TO_NOK);
 
   return (
@@ -1015,10 +1014,10 @@ export default function DroneAnalysis({
 
       <main className="max-w-[960px] mx-auto px-6 py-10 space-y-12">
         {/* 1. Sammendrag */}
-        <HeroSection municipalityName={municipalityName} analysis={analysis} departments={departments} />
+        <HeroSection municipalityName={municipalityName} analysis={analysis} departments={departments} fleetResult={fleetResult} />
 
-        {/* 2. Flåte + software + system cost */}
-        <FleetSection analysis={analysis} departments={departments} softwareData={softwareData} />
+        {/* 2. Flåte + software + coverage matrix + cost table */}
+        <FleetSection fleetResult={fleetResult} softwareData={softwareData} analysis={analysis} />
 
         {/* 3. Tidsbesparelse */}
         <TimeSavingsSection
@@ -1042,7 +1041,7 @@ export default function DroneAnalysis({
         <DigitalTwinSection software={softwareData} />
 
         {/* 6. Sambruk */}
-        <SambrukSection analysis={analysis} />
+        <SambrukSection analysis={analysis} fleetResult={fleetResult} />
 
         {/* 6b. Co-use IKS */}
         {iksPartners.length > 0 && (
@@ -1051,7 +1050,7 @@ export default function DroneAnalysis({
             iksPartners={iksPartners}
             fireDeptName={fireDeptName}
             population={population}
-            totalFleetCostNOK={totalFleetCost}
+            totalFleetCostNOK={0}
             totalSoftwareCostNOK={totalSoftwareCostNOK}
           />
         )}
@@ -1063,7 +1062,7 @@ export default function DroneAnalysis({
         <RegulatorySection analysis={analysis} />
 
         {/* 9. Veien videre */}
-        <CTASection municipalityName={municipalityName} analysis={analysis} iksPartners={iksPartners} fireDeptName={fireDeptName} />
+        <CTASection municipalityName={municipalityName} iksPartners={iksPartners} fireDeptName={fireDeptName} />
 
         <div className="flex justify-between pt-4 border-t border-border">
           <Button variant="outline" onClick={onBack}>Tilbake til pre-analyse</Button>
