@@ -304,7 +304,8 @@ export async function fetchAndScoreFleet(
     return { fleet: [], allScored: [], coverageMatrix: [], totalCoveredTags: 0, totalRequiredTags: 0 };
   }
 
-  const allScored = scoreDrones(drones as DMAProduct[], selectedUseCases, kommuneAreaKm2);
+  const mapped = (drones as any[]).map(d => ({ ...d, manufacturers: d.manufacturers?.[0] || d.manufacturers || null }));
+  const allScored = scoreDrones(mapped as DMAProduct[], selectedUseCases, kommuneAreaKm2);
   const fleet = selectFleet(allScored, maxDrones);
 
   // Build coverage matrix
