@@ -262,24 +262,22 @@ function FleetSection({ fleetResult, softwareData, analysis }: {
   const { fleet, coverageMatrix, totalCoveredTags, totalRequiredTags } = fleetResult;
 
   // Software per drone based on matched tags
-  const getDroneSoftware = (drone: ScoredDrone) => {
+  const getDroneSoftware = (drone: ScoredDrone): SoftwareProduct[] => {
     const swCategories = new Set<string>();
     drone.matchedTags.forEach(tag => {
       (SOFTWARE_CATEGORY_MAP[tag] || []).forEach(cat => swCategories.add(cat));
     });
     const matching = softwareData.filter(sw => swCategories.has(sw.category));
-    // Deduplicate by category, pick best per category
-    const byCategory = new Map<string, SoftwareProduct>();
+    const byCategory: Record<string, SoftwareProduct> = {};
     for (const sw of matching) {
-      const existing = byCategory.get(sw.category);
-      if (!existing) { byCategory.set(sw.category, sw); continue; }
-      // Prefer European > open source > API
+      const existing = byCategory[sw.category];
+      if (!existing) { byCategory[sw.category] = sw; continue; }
       const isEu = (c: string) => ['switzerland','germany','france','netherlands','denmark','finland','norway','sweden','belgium','italy','spain','united kingdom','latvia'].includes(c.toLowerCase());
       const scoreA = (isEu(sw.vendor_country) ? 10 : 0) + (sw.api_available ? 3 : 0) + (sw.open_source ? 1 : 0);
       const scoreB = (isEu(existing.vendor_country) ? 10 : 0) + (existing.api_available ? 3 : 0) + (existing.open_source ? 1 : 0);
-      if (scoreA > scoreB) byCategory.set(sw.category, sw);
+      if (scoreA > scoreB) byCategory[sw.category] = sw;
     }
-    return Array.from(byCategory.values());
+    return Object.values(byCategory);
   };
 
   // Category labels for software
