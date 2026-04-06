@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import type { BrisMissionData } from "@/hooks/useMunicipalityProfile";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,10 +16,13 @@ import type { KostraSectorData } from "@/lib/evaluationApi";
 import type { ActiveDepartment } from "./DepartmentEditor";
 import { useSoftwareStack, getRecommendedSoftware, formatSoftwarePriceNOK } from "@/hooks/useSoftwareStack";
 import type { SoftwareProduct } from "@/hooks/useSoftwareStack";
-import TimeSavingsSection from "./TimeSavingsSection";
+import TimeSavingsSection, { computeTasks } from "./TimeSavingsSection";
 import DroneHubSection from "./DroneHubSection";
 import DigitalTwinSection from "./DigitalTwinSection";
 import CoUseSection from "./CoUseSection";
+import { pdf } from "@react-pdf/renderer";
+import { saveAs } from "file-saver";
+import { RadarPdfDocument, type RadarPdfData } from "./RadarPdfDocument";
 import {
   fetchAndScoreFleet, formatNOK, formatNOKRaw, EUR_TO_NOK,
   COUNTRY_FLAGS, SOFTWARE_CATEGORY_MAP,
@@ -147,8 +150,9 @@ const navSections = [
    Sticky Topbar
    ═══════════════════════════════════════════════════ */
 
-function StickyTopbar({ municipalityName, activeSection, onBack }: {
+function StickyTopbar({ municipalityName, activeSection, onBack, onDownloadPdf, generatingPdf }: {
   municipalityName: string; activeSection: string; onBack: () => void;
+  onDownloadPdf: () => void; generatingPdf: boolean;
 }) {
   return (
     <div className="sticky top-0 z-50 bg-card/95 backdrop-blur-md border-b border-border">
@@ -176,8 +180,13 @@ function StickyTopbar({ municipalityName, activeSection, onBack }: {
           </Button>
           <Button size="sm" className="text-xs gap-1.5 font-display font-semibold"
             style={{ background: 'linear-gradient(135deg, #FF66C4, #685BF8)' }}
-            onClick={() => window.print()}>
-            <Download className="w-3.5 h-3.5" /> PDF
+            onClick={onDownloadPdf}
+            disabled={generatingPdf}>
+            {generatingPdf ? (
+              <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Genererer...</>
+            ) : (
+              <><Download className="w-3.5 h-3.5" /> PDF</>
+            )}
           </Button>
         </div>
       </div>
@@ -902,6 +911,7 @@ export default function DroneAnalysis({
   const [activeSection, setActiveSection] = useState("sammendrag");
   const [fleetResult, setFleetResult] = useState<FleetResult | null>(null);
   const [fleetLoading, setFleetLoading] = useState(true);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
   const { software: softwareData, loading: swLoading } = useSoftwareStack();
 
   // Intersection observer for sticky nav
@@ -965,6 +975,79 @@ export default function DroneAnalysis({
     run();
   }, [municipalityName, population, areaKm2, roadKm, vaKm, buildings, terrainType, densityPerKm2, departments, iksPartners, fireDeptName, fireDeptType, alarmSentralName, regionMunicipalities, sectorData, fireStats, brisMissionData]);
 
+  const activeDeptNames = departments.filter(d => d.enabled).map(d => d.name);
+
+  const handleDownloadPdf = useCallback(async () => {
+    if (!fleetResult || !analysis) return;
+    setGeneratingPdf(true);
+    try {
+      const deptNames = departments.filter(d => d.enabled).map(d => d.name);
+      const timeEstimates = computeTasks({
+        municipalityName, population, areaKm2, roadKm, vaKm, buildings,
+        selectedDepartments: deptNames,
+      });
+
+      const fleet = fleetResult.fleet;
+      const allSwItems: SoftwareProduct[] = [];
+      const seenIds = new Set<string>();
+      fleet.forEach(d => {
+        const cats = new Set<string>();
+        d.matchedTags.forEach(tag => (SOFTWARE_CATEGORY_MAP[tag] || []).forEach(c => cats.add(c)));
+        softwareData.filter(sw => cats.has(sw.category)).forEach(sw => {
+          if (!seenIds.has(sw.id)) { seenIds.add(sw.id); allSwItems.push(sw); }
+        });
+      });
+      const totalSwEur = allSwItems.reduce((s, sw) => s + (sw.price_eur_year || 0), 0);
+      const totalSwNok = Math.round(totalSwEur * EUR_TO_NOK);
+      const accessoriesNok = 60000;
+      const regulatoryNok = fleet.length * 40000;
+      const certNok = 5000;
+      const trainingNok = 50000;
+      const hwHasQuotes = fleet.every(d => d.product.quote_required || d.product.price_eur === null);
+      const totalHwNok = fleet.reduce((s, d) => s + ((d.product.price_eur || 0) * EUR_TO_NOK), 0);
+
+      const costLines = [
+        ...fleet.map(d => ({
+          label: d.product.product_name,
+          value: formatNOK(d.product.price_eur, !!d.product.quote_required),
+        })),
+        { label: "Tilbehør/batterier est.", value: formatNOKRaw(accessoriesNok) },
+        { label: "Software (årlig)", value: totalSwNok > 0 ? formatNOKRaw(totalSwNok) + "/år" : "Inkludert" },
+        { label: `${fleet.length} SORA-søknader est.`, value: formatNOKRaw(regulatoryNok) },
+        { label: "A2-sertifisering", value: formatNOKRaw(certNok) },
+        { label: "Pilotopplæring (2 pers)", value: formatNOKRaw(trainingNok) },
+      ];
+
+      const fixedCosts = accessoriesNok + regulatoryNok + certNok + trainingNok + totalSwNok;
+      const totalYear1 = hwHasQuotes
+        ? `Tilbud + ${formatNOKRaw(fixedCosts)}`
+        : formatNOKRaw(totalHwNok + fixedCosts);
+      const annualOngoing = totalSwNok > 0 ? `${formatNOKRaw(totalSwNok)}/år + vedlikehold` : "Vedlikehold";
+
+      const useCaseNames = analysis.department_analyses.flatMap(d => d.use_cases.map(uc => uc.name));
+
+      const pdfData: RadarPdfData = {
+        kommuneNavn: municipalityName,
+        kommuneAreaKm2: areaKm2 || 100,
+        kommunePopulation: population,
+        selectedUseCases: useCaseNames,
+        fleet: fleetResult.fleet,
+        softwareStack: allSwItems,
+        timeEstimates,
+        costLines,
+        totalYear1,
+        annualOngoing,
+      };
+
+      const blob = await pdf(<RadarPdfDocument data={pdfData} />).toBlob();
+      saveAs(blob, `Haiko_Radar_${municipalityName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`);
+    } catch (err) {
+      console.error("PDF generation failed", err);
+    } finally {
+      setGeneratingPdf(false);
+    }
+  }, [fleetResult, analysis, municipalityName, population, areaKm2, roadKm, vaKm, buildings, departments, softwareData]);
+
   // Loading state
   if (loading || fleetLoading) {
     return (
@@ -1002,13 +1085,14 @@ export default function DroneAnalysis({
 
   if (!analysis || !fleetResult) return null;
 
-  const activeDeptNames = departments.filter(d => d.enabled).map(d => d.name);
   const swRec = getRecommendedSoftware(softwareData, activeDeptNames, fleetResult.fleet.length);
   const totalSoftwareCostNOK = Math.round(swRec.totalEurYear * EUR_TO_NOK);
 
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#FAFAFA' }}>
-      <StickyTopbar municipalityName={municipalityName} activeSection={activeSection} onBack={onBack} />
+      <StickyTopbar municipalityName={municipalityName} activeSection={activeSection} onBack={onBack}
+        onDownloadPdf={handleDownloadPdf} generatingPdf={generatingPdf} />
 
       <main className="max-w-[960px] mx-auto px-6 py-10 space-y-12">
         {/* 1. Sammendrag */}
