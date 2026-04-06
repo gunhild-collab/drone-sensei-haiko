@@ -133,7 +133,7 @@ function deptMatches(deptA: string, deptB: string): boolean {
   return a.includes(b.split(" ")[0]) || b.includes(a.split(" ")[0]);
 }
 
-function computeTasks(props: Props) {
+export function computeTasks(props: Props) {
   const { population, areaKm2, roadKm, selectedDepartments } = props;
   const pop = population || 10000;
   const area = areaKm2 || 100;
