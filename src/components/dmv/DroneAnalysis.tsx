@@ -911,6 +911,7 @@ export default function DroneAnalysis({
   const [activeSection, setActiveSection] = useState("sammendrag");
   const [fleetResult, setFleetResult] = useState<FleetResult | null>(null);
   const [fleetLoading, setFleetLoading] = useState(true);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
   const { software: softwareData, loading: swLoading } = useSoftwareStack();
 
   // Intersection observer for sticky nav
