@@ -1,5 +1,4 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,137 +6,150 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// === DRONE ARCHETYPES (for use case matching) ===
+// ═══════════════════════════════════════════════════════════════════════════
+// Constants
+// ═══════════════════════════════════════════════════════════════════════════
+
 const DRONE_ARCHETYPES = {
   multirotor: {
     type: "Multirotor (autonom BVLOS fra dronestasjon)",
     example: "DJI Dock 3 + Matrice 4TD / tilsvarende",
-    costNok: 450000,
-    features: ["Termisk kamera", "RTK", "Autonom start/landing", "Vær-robust dock", "4G/5G-oppkobling"],
+    costNok: 450_000,
   },
   fixedWing: {
     type: "Fixed-wing drone-in-a-box",
     example: "Robot Aviation FX10",
-    costNok: 1200000,
-    features: ["Opptil ca. 2 timer flytid per oppdrag", "Autonom BVLOS", "Stor arealdekning", "RTK/PPK"],
+    costNok: 1_200_000,
   },
 };
 
-// === REAL DRONE DATABASE ===
-// DRONE_CATALOG and VERIFIED_USE_CASES are now fetched from DB at runtime
-// See the serve() handler below.
+// ═══════════════════════════════════════════════════════════════════════════
+// Department matching — drone-relevant departments only
+// ═══════════════════════════════════════════════════════════════════════════
 
-// Department name mapping for precise matching
 const DEPT_MATCH_MAP: Record<string, string[]> = {
-  "Brann og redning": ["Brann og redning"],
+  "Brann og redning": ["Brann og redning", "Beredskap"],
   "Tekniske tjenester - Vei": ["Teknisk drift", "Vei", "Tekniske tjenester"],
   "Vann og avløp": ["Vann og avløp", "VA"],
   "Byggesak / Eiendom": ["Plan og bygg", "Byggesak", "Eiendom"],
-  "Naturforvaltning": ["Miljø og klima", "Naturforvaltning", "Landbruk"],
+  Naturforvaltning: ["Miljø og klima", "Naturforvaltning"],
   "Naturforvaltning / Landbruk": ["Landbruk", "Miljø og klima", "Naturforvaltning"],
-  "Helse og omsorg": ["Helse og omsorg", "Helse"],
-  "Beredskap": ["Brann og redning", "Beredskap"],
-  "Geodata": ["Geodata", "Plan og bygg"],
+  Beredskap: ["Brann og redning", "Beredskap"],
+  Geodata: ["Geodata", "Plan og bygg"],
   "Teknisk drift": ["Teknisk drift", "Tekniske tjenester"],
 };
 
 function matchDepartments(ucDepartment: string, activeDepts: string[]): boolean {
-  const activeLower = activeDepts.map(d => d.toLowerCase());
-  
-  // Direct match
-  if (activeLower.some(d => d === ucDepartment.toLowerCase())) return true;
-  
-  // Use mapping
+  const activeLower = activeDepts.map((d) => d.toLowerCase());
+  if (activeLower.some((d) => d === ucDepartment.toLowerCase())) return true;
   const mappedNames = DEPT_MATCH_MAP[ucDepartment];
   if (mappedNames) {
-    return mappedNames.some(mapped => 
-      activeLower.some(d => d.includes(mapped.toLowerCase()) || mapped.toLowerCase().includes(d))
+    return mappedNames.some((mapped) =>
+      activeLower.some((d) => d.includes(mapped.toLowerCase()) || mapped.toLowerCase().includes(d)),
     );
   }
-  
   return false;
 }
 
-// Certification hierarchy
-const CERT_RULES = `
-KRITISKE SERTIFISERINGSREGLER — bryt disse ALDRI:
+// ═══════════════════════════════════════════════════════════════════════════
+// Flight hour estimation — transparent formulas based on inspection rates
+//
+// Basis: drone inspection speed × coverage frequency per year
+//   Road/pipe corridor: ~15 km/h inspection speed, 1 pass/year = km / 15
+//   Area survey: ~40 ha/h for multirotor, ~200 ha/h fixed-wing
+//   Point inspections (bridges, buildings): ~20 min per object
+// ═══════════════════════════════════════════════════════════════════════════
 
-1. SERTIFISERINGSHIERARKIET (gjensidig utelukkende stier):
-   - Åpen kategori (A1/A2/A3): Nettkurs + evt. prøve. INGEN operasjonstillatelse. Kun VLOS, ≤120m, begrenset vekt.
-   - STS-01/STS-02: Standardscenario under spesifikk kategori. Krever erklæring, opplæring og operasjonsmanual.
-   - Spesifikk kategori med operasjonstillatelse (OpAuth): Krever full SORA-vurdering og godkjenning fra Luftfartstilsynet.
-   - LUC (Light UAS operator Certificate): Organisasjonssertifisering — erstatter behovet for individuell OpAuth. Kun for store operatører.
-
-2. KOMBINASJONER SOM ALDRI ER GYLDIGE:
-   - LUC + A1/A2/A3 sammen — LUC er spesifikk kategori, A1-A3 er åpen kategori
-   - A2 + STS-01 for SAMME operasjon — velg én
-   - BVLOS + åpen kategori (A1/A2/A3) — BVLOS er ALLTID spesifikk eller sertifisert kategori
-   
-3. FOR HVER OPERASJON, VELG NØYAKTIG ÉN sertifiseringsvei basert på:
-   - Operasjonstype (VLOS/BVLOS)
-   - MTOM og dronedeimensjon
-   - Befolkningstetthet i operasjonsområdet
-   - Flygehøyde
-
-4. MINI 4 PRO OG KOMPETANSEKRAV:
-   - DJI Mini 4 Pro er <250 g og opererer i åpen kategori — den krever A1/A3-kompetansebevis (nettkurs).
-   - A2-sertifikat er IKKE nødvendig for Mini 4 Pro. A2 er kun relevant ved bruk av tyngre droner (f.eks. Matrice 350) eller operasjoner nærmere mennesker i A2-underkategori.
-   - Hvis A2 nevnes i sammenheng med Mini 4 Pro, presiser at det er en frivillig ekstra opplæring for mer krevende VLOS-oppdrag med andre droner.
-
-5. KURSVARIGHET OG OPPLÆRING:
-   - Antall dager oppgitt for opplæring (f.eks. 15 dager SORA/BVLOS, 5 dager STS-01, 2 dager A2) er FORESLÅTTE opplæringsopplegg, IKKE regulatoriske minstekrav.
-   - For HVER kursbeskrivelse: inkluder setningen "Varighet og innhold kan tilpasses leverandør og kommunens behov; det finnes ingen fastsatt kurslengde i EASA-regelverket for denne kompetansen."
-   - Presiser at SORA-/BVLOS-opplæring er en del av grunnlaget for å kunne søke operasjonsautorisasjon (OpAuth), men at det er selve godkjenningen fra myndighetene (Luftfartstilsynet) som gir rett til å fly disse konseptene — ikke kurset alene.
-
-6. SPRÅK RUNDT STRATEGI VS. FAKTA:
-   - Skille ALLTID klart mellom:
-     a) Faktiske egenskaper (fra regelverk og produsentdata) — beskriv som fakta
-     b) Kommunespesifikke estimater (flytimer, dekningsområde) — merk tydelig som "estimert" eller "beregnet for denne analysen"
-     c) Strategiske anbefalinger og scenarier — bruk ord som "foreslås", "anbefales", "konseptuelt opplegg", ALDRI formuleringer som kan tolkes som vedtatt eller etablert praksis
-   - Use cases (UC-001 osv.), implementeringsplan og IKS-samarbeid er ANBEFALINGER, ikke vedtatte planer.
-`;
-
-function estimateMaxMissionDistance(area_km2: number | null, road_km: number | null, population: number | null): { multirotor_km: number; fixedwing_km: number } {
-  // Based on flight time and safety margins, not manufacturer range specs
-  const area = area_km2 || 200;
-  const radius = Math.sqrt(area / Math.PI);
-  return {
-    multirotor_km: Math.min(radius * 0.4, 15),  // ~50 min flight time, conservative
-    fixedwing_km: Math.min(radius * 1.2, 50),    // ~2h flight time
-  };
+interface InfraData {
+  road_km: number | null;
+  water_pipe_km: number | null;
+  sewage_pipe_km: number | null;
+  bridges: number | null;
+  tunnels: number | null;
+  buildings_total: number | null;
+  holiday_homes: number | null;
+  agricultural_km2: number | null;
+  forest_km2: number | null;
+  area_km2: number | null;
+  population: number | null;
 }
 
-/**
- * Builds a complete analysis from algorithmic data when AI credits are depleted.
- */
+function estimateFlightHours(formula: string, infra: InfraData): { hours: number; basis: string } {
+  // Corridor inspection: 15 km/h, 1 pass/year
+  if (formula.includes("vei_km") && infra.road_km) {
+    const h = Math.round(infra.road_km / 15);
+    return { hours: h, basis: `${infra.road_km} km ÷ 15 km/t = ${h} timer` };
+  }
+  // VA: separate water and sewage, 15 km/h
+  if (formula.includes("rør_km")) {
+    const totalKm = (infra.water_pipe_km || 0) + (infra.sewage_pipe_km || 0);
+    if (totalKm > 0) {
+      const h = Math.round(totalKm / 15);
+      return { hours: h, basis: `${totalKm} km ledning ÷ 15 km/t = ${h} timer` };
+    }
+  }
+  // Area survey: 40 ha/h multirotor
+  if (formula.includes("areal_km2") && infra.area_km2) {
+    const ha = infra.area_km2 * 100; // km² to ha
+    // Only survey a fraction — not the entire municipality
+    const surveyFraction = 0.02; // 2% per year
+    const h = Math.round((ha * surveyFraction) / 40);
+    return { hours: h, basis: `${infra.area_km2} km² × 2% ÷ 40 ha/t = ${h} timer` };
+  }
+  // Bridge inspection: ~20 min per bridge, 1 pass/year
+  if (formula.includes("broer") && infra.bridges) {
+    const h = Math.round((infra.bridges * 20) / 60);
+    return { hours: h, basis: `${infra.bridges} broer × 20 min = ${h} timer` };
+  }
+  // Forest monitoring: 200 ha/h fixed-wing, 5% coverage/year
+  if (formula.includes("skog_km2") && infra.forest_km2) {
+    const ha = infra.forest_km2 * 100;
+    const h = Math.round((ha * 0.05) / 200);
+    return { hours: h, basis: `${infra.forest_km2} km² skog × 5% ÷ 200 ha/t = ${h} timer` };
+  }
+  // Flat rate from formula text
+  const flatMatch = formula.match(/(\d+)\s*timer/);
+  if (flatMatch) {
+    const h = parseInt(flatMatch[1]);
+    return { hours: h, basis: `${h} timer/år (fast estimat)` };
+  }
+  return { hours: 10, basis: "10 timer/år (standardanslag)" };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Fallback analysis (when AI credits are depleted)
+// ═══════════════════════════════════════════════════════════════════════════
+
 function buildFallbackAnalysis(
-  municipalityName: string, relevantUCs: any[], algorithmicFleet: any[], deptNames: string[],
-  areaKm2: number | null, roadKm: number | null, vaKm: number | null,
-  buildings: number | null, population: number | null,
-  iksPartners: string[] | null, fireDeptName: string | null, fireDeptType: string | null
+  municipalityName: string,
+  relevantUCs: any[],
+  algorithmicFleet: any[],
+  deptNames: string[],
+  infra: InfraData,
+  iksPartners: string[] | null,
+  fireDeptName: string | null,
+  fireDeptType: string | null,
 ) {
-  // Group use cases by department
   const deptMap: Record<string, any[]> = {};
+
   for (const uc of relevantUCs) {
     if (!deptMap[uc.department]) deptMap[uc.department] = [];
-    // Estimate flight hours from formula
-    let hours = 10;
-    const formula = uc.flightHoursFormula || '';
-    if (formula.includes('vei_km') && roadKm) hours = Math.round(roadKm * 0.15);
-    else if (formula.includes('rør_km') && vaKm) hours = Math.round(vaKm * 0.2);
-    else if (formula.includes('areal_km2') && areaKm2) hours = Math.round(areaKm2 * 0.002);
-    else {
-      const flatMatch = formula.match(/(\d+)\s*timer/);
-      if (flatMatch) hours = parseInt(flatMatch[1]);
-    }
+    const est = estimateFlightHours(uc.flightHoursFormula || "", infra);
+
     deptMap[uc.department].push({
-      id: uc.id, name: uc.name, description: uc.notes || uc.name,
-      operation_type: uc.operationType, easa_category: uc.easaCategory,
-      required_permit: uc.certRequirement, pilot_certification: uc.certRequirement,
+      id: uc.id,
+      name: uc.name,
+      description: uc.notes || uc.name,
+      operation_type: uc.operationType,
+      easa_category: uc.easaCategory,
+      required_permit: uc.certRequirement,
+      pilot_certification: uc.certRequirement,
       drone_type: DRONE_ARCHETYPES[uc.droneArchetype as keyof typeof DRONE_ARCHETYPES]?.type || uc.droneArchetype,
-      priority: uc.priority, annual_flight_hours: hours,
-      calculation_basis: formula || `${hours} timer/år (estimat)`,
-      needs_thermal: uc.needsThermal, needs_rtk: uc.needsRtk,
+      priority: uc.priority,
+      annual_flight_hours: est.hours,
+      calculation_basis: est.basis,
+      needs_thermal: uc.needsThermal,
+      needs_rtk: uc.needsRtk,
     });
   }
 
@@ -149,11 +161,10 @@ function buildFallbackAnalysis(
 
   const totalHours = departmentAnalyses.reduce((s, d) => s + d.total_annual_hours, 0);
 
-  // Build drone fleet from algorithmic recommendations
   const droneFleet = algorithmicFleet.map((af: any) => ({
-    drone_id: af.drone_id || '',
-    drone_type: af.drone_type || 'multirotor',
-    recommended_model: af.drone || af.model || 'Ukjent',
+    drone_id: af.drone_id || "",
+    drone_type: af.drone_type || "multirotor",
+    recommended_model: af.drone || af.model || "Ukjent",
     quantity: 1,
     shared_between: af.departments || [],
     estimated_cost_nok: af.price_nok || 0,
@@ -164,109 +175,199 @@ function buildFallbackAnalysis(
 
   const totalCost = droneFleet.reduce((s: number, d: any) => s + (d.estimated_cost_nok || 0), 0);
 
+  // All dock operations require specific category — never reference open category here
+  const hasBvlos = relevantUCs.some((uc: any) => uc.operationType === "BVLOS");
+
   return {
     summary: `Algoritmisk droneanalyse for ${municipalityName}. ${relevantUCs.length} bruksområder identifisert på tvers av ${Object.keys(deptMap).length} avdelinger. AI-oppsummering er midlertidig utilgjengelig.`,
     department_analyses: departmentAnalyses,
     drone_fleet: droneFleet,
     certification_plan: {
-      pilot_groups: [{
-        group_name: "Dronepilotgruppe",
-        certification_path: "A2 + STS-01",
-        covers_use_cases: relevantUCs.map((uc: any) => uc.name),
-        training_description: "Grunnleggende opplæring for kommunal dronedrift",
-        estimated_training_days: 5,
-      }],
+      pilot_groups: [
+        {
+          group_name: "BVLOS-operatører",
+          certification_path: hasBvlos
+            ? "Spesifikk kategori — SORA/OpAuth"
+            : "STS-01 (standardscenario, spesifikk kategori)",
+          covers_use_cases: relevantUCs.map((uc: any) => uc.name),
+          training_description:
+            "Opplæring for autonom BVLOS-drift fra dronestasjon. Varighet og innhold kan tilpasses leverandør og kommunens behov.",
+          estimated_training_days: hasBvlos ? 15 : 5,
+          practical_outcome: hasBvlos
+            ? "Piloten kan planlegge og overvåke autonome droneoppdrag utenfor synsrekkevidde."
+            : "Piloten kan gjennomføre planlagte droneoperasjoner innenfor STS-01-rammen.",
+        },
+      ],
     },
     iks_recommendation: {
       can_share: (iksPartners || []).length > 0,
-      shared_resources: (iksPartners || []).length > 0 ? ["Dronestasjon", "Opplæring"] : [],
-      recommendation: (iksPartners || []).length > 0
-        ? `${fireDeptName || 'IKS-et'} kan dele droneressurser med partnerkommuner.`
-        : `${municipalityName} bør vurdere eget droneprogram.`,
+      shared_resources: (iksPartners || []).length > 0 ? ["Dronestasjon", "Opplæring", "SORA-søknad"] : [],
+      recommendation:
+        (iksPartners || []).length > 0
+          ? `${fireDeptName || "IKS-et"} kan dele droneressurser med partnerkommuner. Delt kostnad foreslås.`
+          : `${municipalityName} bør vurdere eget opplegg for droneavdeling.`,
       partner_municipalities: iksPartners || [],
     },
     total_drones_needed: droneFleet.length,
     total_annual_cost_nok: totalCost,
     total_annual_flight_hours: totalHours,
     implementation_priority: [
-      { phase: 1, title: "Oppstart", departments: deptNames.slice(0, 2), description: "Start med kjernebruksområder" },
-      { phase: 2, title: "Utvidelse", departments: deptNames.slice(2), description: "Utvid til flere avdelinger" },
+      {
+        phase: 1,
+        title: "Oppstart",
+        departments: deptNames.slice(0, 2),
+        description: "Start med kjernebruksområder — foreslås igangsatt først.",
+      },
+      {
+        phase: 2,
+        title: "Utvidelse",
+        departments: deptNames.slice(2),
+        description: "Utvid til flere avdelinger etter evaluering av fase 1.",
+      },
     ],
+    _ai_fallback: true,
   };
 }
 
-serve(async (req) => {
+// ═══════════════════════════════════════════════════════════════════════════
+// Certification rules (kept concise — details in schema descriptions)
+// ═══════════════════════════════════════════════════════════════════════════
+
+const CERT_RULES = `SERTIFISERINGSREGLER:
+1. Alle dock-operasjoner er spesifikk kategori. ALDRI referer til åpen kategori (A1/A2/A3) for autonome operasjoner.
+2. BVLOS krever ALLTID spesifikk kategori med SORA-vurdering og operasjonsautorisasjon (OpAuth) fra Luftfartstilsynet.
+3. Én sertifiseringsvei per operasjonstype — ALDRI bland åpen og spesifikk kategori.
+4. Antall SORA-søknader = antall distinkte operasjonstyper, IKKE antall droner.
+5. Kursvarighet er FORSLAG, ikke regulatoriske minstekrav. Presiser dette alltid.
+6. Opplæring er grunnlag for å søke OpAuth — det er godkjenningen som gir rett til å fly, ikke kurset.`;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Main handler
+// ═══════════════════════════════════════════════════════════════════════════
+
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const db = createClient(supabaseUrl, supabaseServiceKey);
 
+    // ── Parse input — matches new data fetcher output ──────────────────
     const {
-      municipality_name, population, area_km2, road_km, va_km, buildings,
-      terrain_type, density_per_km2, departments, iks_partners,
-      fire_dept_name, fire_dept_type, alarm_sentral_name, region_municipalities,
-      sector_data, fire_stats, bris_mission_data, prefer_european,
+      municipality_name,
+      // Core indicators
+      population,
+      area_km2,
+      // Infrastructure (from SSB / NVDB)
+      road_km,
+      va_network, // { water_pipe_km, sewage_pipe_km, year }
+      buildings, // { total, residential, holiday_homes, commercial, year }
+      infrastructure, // { bridges, tunnels }
+      land_use, // { agricultural_km2, forest_km2, year }
+      // KOSTRA
+      density_per_km2,
+      sector_data,
+      property_data,
+      fire_stats,
+      // Drone relevance
+      drone_relevance,
+      // IKS / fire dept
+      departments,
+      iks_partners,
+      fire_dept_name,
+      fire_dept_type,
+      alarm_sentral_name,
+      region_municipalities,
+      // BRIS
+      bris_mission_data,
+      // Preferences
+      prefer_european,
     } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    // Fetch drone catalog and use cases from DB
+    // ── Fetch drone catalog and use cases from DB ──────────────────────
     const [droneRes, ucRes] = await Promise.all([
-      db.from('drone_platforms').select('id,name,manufacturer,model,drone_type,category,max_takeoff_weight_kg,max_flight_time_min,max_range_km,has_thermal,has_rtk,sensor_types,payload_kg,ip_rating,wind_resistance_ms,price_nok_estimate,price_eur_estimate,launch_method,supports_bvlos,c_class,easa_category,notes'),
-      db.from('use_case_requirements').select('*'),
+      db
+        .from("drone_platforms")
+        .select(
+          "id,name,manufacturer,model,drone_type,category,max_takeoff_weight_kg,max_flight_time_min,max_range_km,has_thermal,has_rtk,sensor_types,payload_kg,ip_rating,wind_resistance_ms,price_nok_estimate,price_eur_estimate,launch_method,supports_bvlos,c_class,easa_category,notes",
+        ),
+      db.from("use_case_requirements").select("*"),
     ]);
 
     const DRONE_CATALOG = (droneRes.data || []).map((d: any) => ({
-      id: d.id, name: d.name || `${d.manufacturer} ${d.model}`, type: d.drone_type,
-      manufacturer: d.manufacturer, model: d.model,
-      mtom_kg: d.max_takeoff_weight_kg, max_flight_time_min: d.max_flight_time_min,
-      has_thermal: d.has_thermal || false, has_rtk: d.has_rtk || false,
-      has_lidar: ((d.sensor_types || []) as string[]).some((s: string) => s.toLowerCase().includes('lidar')),
-      payload_kg: d.payload_kg || 0, ip_rating: d.ip_rating,
-      max_wind_ms: d.wind_resistance_ms, price_nok: d.price_nok_estimate,
-      autonomous_dock: (d.category || '').toLowerCase().includes('dock') || (d.launch_method || '').toLowerCase().includes('dock'),
-      best_for: [], not_for: [], description_no: d.notes || '',
+      id: d.id,
+      name: d.name || `${d.manufacturer} ${d.model}`,
+      type: d.drone_type,
+      manufacturer: d.manufacturer,
+      model: d.model,
+      mtom_kg: d.max_takeoff_weight_kg,
+      max_flight_time_min: d.max_flight_time_min,
+      has_thermal: d.has_thermal || false,
+      has_rtk: d.has_rtk || false,
+      has_lidar: ((d.sensor_types || []) as string[]).some((s: string) => s.toLowerCase().includes("lidar")),
+      payload_kg: d.payload_kg || 0,
+      ip_rating: d.ip_rating,
+      max_wind_ms: d.wind_resistance_ms,
+      price_nok: d.price_nok_estimate,
+      autonomous_dock:
+        (d.category || "").toLowerCase().includes("dock") || (d.launch_method || "").toLowerCase().includes("dock"),
+      description_no: d.notes || "",
     }));
 
-    // Map DB use cases to the format the prompt expects
     const VERIFIED_USE_CASES = (ucRes.data || []).map((uc: any) => ({
-      id: uc.use_case_id, name: uc.use_case_name, department: uc.department,
-      operationType: uc.requires_bvlos ? 'BVLOS' : 'VLOS',
-      easaCategory: uc.easa_min_category || 'Spesifikk kategori',
-      certRequirement: uc.easa_min_category || 'STS-01 + BVLOS-tillatelse',
-      droneArchetype: (uc.preferred_drone_type || []).some((t: string) => t.toLowerCase().includes('fixed')) ? 'fixedWing' : 'multirotor',
-      priority: uc.priority_score >= 8 ? 'Høy' : uc.priority_score >= 5 ? 'Medium' : 'Lav',
-      flightHoursFormula: uc.cost_driver_notes || '10 timer/år flat',
+      id: uc.use_case_id,
+      name: uc.use_case_name,
+      department: uc.department,
+      operationType: uc.requires_bvlos ? "BVLOS" : "VLOS",
+      easaCategory: uc.easa_min_category || "Spesifikk kategori",
+      certRequirement: uc.easa_min_category || "Spesifikk kategori — SORA/OpAuth",
+      droneArchetype: (uc.preferred_drone_type || []).some((t: string) => t.toLowerCase().includes("fixed"))
+        ? "fixedWing"
+        : "multirotor",
+      priority: uc.priority_score >= 8 ? "Høy" : uc.priority_score >= 5 ? "Medium" : "Lav",
+      flightHoursFormula: uc.cost_driver_notes || "10 timer/år flat",
       needsThermal: uc.requires_thermal || false,
       needsRtk: uc.requires_rtk || false,
-      notes: uc.description || '',
+      notes: uc.description || "",
     }));
 
-    // Filter use cases to only those matching active departments — PRECISE matching
+    // ── Filter use cases to active departments ─────────────────────────
     const deptNames = (departments || []) as string[];
+    const relevantUCs = VERIFIED_USE_CASES.filter((uc: any) => matchDepartments(uc.department, deptNames));
 
-    const relevantUCs = VERIFIED_USE_CASES.filter((uc: any) =>
-      matchDepartments(uc.department, deptNames)
+    console.log(
+      `[${municipality_name}] Matched ${relevantUCs.length}/${VERIFIED_USE_CASES.length} use cases for depts: ${JSON.stringify(deptNames)}`,
     );
 
-    console.log(`[${municipality_name}] Active depts: ${JSON.stringify(deptNames)}`);
-    console.log(`[${municipality_name}] Matched ${relevantUCs.length}/${VERIFIED_USE_CASES.length} use cases`);
-    console.log(`[${municipality_name}] Matched UC IDs: ${relevantUCs.map((uc) => uc.id).join(', ')}`);
+    // ── Build infrastructure data object for flight hour estimation ────
+    const infra: InfraData = {
+      road_km: road_km || null,
+      water_pipe_km: va_network?.water_pipe_km || null,
+      sewage_pipe_km: va_network?.sewage_pipe_km || null,
+      bridges: infrastructure?.bridges || null,
+      tunnels: infrastructure?.tunnels || null,
+      buildings_total: buildings?.total || null,
+      holiday_homes: buildings?.holiday_homes || null,
+      agricultural_km2: land_use?.agricultural_km2 || null,
+      forest_km2: land_use?.forest_km2 || null,
+      area_km2: area_km2 || null,
+      population: population || null,
+    };
 
-    // ─── Call platform-recommend algorithm for data-driven fleet ───
+    // ── Call platform-recommend algorithm ───────────────────────────────
     const relevantUcIds = relevantUCs.map((uc: any) => uc.id);
     let algorithmicFleet: any[] = [];
     let algorithmicPerUseCase: Record<string, any[]> = {};
     try {
-      const platformRecommendUrl = `${supabaseUrl}/functions/v1/platform-recommend`;
-      const prResponse = await fetch(platformRecommendUrl, {
-        method: 'POST',
+      const prResponse = await fetch(`${supabaseUrl}/functions/v1/platform-recommend`, {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseServiceKey}`,
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${supabaseServiceKey}`,
         },
         body: JSON.stringify({
           municipality_name,
@@ -279,227 +380,411 @@ serve(async (req) => {
         const prData = await prResponse.json();
         algorithmicFleet = prData.fleet || [];
         algorithmicPerUseCase = prData.per_use_case_top || {};
-        console.log(`[${municipality_name}] Algorithm fleet: ${algorithmicFleet.map((f: any) => f.drone).join(', ')}`);
-      } else {
-        console.warn(`[${municipality_name}] platform-recommend failed: ${prResponse.status}`);
+        console.log(`[${municipality_name}] Fleet: ${algorithmicFleet.map((f: any) => f.drone).join(", ")}`);
       }
     } catch (prErr) {
       console.warn(`[${municipality_name}] platform-recommend error:`, prErr);
     }
-    // Build IKS/fire department context
+
+    // ── Build prompt data sections ─────────────────────────────────────
+
+    const infraLines = [
+      `- Innbyggere: ${population || "ukjent"}`,
+      `- Areal: ${area_km2 || "ukjent"} km²`,
+      `- Befolkningstetthet: ${density_per_km2 || "ukjent"} innb/km²`,
+      `- Kommunale veier: ${road_km || "ukjent"} km (SSB 11814)`,
+      `- Vannledning: ${va_network?.water_pipe_km ?? "ukjent"} km (SSB)`,
+      `- Avløpsledning: ${va_network?.sewage_pipe_km ?? "ukjent"} km (SSB)`,
+      `- Broer: ${infrastructure?.bridges ?? "ukjent"} (NVDB)`,
+      `- Tunneler: ${infrastructure?.tunnels ?? "ukjent"} (NVDB)`,
+      `- Bygninger totalt: ${buildings?.total ?? "ukjent"} (SSB 03174)`,
+      `  - Boliger: ${buildings?.residential ?? "ukjent"}`,
+      `  - Fritidsboliger: ${buildings?.holiday_homes ?? "ukjent"}`,
+      `  - Næringsbygg: ${buildings?.commercial ?? "ukjent"}`,
+      `- Jordbruksareal: ${land_use?.agricultural_km2 ?? "ukjent"} km² (SSB 09594)`,
+      `- Skogareal: ${land_use?.forest_km2 ?? "ukjent"} km² (SSB 09594)`,
+    ].join("\n");
+
+    const sectorLines =
+      Array.isArray(sector_data) && sector_data.length > 0
+        ? sector_data
+            .filter((s: any) => s?.expenditure_1000nok != null)
+            .map(
+              (s: any) =>
+                `- ${s.sector}: ${s.expenditure_1000nok.toLocaleString("nb-NO")} (1000 kr, ${s.year || "ukjent"}, ${s.source || "ukjent"})`,
+            )
+            .join("\n")
+        : "- Ingen sektorkostnader tilgjengelig.";
+
     const iksContext = fire_dept_name
-      ? `BRANNVESEN: ${fire_dept_name} (type: ${fire_dept_type || 'ukjent'})
-${iks_partners && iks_partners.length > 0
-  ? `Partnerkommuner i brannvesenet: ${iks_partners.join(', ')}. Dronestasjonen kan stasjoneres sentralt for hele ${fire_dept_type === 'IKS' ? 'IKS-et' : 'distriktet'}.`
-  : `Enkeltkommunalt brannvesen — ingen delte ressurser.`}
-${alarm_sentral_name ? `110-sentral: ${alarm_sentral_name}` : ''}
-${region_municipalities && region_municipalities.length > 0 ? `Totalt ${region_municipalities.length} kommuner under samme 110-region.` : ''}`
-      : 'Ingen brannvesendata tilgjengelig.';
+      ? `BRANNVESEN: ${fire_dept_name} (${fire_dept_type || "ukjent type"})
+${iks_partners?.length ? `Partnerkommuner: ${iks_partners.join(", ")}. Dronestasjon kan stasjoneres sentralt for hele ${fire_dept_type === "IKS" ? "IKS-et" : "distriktet"}.` : "Enkeltkommunalt brannvesen."}
+${alarm_sentral_name ? `110-sentral: ${alarm_sentral_name}` : ""}
+${region_municipalities?.length ? `${region_municipalities.length} kommuner i 110-regionen.` : ""}`
+      : "Ingen brannvesendata.";
 
-    const sectorCostLines = Array.isArray(sector_data) && sector_data.length > 0
-      ? sector_data
-          .filter((sector: any) => sector?.expenditure_1000nok != null)
-          .map((sector: any) => {
-            const fteLine = sector.employees_fte != null ? `, estimert ${sector.employees_fte} årsverk` : '';
-            return `- ${sector.sector}: ${sector.expenditure_1000nok} (1000 kr${fteLine}, år ${sector.year || 'ukjent'}, kilde ${sector.source || 'ukjent'})`;
-          })
-          .join('\n')
-      : '- Ingen sektorkostnader tilgjengelig fra SSB tabell 12362.';
+    const airspaceInfo = drone_relevance?.controlled_airspace
+      ? `LUFTROM: ${drone_relevance.controlled_airspace.type} rundt ${drone_relevance.controlled_airspace.airport} (radius ~${drone_relevance.controlled_airspace.radius_km} km). Krever koordinering med tårnkontroll.`
+      : "Ingen kontrollert luftrom i kommunen.";
 
-    const sectorStaffingLines = Array.isArray(sector_data) && sector_data.length > 0
-      ? sector_data
-          .filter((sector: any) => sector?.employees_fte != null)
-          .map((sector: any) => `- ${sector.sector}: ~${sector.employees_fte} årsverk (estimert fra lønnskostnader)`)
-          .join('\n')
-      : '- Ingen årsverkdata tilgjengelig.';
+    const protectedInfo =
+      drone_relevance?.protected_areas?.length > 0
+        ? `VERNEOMRÅDER: ${drone_relevance.protected_areas.join(", ")}. Krever dispensasjon fra Miljødirektoratet for droneflyvning.`
+        : "";
 
-    const distances = estimateMaxMissionDistance(area_km2, road_km, population);
+    // BRIS section — kept but cleaned up
+    let brisSection = "";
+    if (bris_mission_data) {
+      const entries = Object.entries(bris_mission_data as Record<string, any>);
+      brisSection = `\nBRIS OPPDRAGSDATA:\n${entries
+        .map(([year, data]: [string, any]) => {
+          const missions = (data.missions || []) as Array<{
+            t: string;
+            n: number;
+            rt: string;
+            dt: string;
+          }>;
+          return `${year} (${data.total} oppdrag):\n${missions.map((m) => `  ${m.t}: ${m.n} (respons ${m.rt}, utrykning ${m.dt})`).join("\n")}`;
+        })
+        .join("\n\n")}
 
-    const fireBudgetLine = fire_stats?.fire_expenditure_1000nok != null
-      ? `- Brann/ulykkesvern: ${fire_stats.fire_expenditure_1000nok} (1000 kr, år ${fire_stats.year || 'ukjent'}, kilde ${fire_stats.source || 'ukjent'})`
-      : '- Brannkostnad ikke tilgjengelig.';
+Identifiser oppdrag der drone kan: A) erstatte bilutrykning (ABA-verifisering, unødige alarmer), B) gi raskere situasjonsbilde (brann, trafikk), C) redusere antall biler (verifiser omfang først).`;
+    }
 
-    const systemPrompt = `Du er en norsk kommunal droneekspert som skriver mulighetsanalyser for kommunale beslutningstakere.
+    // ── System prompt — concise, rules-focused ─────────────────────────
 
-ROLLE: Du skriver for en rådmann eller kommunedirektør som IKKE kan dronefag. Rapporten skal være selvforklarende, talldrevet og handlingsrettet. Ingen fagsjargong uten forklaring.
+    const systemPrompt = `Du er en norsk kommunal droneekspert som skriver mulighetsanalyser.
 
-OPERATIV MODELL:
-- Alle operasjoner er autonome BVLOS fra sentralisert drone-in-a-box stasjon
-- To plattformtyper: multirotor (dock-basert) og fastving (drone-in-a-box)
-- Skalering etter kommunestørrelse:
-  - Liten (<5000 innb): 1 multirotor
-  - Mellomstor (5000–20000): 1–2 multirotor
-  - Stor (>20000): 2+ multirotor + 1 fastving
+MÅLGRUPPE: Kommunedirektør uten dronefaglig bakgrunn. Selvforklarende, talldrevet, handlingsrettet.
 
-PLATTFORMTYPER:
-1. MULTIROTOR (autonom BVLOS fra dronestasjon):
-   - Brukes til: lokale inspeksjoner, termisk, SAR, beredskap, bygningsdokumentasjon
-   - Pris ca. ${DRONE_ARCHETYPES.multirotor.costNok.toLocaleString('nb-NO')} NOK per enhet
-
-2. FIXED-WING DRONE-IN-A-BOX:
-   - Brukes til: lange korridorflyginger (vei, rør), stor arealdekning (skog, natur, kartlegging), vilttelling
-   - Pris ca. ${DRONE_ARCHETYPES.fixedWing.costNok.toLocaleString('nb-NO')} NOK per enhet
-
-REGULATORISK:
-- EASA-regelverk gjelder. Bland ALDRI åpen og spesifikk kategori.
-- Alle dock-operasjoner krever spesifikk kategori (SORA).
-- Antall SORA-søknader = antall distinkte operasjonstyper (inspeksjon, søk og redning, kartlegging osv.), IKKE antall droner.
-- Oppgi alltid SAIL-nivå og hvilke pilotkompetanser som kreves.
+OPERATIV MODELL: Alle operasjoner er autonome BVLOS fra drone-in-a-box stasjon.
+- Multirotor: lokale inspeksjoner, termisk, beredskap. ~${DRONE_ARCHETYPES.multirotor.costNok.toLocaleString("nb-NO")} NOK.
+- Fixed-wing: lange korridorer (vei/rør), stor arealdekning. ~${DRONE_ARCHETYPES.fixedWing.costNok.toLocaleString("nb-NO")} NOK.
+- Skalering: <5000 innb → 1 multirotor. 5000–20000 → 1–2 multirotor. >20000 → 2+ multirotor + 1 fixed-wing.
 
 ${CERT_RULES}
 
-DRONEMODELLER:
-- Bruk UTELUKKENDE modeller fra den vedlagte katalogen. Oppfinn aldri modellnavn.
-- Hvis ingen modell i katalogen passer, si "Ingen passende modell i katalog — manuell vurdering nødvendig."
+PLATTFORMVALG:
+- BRUK droneflåten fra ALGORITMISK ANBEFALING. Ikke velg andre med mindre algoritmen ikke returnerte resultater.
+- Ikke anbefal kinesiske plattformer (DJI, Autel) som primærvalg for offentlig sektor uten eksplisitt forespørsel.
+- Forklar HVORFOR for hver modell — utstyr, dekningskapasitet, sambruk.
+${prefer_european ? "- Kommunen foretrekker europeiske/nordiske produsenter." : ""}
 
-PLATTFORMANBEFALING:
-- Ikke anbefal kinesiske plattformer (DJI, Autel) som primærvalg for offentlig sektor med mindre brukeren eksplisitt ber om det.
-- Ranger etter: (1) EASA-sertifisert/sertifiserbar, (2) europeisk/NDAA-kompatibel, (3) pris-ytelse.
-- Forklar alltid HVORFOR en spesifikk modell anbefales — ikke bare list den.
+BRUK AV KOMMUNEDATA:
+- Beregn flytimer fra formler og REELLE infrastrukturtall. Vis beregningen.
+- Korridorinspeksjon: ~15 km/t. Arealkartlegging multirotor: ~40 ha/t. Fixed-wing: ~200 ha/t.
+- Broinspeksjon: ~20 min/bro. 
+- Hvis data mangler, si det eksplisitt — ALDRI finn på tall.
+- Bruk "foreslås", "anbefales", "konseptuelt opplegg" for strategiske anbefalinger.
 
-NARRATIV STRUKTUR — Rapporten har tre nivåer. Hvert nivå fungerer alene:
+TEKST: Kort. Direkte. Ingen fyllord. Skriv "droneavdeling", aldri "droneprogram".
 
-NIVÅ 1 — OVERBLIKK (for beslutningstaker):
-- Hva: 1 setning om hva analysen viser
-- Anbefaling: 1–2 setninger om hva kommunen bør gjøre
-- Investering: Totalkostnad år 1 (ett tall)
-- Gevinst: Estimert årlig besparelse i kroner OG timer
-- Neste steg: Maks 3 konkrete handlinger
+Du har ${relevantUCs.length} verifiserte bruksområder. Velg KUN fra disse. Ekskluder irrelevante.`;
 
-NIVÅ 2 — ANALYSE (for fagperson):
-- Bruksområder per avdeling: Tabell med avdeling, bruksområde, estimerte timer/år, plattform
-- Dekningsmatrise: Avdelinger (rader) × Droner (kolonner) → bruksområder i cellene
-- Flåtevalg: Modell, rolle, pris, begrunnelse (maks 2 setninger per modell)
-- Oppetid: Månedlig oppetid basert på MET-data, med eksplisitt notat om polarnatt/nattflyving
-- Regulatorisk: Antall SORA-søknader, SAIL-nivå, pilotgrupper, opplæringsbehov
-- Sambruksmodell: Hvis IKS — vis totalkostnad ÷ kommuner = kostnad per kommune vs. alene-kostnad
-
-NIVÅ 3 — VEDLEGG (for den som graver):
-- Detaljert oppgaveliste med timer
-- KOSTRA-grunnlag
-- BRIS-data (hvis tilgjengelig)
-- Forutsetninger og begrensninger
-
-TEKSTSTIL:
-- Kort. Direkte. Ingen fyllord.
-- Tallene snakker — ikke gjenta i tekst det som allerede vises i en tabell eller graf.
-- Maks 80 tegn for korttekster (cards). Maks 150 tegn for seksjonsintroer. Maks 2 setninger for begrunnelser.
-- Aldri bruk "state-of-the-art", "cutting-edge", "innovative" eller lignende.
-- Skriv "droneavdeling", aldri "droneprogram".
-
-DIFFERENSIERING BASERT PÅ KOMMUNEDATA:
-- Bruk REELLE tall for beregninger (vei_km, innbyggere, areal osv.).
-- Ikke bruk faste timer for variable formler — beregn fra kommunedata.
-- En liten kommune (5000 innb., 50 km vei) skal få VESENTLIG lavere flytimer og færre droner enn en stor (50000 innb., 500 km vei).
-- Små kommuner (<10000 innb.) trenger typisk 1 multirotor og muligens 0 fixed-wing.
-
-Du har tilgang til en VERIFISERT database med ${relevantUCs.length} bruksområder som matcher kommunens aktive avdelinger.
-Du skal KUN velge fra disse — ALDRI finne opp nye.
-Hvert use case har et fast felt 'droneArchetype' som er enten 'multirotor' eller 'fixedWing' — bruk dette.
-
-VIKTIG: Ikke inkluder use cases som åpenbart er irrelevante for kommunen.
-- UC-020 (kystsonekartlegging): Kun for kystkommuner.
-- UC-004/UC-021 (skogbrann/skogovervåkning): Kun for kommuner med vesentlig skogareal.
-- UC-025/UC-026 (medisinlevering/AED): Mest relevant for distriktskommuner.
-`;
+    // ── User prompt — structured data, no catalog dump ─────────────────
 
     const userPrompt = `Analyser dronemulighetene for ${municipality_name} kommune.
 
-KOMMUNEDATA:
-- Innbyggere: ${population || 'ukjent'}
-- Areal: ${area_km2 || 'ukjent'} km²
-- Veinett: ${road_km || 'ukjent'} km
-- VA-ledningsnett: ${va_km || 'ukjent'} km
-- Bygninger: ${buildings || 'ukjent'}
-- Terreng: ${terrain_type || 'ukjent'}
-- Befolkningstetthet: ${density_per_km2 || 'ukjent'} innb/km²
-- Typisk dekningsområde multirotor (estimat basert på flytid og sikkerhetsmarginer): ~${distances.multirotor_km.toFixed(0)} km fra stasjon
-- Typisk dekningsområde fixed-wing (estimat basert på flytid og sikkerhetsmarginer): ~${distances.fixedwing_km.toFixed(0)} km fra stasjon
+INFRASTRUKTUR OG KOMMUNEDATA:
+${infraLines}
 
-KOSTRA/SSB KOSTNADSDATA (tabell 12362):
-${sectorCostLines}
-${fireBudgetLine}
+${airspaceInfo}
+${protectedInfo}
 
-ÅRSVERK PER SEKTOR (estimert fra lønnskostnader, SSB 12362):
-${sectorStaffingLines}
+KOSTRA SEKTORKOSTNADER (SSB 12362):
+${sectorLines}
+
+${fire_stats?.fire_expenditure_1000nok != null ? `BRANNBUDSJETT: ${fire_stats.fire_expenditure_1000nok.toLocaleString("nb-NO")} (1000 kr, ${fire_stats.year || "ukjent"}, ${fire_stats.source || "ukjent"})` : ""}
+${fire_stats?.total_callouts ? `UTRYKNINGER (estimat): ~${fire_stats.total_callouts}/år` : ""}
 
 AKTIVE AVDELINGER: ${JSON.stringify(deptNames)}
 
 ${iksContext}
+${brisSection}
 
-${bris_mission_data ? `BRIS OPPDRAGSDATA (reelle utrykninger fra brann- og redningstjenesten):
-${Object.entries(bris_mission_data as Record<string, any>).map(([year, data]: [string, any]) => {
-  const missions = (data.missions || []) as Array<{t: string; n: number; rt: string; dt: string}>;
-  const abaTotal = missions.filter((m: any) => m.t.startsWith('ABA')).reduce((s: number, m: any) => s + m.n, 0);
-  const brannTotal = missions.filter((m: any) => m.t.startsWith('Brann')).reduce((s: number, m: any) => s + m.n, 0);
-  const trafikk = missions.find((m: any) => m.t === 'Trafikkulykke');
-  const avbrutt = missions.filter((m: any) => m.t.startsWith('Avbrutt') || m.t.startsWith('Unødig')).reduce((s: number, m: any) => s + m.n, 0);
-  return `ÅR ${year} (totalt ${data.total} oppdrag):
-  - ABA (automatiske brannalarmer): ${abaTotal} oppdrag (mange er falske/unødige alarmer)
-  - Brann (bygning, skog, bil, etc.): ${brannTotal} oppdrag
-  - Trafikkulykker: ${trafikk?.n || 0} oppdrag (median responstid ${trafikk?.rt || 'ukjent'})
-  - Avbrutt/unødig: ${avbrutt} oppdrag
-  
-  Alle oppdragstyper med antall og responstid:
-${missions.map((m: any) => `  ${m.t}: ${m.n} oppdrag, responstid ${m.rt}, utrykningstid ${m.dt}`).join('\n')}`;
-}).join('\n\n')}
+ALGORITMISK ANBEFALT DRONEFLÅTE:
+${
+  algorithmicFleet.length > 0
+    ? algorithmicFleet
+        .map(
+          (f: any, i: number) =>
+            `${i + 1}. ${f.drone} (${f.drone_type}, ${f.price_nok ? f.price_nok.toLocaleString("nb-NO") + " NOK" : f.price_eur + " EUR"})
+   Score: ${f.avg_score}/100 | Dekker ${f.covers_n_use_cases} bruksområder: ${f.covered.map((c: any) => c.use_case).join(", ")}
+   Avdelinger: ${f.departments.join(", ")}${f.advisories?.length ? "\n   OBS: " + f.advisories.join("; ") : ""}`,
+        )
+        .join("\n\n")
+    : "Ingen algoritmisk anbefaling — velg basert på bruksområder."
+}
 
-ANALYSE AV DRONE-ERSTATTBARE OPPDRAG:
-Basert på BRIS-dataen, identifiser oppdragstyper der en drone fra dronestasjon kan:
-A) ERSTATTE en bil-utrykning helt (f.eks. ABA-verifisering, unødige alarmer)
-B) GI RASKERE situasjonsbevissthet før mannskapet ankommer (f.eks. bygningsbrann, trafikkulykke)
-C) REDUSERE antall biler som sendes ut (f.eks. ved å verifisere omfang først)
+VERIFISERTE BRUKSOMRÅDER:
+${JSON.stringify(
+  relevantUCs.map((uc) => ({
+    id: uc.id,
+    name: uc.name,
+    dept: uc.department,
+    type: uc.operationType,
+    easa: uc.easaCategory,
+    cert: uc.certRequirement,
+    archetype: uc.droneArchetype,
+    priority: uc.priority,
+    formula: uc.flightHoursFormula,
+    thermal: uc.needsThermal,
+    rtk: uc.needsRtk,
+  })),
+  null,
+  1,
+)}
 
-For hver kategori: estimer antall oppdrag per år som kan påvirkes, potensiell tidsbesparelse, og reduksjon i bilutskjøring.
-Husk at drone fra stasjon typisk er på stedet innen 2-5 minutter i dekningsområdet.` : ''}
+BEREGNINGSINSTRUKSJONER:
+- vei_km = ${road_km || "?"}, vann_km = ${va_network?.water_pipe_km ?? "?"}, avløp_km = ${va_network?.sewage_pipe_km ?? "?"}
+- broer = ${infrastructure?.bridges ?? "?"}, skog = ${land_use?.forest_km2 ?? "?"} km²
+- Vis beregning for hvert bruksområde, f.eks. "${road_km || "?"} km ÷ 15 km/t = ${road_km ? Math.round(road_km / 15) : "?"} timer"
 
-ALGORITMISK ANBEFALT DRONEFLÅTE (fra scoringsalgoritmen — BRUK DISSE):
-${algorithmicFleet.length > 0 
-  ? algorithmicFleet.map((f: any, i: number) => `${i+1}. ${f.drone} (type: ${f.drone_type}, pris: ${f.price_eur || 'ukjent'} EUR / ${f.price_nok ? f.price_nok.toLocaleString('nb-NO') + ' NOK' : 'ukjent NOK'})
-   Score: ${f.avg_score}/100 | Dekker ${f.covers_n_use_cases} bruksområder: ${f.covered.map((c: any) => c.use_case).join(', ')}
-   Avdelinger: ${f.departments.join(', ')}
-   ${f.advisories?.length ? 'OBS: ' + f.advisories.join('; ') : ''}`).join('\n\n')
-  : 'Algoritmen returnerte ingen resultater — velg fra DRONE_CATALOG basert på kravene.'}
+${fire_dept_type === "IKS" ? `IKS-VURDERING: ${fire_dept_name} dekker ${(iks_partners || []).join(", ")}. Vurder delt dronestasjon.` : ""}`;
 
-TILGJENGELIG DRONEDATABASE (for referanse og detaljer):
-${JSON.stringify(DRONE_CATALOG.map(d => ({
-  id: d.id, name: d.name, type: d.type, flight_time_min: d.max_flight_time_min,
-  thermal: d.has_thermal, rtk: d.has_rtk, lidar: d.has_lidar, payload_kg: d.payload_kg,
-  autonomous_dock: d.autonomous_dock, price_nok: d.price_nok, best_for: d.best_for, description_no: d.description_no,
-})), null, 1)}
+    // ── Tool schema ────────────────────────────────────────────────────
 
-VERIFISERT USE CASE-DATABASE (velg KUN fra disse):
-${JSON.stringify(relevantUCs, null, 1)}
+    const toolSchema = {
+      type: "function" as const,
+      function: {
+        name: "drone_analysis",
+        description: "Komplett droneanalyse for kommunen",
+        parameters: {
+          type: "object",
+          properties: {
+            executive_summary: {
+              type: "object",
+              properties: {
+                headline: { type: "string", description: "Maks 120 tegn. Hva analysen viser." },
+                recommendation: { type: "string", description: "Maks 200 tegn. Hva kommunen bør gjøre." },
+                total_investment_year1_nok: { type: "number" },
+                estimated_annual_savings_nok: { type: "number" },
+                estimated_annual_hours_saved: { type: "number" },
+                next_steps: { type: "array", items: { type: "string" }, description: "Maks 3 konkrete handlinger" },
+              },
+              required: ["headline", "recommendation", "total_investment_year1_nok", "next_steps"],
+            },
+            summary: {
+              type: "string",
+              description: 'Kort oppsummering (2-3 setninger). Bruk "anbefales", "foreslås".',
+            },
+            department_analyses: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  department: { type: "string" },
+                  use_cases: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        id: { type: "string" },
+                        name: { type: "string" },
+                        description: { type: "string", description: "Maks 80 tegn, tilpasset kommunen" },
+                        operation_type: { type: "string", enum: ["VLOS", "BVLOS"] },
+                        easa_category: { type: "string" },
+                        required_permit: { type: "string" },
+                        pilot_certification: { type: "string" },
+                        drone_type: { type: "string" },
+                        priority: { type: "string", enum: ["Høy", "Medium", "Lav"] },
+                        annual_flight_hours: { type: "number" },
+                        calculation_basis: { type: "string", description: "Vis beregningen" },
+                        needs_thermal: { type: "boolean" },
+                        needs_rtk: { type: "boolean" },
+                      },
+                      required: [
+                        "id",
+                        "name",
+                        "description",
+                        "operation_type",
+                        "easa_category",
+                        "required_permit",
+                        "pilot_certification",
+                        "drone_type",
+                        "priority",
+                        "annual_flight_hours",
+                        "calculation_basis",
+                      ],
+                    },
+                  },
+                  total_annual_hours: { type: "number" },
+                },
+                required: ["department", "use_cases", "total_annual_hours"],
+              },
+            },
+            drone_fleet: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  drone_id: { type: "string" },
+                  drone_type: { type: "string" },
+                  recommended_model: { type: "string" },
+                  quantity: { type: "number" },
+                  shared_between: { type: "array", items: { type: "string" } },
+                  estimated_cost_nok: { type: "number" },
+                  key_features: { type: "array", items: { type: "string" } },
+                  why_chosen: { type: "string", description: "Maks 200 tegn" },
+                  covers_use_cases: { type: "array", items: { type: "string" } },
+                  max_flight_time_min: { type: "number" },
+                  needs_thermal: { type: "boolean" },
+                  needs_rtk: { type: "boolean" },
+                  autonomous: { type: "boolean" },
+                },
+                required: [
+                  "drone_id",
+                  "drone_type",
+                  "recommended_model",
+                  "quantity",
+                  "shared_between",
+                  "estimated_cost_nok",
+                  "why_chosen",
+                  "covers_use_cases",
+                ],
+              },
+            },
+            coverage_matrix: {
+              type: "object",
+              description: "Avdelinger (rader) × Droner (kolonner) → bruksområder",
+              properties: {
+                platforms: { type: "array", items: { type: "string" } },
+                departments: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      department: { type: "string" },
+                      coverage: { type: "object", additionalProperties: { type: "array", items: { type: "string" } } },
+                    },
+                  },
+                },
+              },
+            },
+            certification_plan: {
+              type: "object",
+              properties: {
+                pilot_groups: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      group_name: { type: "string" },
+                      certification_path: {
+                        type: "string",
+                        description: "Nøyaktig ÉN vei. ALDRI bland åpen og spesifikk.",
+                      },
+                      covers_use_cases: { type: "array", items: { type: "string" } },
+                      training_description: {
+                        type: "string",
+                        description:
+                          'Avslutt med: "Varighet kan tilpasses; ingen fastsatt kurslengde i EASA-regelverket."',
+                      },
+                      estimated_training_days: { type: "number", description: "Forslag, ikke regulatorisk krav" },
+                      practical_outcome: { type: "string" },
+                    },
+                    required: [
+                      "group_name",
+                      "certification_path",
+                      "covers_use_cases",
+                      "training_description",
+                      "estimated_training_days",
+                      "practical_outcome",
+                    ],
+                  },
+                },
+              },
+              required: ["pilot_groups"],
+            },
+            cost_breakdown: {
+              type: "object",
+              properties: {
+                hardware_knok: { type: "number" },
+                software_annual_knok: { type: "number" },
+                regulatory_knok: { type: "number", description: "SORA-søknader, forsikring" },
+                training_knok: { type: "number" },
+                total_year1_knok: { type: "number" },
+              },
+              required: ["hardware_knok", "total_year1_knok"],
+            },
+            iks_recommendation: {
+              type: "object",
+              properties: {
+                can_share: { type: "boolean" },
+                shared_resources: { type: "array", items: { type: "string" } },
+                recommendation: { type: "string" },
+                partner_municipalities: { type: "array", items: { type: "string" } },
+                cost_per_municipality_nok: { type: "number", description: "Totalkost ÷ antall kommuner" },
+                cost_alone_nok: { type: "number", description: "Kost hvis kommunen gjør det alene" },
+              },
+              required: ["can_share", "recommendation"],
+            },
+            total_drones_needed: { type: "number" },
+            total_annual_cost_nok: { type: "number" },
+            total_annual_flight_hours: { type: "number" },
+            implementation_priority: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  phase: { type: "number" },
+                  title: { type: "string" },
+                  departments: { type: "array", items: { type: "string" } },
+                  description: { type: "string" },
+                },
+                required: ["phase", "title", "departments", "description"],
+              },
+            },
+            drone_mission_savings: {
+              type: "object",
+              description: "Kun hvis BRIS-data er tilgjengelig",
+              properties: {
+                total_annual_missions: { type: "number" },
+                drone_replaceable_missions: { type: "number" },
+                categories: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      category: { type: "string" },
+                      mission_types: { type: "array", items: { type: "string" } },
+                      annual_missions: { type: "number" },
+                      drone_role: {
+                        type: "string",
+                        enum: ["erstatter_utrykning", "raskere_situasjonsbilde", "reduserer_biler"],
+                      },
+                      description: { type: "string" },
+                      estimated_truck_reduction_pct: { type: "number" },
+                      estimated_time_saved_min: { type: "number" },
+                      annual_savings_nok: { type: "number" },
+                    },
+                    required: ["category", "annual_missions", "drone_role", "description"],
+                  },
+                },
+                total_annual_savings_nok: { type: "number" },
+                summary: { type: "string" },
+              },
+            },
+          },
+          required: [
+            "executive_summary",
+            "summary",
+            "department_analyses",
+            "drone_fleet",
+            "certification_plan",
+            "cost_breakdown",
+            "iks_recommendation",
+            "total_drones_needed",
+            "total_annual_cost_nok",
+            "total_annual_flight_hours",
+            "implementation_priority",
+          ],
+        },
+      },
+    };
 
-INSTRUKSJONER:
-1. Velg relevante use cases fra databasen basert på kommunens SPESIFIKKE profil — ekskluder irrelevante.
-2. Beregn flytimer ved å bruke formlene og REELLE kommunedata:
-   - "vei_km × 0.15" med vei_km = ${road_km || 'ukjent'} → vis beregningen f.eks. "${road_km || '?'}km × 0.15 = ${road_km ? Math.round(road_km * 0.15) : '?'} timer"
-   - "rør_km × 0.2" med rør_km = ${va_km || 'ukjent'}
-   - "areal_km2 × 0.002" med areal = ${area_km2 || 'ukjent'}
-   - Faste timer brukes som de er (f.eks. "30 timer/år flat")
-3. Når du omtaler avdelingsøkonomi eller brannøkonomi, bruk tallene over fra SSB tabell 12362 inkludert årsverk og ikke generaliser mellom kommuner.
-4. Hvis kostnadsdata mangler, si eksplisitt at data mangler i stedet for å finne på tall.
-5. For HVER operasjon: bruk NØYAKTIG operationType, easaCategory og certRequirement fra databasen
-6. DRONEFLÅTE — BRUK DEN ALGORITMISKE ANBEFALINGEN:
-   ⚠️ VIKTIG: Droneflåten er allerede valgt av scoringsalgoritmen basert på 9 vektede faktorer (type-match, sensorer, pris, EASA-sertifisering, deployering, tilgjengelighet, overshoot, markedsmodenhet).
-   Du SKAL bruke dronene fra "ALGORITMISK ANBEFALT DRONEFLÅTE" over — IKKE velg andre droner med mindre algoritmen ikke returnerte resultater.
-   For HVER drone: forklar HVORFOR den er valgt basert på kommunens behov. Bruk produsentens oppgitte maksimale flytid som referanse.
-${prefer_european ? `   ⚠️ Kommunen foretrekker europeiske/nordiske produsenter — algoritmen har allerede vektet dette.` : ''}
-   - Match utstyrbehov: Trenger operasjonene termisk? RTK? LiDAR? Payload?
-   - Vurder sambruk: Hvilke avdelinger kan dele same drone basert på overlappende behov?
-   - For HVER drone: forklar HVORFOR den er valgt (flytid, utstyr, bruksområder). ALDRI bruk formuleringer som "rekkevidde på ~X km".
-7. ${fire_dept_type === 'IKS'
-    ? `For IKS-brannvesenet ${fire_dept_name}: vurder om dronestasjonen kan dekke hele IKS-området med partnerkommuner: ${(iks_partners || []).join(', ')}`
-    : fire_dept_name
-    ? `Brannvesenet er et ${fire_dept_type}: ${fire_dept_name}. Dronestasjonen dekker kun ${municipality_name}.`
-    : 'Ingen brannveseninfo.'}
-8. Gi én sertifiseringsvei per pilot — ALDRI bland åpen og spesifikk kategori. Følg reglene i punkt 4-6 i CERT_RULES nøye.
-9. Estimer totalkostnad basert på valgte droner
-10. Bruk ord som "foreslås", "anbefales", "konseptuelt opplegg" for implementeringsplaner, IKS-samarbeid og use case-struktur. Leseren skal forstå hva som er fakta vs. anbefaling.
-${bris_mission_data ? `11. BRIS-ANALYSE: Basert på oppdragsdataen, lag en detaljert analyse av hvilke oppdragstyper som kan erstattes/forbedres med drone. Grupper i kategorier (ABA-verifisering, brann-situasjonsbevissthet, trafikk, naturhendelser osv.) og estimer besparelser i antall utrykninger, tid og kostnader.` : ''}`;
+    // ── LLM call with retry ────────────────────────────────────────────
 
-    // Retry logic for transient gateway errors (502, 503)
     let response: Response | null = null;
     const MAX_RETRIES = 3;
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
@@ -515,353 +800,195 @@ ${bris_mission_data ? `11. BRIS-ANALYSE: Basert på oppdragsdataen, lag en detal
             { role: "system", content: systemPrompt },
             { role: "user", content: userPrompt },
           ],
-          tools: [
-            {
-              type: "function",
-              function: {
-                name: "drone_analysis",
-                description: "Returnerer en komplett droneanalyse for kommunen basert på verifiserte use cases",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    summary: { type: "string", description: "Kort oppsummering (2-3 setninger) SPESIFIKT for denne kommunen. Bruk ord som 'anbefales' og 'foreslås' — dette er en strategisk vurdering, ikke et vedtatt tiltak." },
-                    department_analyses: {
-                      type: "array",
-                      items: {
-                        type: "object",
-                        properties: {
-                          department: { type: "string" },
-                          use_cases: {
-                            type: "array",
-                            items: {
-                              type: "object",
-                              properties: {
-                                id: { type: "string", description: "UC-ID fra databasen" },
-                                name: { type: "string" },
-                                description: { type: "string", description: "Kort beskrivelse tilpasset kommunen" },
-                                operation_type: { type: "string", enum: ["VLOS", "BVLOS"] },
-                                easa_category: { type: "string" },
-                                required_permit: { type: "string" },
-                                pilot_certification: { type: "string", description: "Nøyaktig ÉN sertifiseringsvei" },
-                                drone_type: { type: "string" },
-                                priority: { type: "string", enum: ["Høy", "Medium", "Lav"] },
-                                annual_flight_hours: { type: "number", description: "Beregnet fra formel + kommunedata" },
-                                calculation_basis: { type: "string", description: "Vis beregningen, f.eks. '380km × 0.15 = 57 timer'" },
-                                needs_thermal: { type: "boolean" },
-                                needs_rtk: { type: "boolean" },
-                              },
-                              required: ["id", "name", "description", "operation_type", "easa_category", "required_permit", "pilot_certification", "drone_type", "priority", "annual_flight_hours", "calculation_basis"],
-                            },
-                          },
-                          total_annual_hours: { type: "number" },
-                        },
-                        required: ["department", "use_cases", "total_annual_hours"],
-                      },
-                    },
-                    drone_fleet: {
-                      type: "array",
-                      description: "Spesifikke droner fra DRONE_CATALOG, valgt basert på oppdragsbehov",
-                      items: {
-                        type: "object",
-                        properties: {
-                          drone_id: { type: "string", description: "ID fra DRONE_CATALOG" },
-                          drone_type: { type: "string" },
-                          recommended_model: { type: "string" },
-                          quantity: { type: "number" },
-                          shared_between: { type: "array", items: { type: "string" }, description: "Avdelinger som deler denne dronen" },
-                          estimated_cost_nok: { type: "number" },
-                          key_features: { type: "array", items: { type: "string" }, description: "Nøkkelegenskaper som er relevante for kommunen" },
-                          why_chosen: { type: "string", description: "Kort forklaring (2-3 setninger) på HVORFOR denne dronen er valgt — distanse, utstyr, sambruk" },
-                          covers_use_cases: { type: "array", items: { type: "string" }, description: "Liste over UC-IDer denne dronen dekker" },
-                          max_flight_time_min: { type: "number", description: "Produsentens oppgitte maksimale flytid i minutter" },
-                          needs_thermal: { type: "boolean" },
-                          needs_rtk: { type: "boolean" },
-                          needs_lidar: { type: "boolean" },
-                          autonomous: { type: "boolean", description: "Om denne brukes fra dronestasjon" },
-                        },
-                        required: ["drone_id", "drone_type", "recommended_model", "quantity", "shared_between", "estimated_cost_nok", "why_chosen", "covers_use_cases"],
-                      },
-                    },
-                    certification_plan: {
-                      type: "object",
-                      description: "Samlet sertifiseringsplan — én vei per pilotgruppe",
-                      properties: {
-                        pilot_groups: {
-                          type: "array",
-                          items: {
-                            type: "object",
-                            properties: {
-                              group_name: { type: "string" },
-                              certification_path: { type: "string", description: "Nøyaktig ÉN sertifiseringsvei" },
-                              covers_use_cases: { type: "array", items: { type: "string" } },
-                              training_description: { type: "string", description: "Beskrivelse av foreslått opplæring. Avslutt ALLTID med: 'Varighet og innhold kan tilpasses leverandør og kommunens behov; det finnes ingen fastsatt kurslengde i EASA-regelverket for denne kompetansen.' For SORA/BVLOS: presiser at opplæringen er grunnlag for å søke OpAuth, men at godkjenningen fra Luftfartstilsynet gir rett til å fly — ikke kurset alene." },
-                              estimated_training_days: { type: "number", description: "Foreslått antall dager (IKKE regulatorisk minstekrav)" },
-                              practical_outcome: { type: "string", description: "Én setning på 'ikke-nerd-språk' som forklarer hva piloten faktisk kan gjøre etter kurset" },
-                            },
-                            required: ["group_name", "certification_path", "covers_use_cases", "training_description", "estimated_training_days", "practical_outcome"],
-                          },
-                        },
-                      },
-                      required: ["pilot_groups"],
-                    },
-                    iks_recommendation: {
-                      type: "object",
-                      properties: {
-                        can_share: { type: "boolean" },
-                        shared_resources: { type: "array", items: { type: "string" } },
-                        recommendation: { type: "string", description: "Bruk ord som 'foreslås' eller 'anbefales'" },
-                        partner_municipalities: { type: "array", items: { type: "string" } },
-                      },
-                      required: ["can_share", "recommendation"],
-                    },
-                    total_drones_needed: { type: "number" },
-                    total_annual_cost_nok: { type: "number" },
-                    total_annual_flight_hours: { type: "number" },
-                    implementation_priority: {
-                      type: "array",
-                      items: {
-                        type: "object",
-                        properties: {
-                          phase: { type: "number" },
-                          title: { type: "string" },
-                          departments: { type: "array", items: { type: "string" } },
-                          description: { type: "string", description: "Bruk 'foreslås', 'anbefales' eller 'konseptuelt opplegg'" },
-                        },
-                        required: ["phase", "title", "departments", "description"],
-                      },
-                    },
-                    drone_mission_savings: {
-                      type: "object",
-                      description: "Analyse av BRIS-oppdrag som kan erstattes/forbedres med drone. Kun inkludert hvis BRIS-data er tilgjengelig.",
-                      properties: {
-                        total_annual_missions: { type: "number", description: "Totalt antall oppdrag per år (snitt)" },
-                        drone_replaceable_missions: { type: "number", description: "Antall oppdrag som kan erstattes/forbedres med drone" },
-                        categories: {
-                          type: "array",
-                          items: {
-                            type: "object",
-                            properties: {
-                              category: { type: "string", description: "Kategori, f.eks. 'ABA-verifisering', 'Brann situasjonsbevissthet'" },
-                              mission_types: { type: "array", items: { type: "string" }, description: "Oppdragstyper fra BRIS som inngår" },
-                              annual_missions: { type: "number" },
-                              drone_role: { type: "string", enum: ["erstatter_utrykning", "raskere_situasjonsbilde", "reduserer_biler"], description: "Hva dronen gjør" },
-                              description: { type: "string", description: "Kort forklaring av hvordan drone hjelper, inkl. responstid-sammenligning" },
-                              estimated_truck_reduction_pct: { type: "number", description: "Estimert prosent av oppdrag der man kan unngå/redusere utrykning" },
-                              estimated_time_saved_min: { type: "number", description: "Estimert minutter spart per oppdrag i snitt" },
-                              annual_savings_nok: { type: "number", description: "Estimert årlig besparelse i NOK (ca. 3500 kr per unngått bilutrykning)" },
-                            },
-                            required: ["category", "mission_types", "annual_missions", "drone_role", "description", "estimated_truck_reduction_pct"],
-                          },
-                        },
-                        total_annual_savings_nok: { type: "number" },
-                        summary: { type: "string", description: "Oppsummering av besparelsespotensialet i 2-3 setninger" },
-                      },
-                      required: ["total_annual_missions", "drone_replaceable_missions", "categories", "summary"],
-                    },
-                  },
-                  required: ["summary", "department_analyses", "drone_fleet", "certification_plan", "iks_recommendation", "total_drones_needed", "total_annual_cost_nok", "total_annual_flight_hours", "implementation_priority"],
-                },
-              },
-            },
-          ],
+          tools: [toolSchema],
           tool_choice: { type: "function", function: { name: "drone_analysis" } },
         }),
       });
 
       if (response.ok || (response.status !== 502 && response.status !== 503)) break;
-      console.warn(`AI gateway attempt ${attempt} failed with ${response.status}, retrying...`);
-      await response.text(); // consume body
-      if (attempt < MAX_RETRIES) await new Promise(r => setTimeout(r, 2000 * attempt));
+      console.warn(`AI gateway attempt ${attempt} failed with ${response.status}`);
+      await response.text();
+      if (attempt < MAX_RETRIES) await new Promise((r) => setTimeout(r, 2000 * attempt));
     }
+
+    // ── Handle error responses ─────────────────────────────────────────
 
     if (!response || !response.ok) {
       if (response?.status === 429) {
         return new Response(JSON.stringify({ success: false, error: "Rate limit — prøv igjen om litt" }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      // 402 = credits depleted → build fallback analysis from algorithmic data
-      if (response?.status === 402) {
-        console.warn(`[${municipality_name}] AI credits depleted — returning algorithmic fallback`);
-        const fallbackAnalysis = buildFallbackAnalysis(
-          municipality_name, relevantUCs, algorithmicFleet, deptNames,
-          area_km2, road_km, va_km, buildings, population,
-          iks_partners, fire_dept_name, fire_dept_type
-        );
-        fallbackAnalysis._algorithmic_fleet = algorithmicFleet;
-        fallbackAnalysis._ai_fallback = true;
-        return new Response(JSON.stringify({ success: true, analysis: fallbackAnalysis }), {
+          status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
+      }
+      if (response?.status === 402) {
+        console.warn(`[${municipality_name}] AI credits depleted — fallback`);
+        const fallback = buildFallbackAnalysis(
+          municipality_name,
+          relevantUCs,
+          algorithmicFleet,
+          deptNames,
+          infra,
+          iks_partners,
+          fire_dept_name,
+          fire_dept_type,
+        );
+        return new Response(
+          JSON.stringify({ success: true, analysis: { ...fallback, _algorithmic_fleet: algorithmicFleet } }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
       }
       const text = response ? await response.text() : "no response";
       console.error("AI gateway error:", response?.status, text);
       return new Response(JSON.stringify({ success: false, error: "AI-analyse feilet — prøv igjen" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // ── Parse response ─────────────────────────────────────────────────
 
     const result = await response.json();
     const toolCall = result.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall) {
       return new Response(JSON.stringify({ success: false, error: "Ingen analyse returnert" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Robust JSON parsing with repair
     let analysis: any;
     try {
       analysis = JSON.parse(toolCall.function.arguments);
-    } catch (_parseErr) {
-      // Try to repair common JSON issues
-      let cleaned = toolCall.function.arguments
+    } catch {
+      const cleaned = toolCall.function.arguments
         .replace(/,\s*}/g, "}")
         .replace(/,\s*]/g, "]")
         .replace(/[\x00-\x1F\x7F]/g, "");
       try {
         analysis = JSON.parse(cleaned);
       } catch (finalErr) {
-        console.error("JSON repair failed:", finalErr, "Raw length:", toolCall.function.arguments?.length);
+        console.error("JSON repair failed:", finalErr);
         return new Response(JSON.stringify({ success: false, error: "Analysen ble avbrutt — prøv igjen" }), {
-          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
     }
 
-    // POST-PROCESSING VALIDATION: Enforce correct values from verified database
+    // ── Post-processing: enforce verified data ─────────────────────────
+
+    // 1. Fix regulatory fields from verified database
     if (analysis.department_analyses) {
       for (const dept of analysis.department_analyses) {
         for (const uc of dept.use_cases) {
-          const sourceUC = VERIFIED_USE_CASES.find(v => v.id === uc.id);
-          if (sourceUC) {
-            uc.operation_type = sourceUC.operationType;
-            uc.easa_category = sourceUC.easaCategory;
-            uc.pilot_certification = sourceUC.certRequirement;
-            const archetype = DRONE_ARCHETYPES[sourceUC.droneArchetype as keyof typeof DRONE_ARCHETYPES];
-            uc.drone_type = archetype ? archetype.type : sourceUC.droneArchetype;
-            uc.needs_thermal = sourceUC.needsThermal;
-            uc.needs_rtk = sourceUC.needsRtk;
+          const source = VERIFIED_USE_CASES.find((v: any) => v.id === uc.id);
+          if (source) {
+            uc.operation_type = source.operationType;
+            uc.easa_category = source.easaCategory;
+            uc.pilot_certification = source.certRequirement;
+            uc.drone_type =
+              DRONE_ARCHETYPES[source.droneArchetype as keyof typeof DRONE_ARCHETYPES]?.type || source.droneArchetype;
+            uc.needs_thermal = source.needsThermal;
+            uc.needs_rtk = source.needsRtk;
           }
         }
       }
     }
 
-    // POST-PROCESSING: Enrich drone_fleet with algorithmic data
+    // 2. Enrich fleet with algorithmic pricing
     if (algorithmicFleet.length > 0 && analysis.drone_fleet) {
-      // Map AI drone_fleet entries to algorithmic data for price/score accuracy
       for (const aiDrone of analysis.drone_fleet) {
-        const match = algorithmicFleet.find((af: any) => 
-          af.drone_id === aiDrone.drone_id || 
-          af.drone?.toLowerCase().includes(aiDrone.recommended_model?.toLowerCase()) ||
-          aiDrone.recommended_model?.toLowerCase().includes(af.model?.toLowerCase())
+        const match = algorithmicFleet.find(
+          (af: any) =>
+            af.drone_id === aiDrone.drone_id ||
+            af.drone?.toLowerCase().includes(aiDrone.recommended_model?.toLowerCase()) ||
+            aiDrone.recommended_model?.toLowerCase().includes(af.model?.toLowerCase()),
         );
         if (match) {
-          // Use algorithmic price if AI didn't set one or used archetype defaults
-          if (match.price_nok && (!aiDrone.estimated_cost_nok || aiDrone.estimated_cost_nok === 450000 || aiDrone.estimated_cost_nok === 1200000)) {
+          if (
+            match.price_nok &&
+            (!aiDrone.estimated_cost_nok ||
+              aiDrone.estimated_cost_nok === 450000 ||
+              aiDrone.estimated_cost_nok === 1200000)
+          ) {
             aiDrone.estimated_cost_nok = match.price_nok;
           }
           if (!aiDrone.drone_id) aiDrone.drone_id = match.drone_id;
-          if (!aiDrone.covers_use_cases || aiDrone.covers_use_cases.length === 0) {
+          if (!aiDrone.covers_use_cases?.length) {
             aiDrone.covers_use_cases = match.covered.map((c: any) => c.use_case_id);
           }
         }
       }
     }
 
-    // Attach algorithmic fleet data for frontend reference
-    analysis._algorithmic_fleet = algorithmicFleet;
-
-    // ─── VALIDATION 1: Verify all drone_fleet models exist in catalog ───
+    // 3. Validate fleet models exist in catalog
     if (analysis.drone_fleet) {
       for (const drone of analysis.drone_fleet) {
-        const catalogMatch = DRONE_CATALOG.find((d: any) =>
-          d.id === drone.drone_id ||
-          d.name?.toLowerCase() === drone.recommended_model?.toLowerCase() ||
-          drone.recommended_model?.toLowerCase().includes(d.model?.toLowerCase())
+        const catalogMatch = DRONE_CATALOG.find(
+          (d: any) =>
+            d.id === drone.drone_id ||
+            d.name?.toLowerCase() === drone.recommended_model?.toLowerCase() ||
+            drone.recommended_model?.toLowerCase().includes(d.model?.toLowerCase()),
         );
         if (!catalogMatch) {
-          const originalName = drone.recommended_model;
+          const original = drone.recommended_model;
           drone.recommended_model = "UKJENT MODELL — manuell vurdering";
-          drone.why_chosen = `AI foreslo '${originalName}' som ikke finnes i katalog. Manuell vurdering nødvendig.`;
-          console.warn(`[${municipality_name}] Drone model '${originalName}' not found in catalog`);
+          drone.why_chosen = `AI foreslo '${original}' som ikke finnes i katalog.`;
+          console.warn(`[${municipality_name}] Unknown model: '${original}'`);
         }
       }
     }
 
-    // ─── VALIDATION 2: Verify coverage_matrix platforms match drone_fleet ───
+    // 4. Validate coverage_matrix references fleet
     if (analysis.coverage_matrix?.platforms && analysis.drone_fleet) {
       const fleetModels = new Set(analysis.drone_fleet.map((d: any) => d.recommended_model));
-      for (const platform of analysis.coverage_matrix.platforms) {
-        if (!fleetModels.has(platform)) {
-          console.warn(`[${municipality_name}] Coverage matrix refererer til '${platform}' som ikke er i flåten`);
-        }
-      }
+      analysis.coverage_matrix.platforms = analysis.coverage_matrix.platforms.filter((p: string) => fleetModels.has(p));
     }
 
-    // ─── VALIDATION 3: Verify cost breakdown sums to total ───
+    // 5. Fix cost breakdown sum
     if (analysis.cost_breakdown) {
       const cb = analysis.cost_breakdown;
-      const calculatedTotal =
-        (cb.hardware_knok || 0) +
-        (cb.software_annual_knok || 0) +
-        (cb.regulatory_knok || 0) +
-        (cb.training_knok || 0);
-      if (calculatedTotal > 0 && Math.abs(calculatedTotal - (cb.total_year1_knok || 0)) > 1) {
-        cb.total_year1_knok = calculatedTotal;
-        console.warn(`[${municipality_name}] Cost breakdown total corrected to ${calculatedTotal}`);
+      const calc =
+        (cb.hardware_knok || 0) + (cb.software_annual_knok || 0) + (cb.regulatory_knok || 0) + (cb.training_knok || 0);
+      if (calc > 0 && Math.abs(calc - (cb.total_year1_knok || 0)) > 1) {
+        cb.total_year1_knok = calc;
       }
     }
 
-    // ─── VALIDATION 4: Polar night handling ───
-    const POLAR_CIRCLE_LAT = 66.5;
-    // Use municipality coordinates if available (from MUNICIPALITY_GEO or input)
-    const municipalityLat = (analysis._latitude as number) || 0;
-    if (municipalityLat > POLAR_CIRCLE_LAT && analysis.uptime?.monthly) {
-      for (const month of analysis.uptime.monthly) {
-        if (month.expected_pct === 0 && !month.note) {
-          month.note = "Polarnatt — oppetid forutsetter dagslys. Med nattflyvningsgodkjenning er operasjoner mulig.";
-        }
-      }
-      if (!analysis.uptime.polar_night_note) {
-        analysis.uptime.polar_night_note =
-          "Kommunen ligger nord for polarsirkelen. Desember-tall forutsetter dagslysoperasjoner.";
-      }
-    }
-
-    // ─── VALIDATION 5: Truncate text lengths ───
-    function truncate(str: string | undefined, max: number): string {
-      if (!str) return '';
-      return str.length > max ? str.substring(0, max - 1) + "…" : str;
-    }
+    // 6. Truncate text fields
+    const truncate = (s: string | undefined, max: number) =>
+      !s ? "" : s.length > max ? s.substring(0, max - 1) + "…" : s;
 
     if (analysis.executive_summary) {
       analysis.executive_summary.headline = truncate(analysis.executive_summary.headline, 120);
       analysis.executive_summary.recommendation = truncate(analysis.executive_summary.recommendation, 200);
     }
-    if (analysis.summary) {
-      analysis.summary = truncate(analysis.summary, 500);
-    }
+    if (analysis.summary) analysis.summary = truncate(analysis.summary, 500);
     if (analysis.department_analyses) {
       for (const dept of analysis.department_analyses) {
-        for (const uc of dept.use_cases) {
-          uc.description = truncate(uc.description, 80);
-        }
+        for (const uc of dept.use_cases) uc.description = truncate(uc.description, 80);
       }
     }
     if (analysis.drone_fleet) {
-      for (const drone of analysis.drone_fleet) {
-        drone.why_chosen = truncate(drone.why_chosen, 200);
-      }
+      for (const drone of analysis.drone_fleet) drone.why_chosen = truncate(drone.why_chosen, 200);
     }
+
+    // Attach metadata
+    analysis._algorithmic_fleet = algorithmicFleet;
 
     return new Response(JSON.stringify({ success: true, analysis }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
     console.error("dmv-analyze error:", e);
-    return new Response(JSON.stringify({ success: false, error: e instanceof Error ? e.message : "Ukjent feil" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: e instanceof Error ? e.message : "Ukjent feil",
+      }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   }
 });
