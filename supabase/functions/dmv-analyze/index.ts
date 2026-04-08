@@ -772,6 +772,89 @@ ${bris_mission_data ? `11. BRIS-ANALYSE: Basert på oppdragsdataen, lag en detal
     // Attach algorithmic fleet data for frontend reference
     analysis._algorithmic_fleet = algorithmicFleet;
 
+    // ─── VALIDATION 1: Verify all drone_fleet models exist in catalog ───
+    if (analysis.drone_fleet) {
+      for (const drone of analysis.drone_fleet) {
+        const catalogMatch = DRONE_CATALOG.find((d: any) =>
+          d.id === drone.drone_id ||
+          d.name?.toLowerCase() === drone.recommended_model?.toLowerCase() ||
+          drone.recommended_model?.toLowerCase().includes(d.model?.toLowerCase())
+        );
+        if (!catalogMatch) {
+          const originalName = drone.recommended_model;
+          drone.recommended_model = "UKJENT MODELL — manuell vurdering";
+          drone.why_chosen = `AI foreslo '${originalName}' som ikke finnes i katalog. Manuell vurdering nødvendig.`;
+          console.warn(`[${municipality_name}] Drone model '${originalName}' not found in catalog`);
+        }
+      }
+    }
+
+    // ─── VALIDATION 2: Verify coverage_matrix platforms match drone_fleet ───
+    if (analysis.coverage_matrix?.platforms && analysis.drone_fleet) {
+      const fleetModels = new Set(analysis.drone_fleet.map((d: any) => d.recommended_model));
+      for (const platform of analysis.coverage_matrix.platforms) {
+        if (!fleetModels.has(platform)) {
+          console.warn(`[${municipality_name}] Coverage matrix refererer til '${platform}' som ikke er i flåten`);
+        }
+      }
+    }
+
+    // ─── VALIDATION 3: Verify cost breakdown sums to total ───
+    if (analysis.cost_breakdown) {
+      const cb = analysis.cost_breakdown;
+      const calculatedTotal =
+        (cb.hardware_knok || 0) +
+        (cb.software_annual_knok || 0) +
+        (cb.regulatory_knok || 0) +
+        (cb.training_knok || 0);
+      if (calculatedTotal > 0 && Math.abs(calculatedTotal - (cb.total_year1_knok || 0)) > 1) {
+        cb.total_year1_knok = calculatedTotal;
+        console.warn(`[${municipality_name}] Cost breakdown total corrected to ${calculatedTotal}`);
+      }
+    }
+
+    // ─── VALIDATION 4: Polar night handling ───
+    const POLAR_CIRCLE_LAT = 66.5;
+    // Use municipality coordinates if available (from MUNICIPALITY_GEO or input)
+    const municipalityLat = (analysis._latitude as number) || 0;
+    if (municipalityLat > POLAR_CIRCLE_LAT && analysis.uptime?.monthly) {
+      for (const month of analysis.uptime.monthly) {
+        if (month.expected_pct === 0 && !month.note) {
+          month.note = "Polarnatt — oppetid forutsetter dagslys. Med nattflyvningsgodkjenning er operasjoner mulig.";
+        }
+      }
+      if (!analysis.uptime.polar_night_note) {
+        analysis.uptime.polar_night_note =
+          "Kommunen ligger nord for polarsirkelen. Desember-tall forutsetter dagslysoperasjoner.";
+      }
+    }
+
+    // ─── VALIDATION 5: Truncate text lengths ───
+    function truncate(str: string | undefined, max: number): string {
+      if (!str) return '';
+      return str.length > max ? str.substring(0, max - 1) + "…" : str;
+    }
+
+    if (analysis.executive_summary) {
+      analysis.executive_summary.headline = truncate(analysis.executive_summary.headline, 120);
+      analysis.executive_summary.recommendation = truncate(analysis.executive_summary.recommendation, 200);
+    }
+    if (analysis.summary) {
+      analysis.summary = truncate(analysis.summary, 500);
+    }
+    if (analysis.department_analyses) {
+      for (const dept of analysis.department_analyses) {
+        for (const uc of dept.use_cases) {
+          uc.description = truncate(uc.description, 80);
+        }
+      }
+    }
+    if (analysis.drone_fleet) {
+      for (const drone of analysis.drone_fleet) {
+        drone.why_chosen = truncate(drone.why_chosen, 200);
+      }
+    }
+
     return new Response(JSON.stringify({ success: true, analysis }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
