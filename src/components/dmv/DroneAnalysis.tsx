@@ -127,6 +127,13 @@ interface Props {
     source?: string;
   } | null;
   brisMissionData: BrisMissionData | null;
+  /** New nested fields from kostra-data edge function */
+  vaNetwork?: { water_pipe_km: number | null; sewage_pipe_km: number | null; year?: string; source?: string } | null;
+  buildingsData?: { total: number | null; residential: number | null; holiday_homes: number | null; commercial: number | null; year?: string; source?: string } | null;
+  infrastructure?: { bridges: number | null; tunnels: number | null; source?: string } | null;
+  landUse?: { agricultural_km2: number | null; forest_km2: number | null; year?: string; source?: string } | null;
+  droneRelevance?: { population_density: number | null; controlled_airspace: any | null; protected_areas: string[]; urban_rural: string | null; centrality_index: number | null } | null;
+  propertyData?: any | null;
   onContinue: () => void;
   onBack: () => void;
 }
