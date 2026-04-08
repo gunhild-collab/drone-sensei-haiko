@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import UptimeCalculator from "./UptimeCalculator";
 import type { BrisMissionData } from "@/hooks/useMunicipalityProfile";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -138,6 +139,7 @@ const navSections = [
   { id: "sammendrag", label: "Sammendrag" },
   { id: "flate", label: "Flåte" },
   { id: "tidsbesparelse", label: "Tid" },
+  { id: "oppetid", label: "Oppetid" },
   { id: "dronehub", label: "Hub" },
   { id: "digital-tvilling", label: "Tvilling" },
   { id: "sambruk", label: "Sambruk" },
@@ -1111,6 +1113,23 @@ export default function DroneAnalysis({
           buildings={buildings}
           selectedDepartments={activeDeptNames}
         />
+
+        {/* 3b. Oppetidskalkulator */}
+        <section id="oppetid" className="scroll-mt-16 space-y-4">
+          <div>
+            <h2 className="text-xl md:text-2xl font-display font-bold" style={{ color: '#1C0059' }}>
+              Forventet droneoppetid
+            </h2>
+            <p className="text-sm mt-1" style={{ color: '#888' }}>
+              Basert på 10 års historisk vær fra MET Norge og plattformens tekniske grenseverdier
+            </p>
+          </div>
+          <UptimeCalculator
+            municipalityName={municipalityName}
+            areaKm2={areaKm2 || 0}
+            population={population}
+          />
+        </section>
 
         {/* 4. Drone Hub */}
         <DroneHubSection
