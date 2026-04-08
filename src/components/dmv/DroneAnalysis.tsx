@@ -553,22 +553,32 @@ function FleetSection({ fleetResult, softwareData, analysis }: {
           )}
 
           {/* Regulatory */}
-          <p className="text-xs font-semibold uppercase tracking-wider pt-3" style={{ color: '#999' }}>Regulatorisk</p>
-          <div className="flex items-center justify-between py-1.5 border-b border-border/30">
-            <span className="text-sm" style={{ color: "#555" }}>{Math.ceil(fleet.length)} SORA-søknader est.</span>
-            <span className="text-sm font-medium" style={{ color: "#1C0059" }}>{formatNOKRaw(regulatoryNok)}</span>
-          </div>
-          <div className="flex items-center justify-between py-1.5 border-b border-border/30">
-            <span className="text-sm" style={{ color: "#555" }}>A2-sertifisering</span>
-            <span className="text-sm font-medium" style={{ color: "#1C0059" }}>{formatNOKRaw(certNok)}</span>
-          </div>
+          {regulatoryNok > 0 && (
+            <>
+              <p className="text-xs font-semibold uppercase tracking-wider pt-3" style={{ color: '#999' }}>Regulatorisk</p>
+              <div className="flex items-center justify-between py-1.5 border-b border-border/30">
+                <span className="text-sm" style={{ color: "#555" }}>{Math.ceil(fleet.length)} SORA-søknader est.</span>
+                <span className="text-sm font-medium" style={{ color: "#1C0059" }}>{formatNOKRaw(regulatoryNok)}</span>
+              </div>
+              {certNok > 0 && (
+                <div className="flex items-center justify-between py-1.5 border-b border-border/30">
+                  <span className="text-sm" style={{ color: "#555" }}>A2-sertifisering</span>
+                  <span className="text-sm font-medium" style={{ color: "#1C0059" }}>{formatNOKRaw(certNok)}</span>
+                </div>
+              )}
+            </>
+          )}
 
           {/* Training */}
-          <p className="text-xs font-semibold uppercase tracking-wider pt-3" style={{ color: '#999' }}>Opplæring</p>
-          <div className="flex items-center justify-between py-1.5 border-b border-border/30">
-            <span className="text-sm" style={{ color: "#555" }}>Pilotopplæring (2 pers)</span>
-            <span className="text-sm font-medium" style={{ color: "#1C0059" }}>{formatNOKRaw(trainingNok)}</span>
-          </div>
+          {trainingNok > 0 && (
+            <>
+              <p className="text-xs font-semibold uppercase tracking-wider pt-3" style={{ color: '#999' }}>Opplæring</p>
+              <div className="flex items-center justify-between py-1.5 border-b border-border/30">
+                <span className="text-sm" style={{ color: "#555" }}>Pilotopplæring (2 pers)</span>
+                <span className="text-sm font-medium" style={{ color: "#1C0059" }}>{formatNOKRaw(trainingNok)}</span>
+              </div>
+            </>
+          )}
 
           {/* Totals */}
           <div className="flex items-center justify-between py-3 mt-2 border-t-2" style={{ borderColor: "#685BF8" }}>
