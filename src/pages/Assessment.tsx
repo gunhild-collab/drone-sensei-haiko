@@ -21,15 +21,12 @@ import DepartmentEditor, { type ActiveDepartment } from "@/components/dmv/Depart
 import DroneAnalysis from "@/components/dmv/DroneAnalysis";
 import UseCaseSelector from "@/components/dmv/UseCaseSelector";
 import ExistingDronesSection from "@/components/dmv/ExistingDronesSection";
-import RiskProfileTab from "@/components/dmv/RiskProfileTab";
-import OperationsEconomyTab from "@/components/dmv/OperationsEconomyTab";
 import {
   ChevronLeft, ChevronRight, CheckCircle2, Target, Shield, Cpu,
   Building2, Network, MapPin, Users, Route, Droplets, Plane,
-  TreePine, AlertTriangle, Flame, Loader2, Save, Mountain, Info
+  TreePine, AlertTriangle, Flame, Loader2, Mountain, Info
 } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { motion, AnimatePresence } from "framer-motion";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
