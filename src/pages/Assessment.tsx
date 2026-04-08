@@ -74,7 +74,6 @@ export default function Assessment() {
   });
   const [selectedUseCases, setSelectedUseCases] = useState<string[]>([]);
   const [existingDrones, setExistingDrones] = useState<{ id: string; model: string; department: string; useCase: string }[]>([]);
-  const [budgetTier, setBudgetTier] = useState<string>("");
   const topRef = useRef<HTMLDivElement>(null);
   const { profile, loading: profileLoading, saving, updateRisk, updateOperations, populateFromKostra, save: saveProfile } = useMunicipalityProfile(municipalityName);
 
