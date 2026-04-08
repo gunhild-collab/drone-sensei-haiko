@@ -441,6 +441,12 @@ export default function Assessment() {
         sectorData={kostra?.sector_data || []}
         fireStats={kostra?.fire_stats || null}
         brisMissionData={profile.risk_profile.bris_mission_data || null}
+        vaNetwork={kostra?.va_network || null}
+        buildingsData={kostra?.buildings || null}
+        infrastructure={kostra?.infrastructure || null}
+        landUse={kostra?.land_use || null}
+        droneRelevance={kostra?.drone_relevance || null}
+        propertyData={kostra?.property_data || null}
         onContinue={() => setStep("questions")}
         onBack={() => setStep("data")}
       />
