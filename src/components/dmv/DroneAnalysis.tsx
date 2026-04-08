@@ -138,6 +138,7 @@ const navSections = [
   { id: "sammendrag", label: "Sammendrag" },
   { id: "flate", label: "Flåte" },
   { id: "tidsbesparelse", label: "Tid" },
+  { id: "oppetid", label: "Oppetid" },
   { id: "dronehub", label: "Hub" },
   { id: "digital-tvilling", label: "Tvilling" },
   { id: "sambruk", label: "Sambruk" },
