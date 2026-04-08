@@ -27,7 +27,6 @@ import {
   TreePine, AlertTriangle, Flame, Loader2, Mountain, Info
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 const dimensionIcons = [Target, Shield, Cpu, Building2, Network];
