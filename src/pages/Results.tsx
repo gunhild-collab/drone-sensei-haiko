@@ -47,7 +47,7 @@ export default function Results() {
       const municipalData = {
         road_km: kostraOverrides?.roadKm ?? roadInd?.value ?? null,
         buildings: kostraOverrides?.buildings ?? d.buildings?.total ?? null,
-        va_km: kostraOverrides?.vaKm ?? vaTotal || null,
+        va_km: kostraOverrides?.vaKm ?? (vaTotal || null),
         area_km2: d.area_km2 || null,
       };
 
