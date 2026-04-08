@@ -1163,13 +1163,13 @@ export default function DroneAnalysis({
         <SambrukSection analysis={analysis} fleetResult={fleetResult} />
 
         {/* 6b. Co-use IKS */}
-        {iksPartners.length > 0 && (
+        {iksPartners.length > 0 && fleetResult && (
           <CoUseSection
             municipalityName={municipalityName}
             iksPartners={iksPartners}
             fireDeptName={fireDeptName}
             population={population}
-            totalFleetCostNOK={0}
+            totalFleetCostNOK={Math.round(fleetResult.fleet.reduce((s, d) => s + ((d.product.price_eur || 0) * EUR_TO_NOK), 0) + 60000)}
             totalSoftwareCostNOK={totalSoftwareCostNOK}
           />
         )}
