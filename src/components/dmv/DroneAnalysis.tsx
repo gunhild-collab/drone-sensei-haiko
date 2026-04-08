@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import UptimeCalculator from "./UptimeCalculator";
 import type { BrisMissionData } from "@/hooks/useMunicipalityProfile";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
