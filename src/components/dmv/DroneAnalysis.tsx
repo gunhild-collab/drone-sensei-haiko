@@ -371,7 +371,7 @@ function FleetSection({ fleetResult, softwareData, analysis }: {
                       <h3 className="text-lg font-display font-bold" style={{ color: '#1C0059' }}>
                         {p.product_name}
                       </h3>
-                      <p className="text-sm" style={{ color: '#999' }}>
+                      <p className="text-sm line-clamp-1" style={{ color: '#999' }}>
                         {p.aircraft_type || p.category} · {country}
                       </p>
                     </div>
