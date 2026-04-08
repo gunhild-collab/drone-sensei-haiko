@@ -10,7 +10,6 @@ import { KommuneCombobox } from "@/components/KommuneCombobox";
 import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { dimensions } from "@/data/dmvData";
 import { useAssessment } from "@/hooks/useAssessment";
 import { useMunicipalityProfile } from "@/hooks/useMunicipalityProfile";
