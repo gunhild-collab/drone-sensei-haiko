@@ -107,6 +107,94 @@ function estimateMaxMissionDistance(area_km2: number | null, road_km: number | n
   };
 }
 
+/**
+ * Builds a complete analysis from algorithmic data when AI credits are depleted.
+ */
+function buildFallbackAnalysis(
+  municipalityName: string, relevantUCs: any[], algorithmicFleet: any[], deptNames: string[],
+  areaKm2: number | null, roadKm: number | null, vaKm: number | null,
+  buildings: number | null, population: number | null,
+  iksPartners: string[] | null, fireDeptName: string | null, fireDeptType: string | null
+) {
+  // Group use cases by department
+  const deptMap: Record<string, any[]> = {};
+  for (const uc of relevantUCs) {
+    if (!deptMap[uc.department]) deptMap[uc.department] = [];
+    // Estimate flight hours from formula
+    let hours = 10;
+    const formula = uc.flightHoursFormula || '';
+    if (formula.includes('vei_km') && roadKm) hours = Math.round(roadKm * 0.15);
+    else if (formula.includes('rør_km') && vaKm) hours = Math.round(vaKm * 0.2);
+    else if (formula.includes('areal_km2') && areaKm2) hours = Math.round(areaKm2 * 0.002);
+    else {
+      const flatMatch = formula.match(/(\d+)\s*timer/);
+      if (flatMatch) hours = parseInt(flatMatch[1]);
+    }
+    deptMap[uc.department].push({
+      id: uc.id, name: uc.name, description: uc.notes || uc.name,
+      operation_type: uc.operationType, easa_category: uc.easaCategory,
+      required_permit: uc.certRequirement, pilot_certification: uc.certRequirement,
+      drone_type: DRONE_ARCHETYPES[uc.droneArchetype as keyof typeof DRONE_ARCHETYPES]?.type || uc.droneArchetype,
+      priority: uc.priority, annual_flight_hours: hours,
+      calculation_basis: formula || `${hours} timer/år (estimat)`,
+      needs_thermal: uc.needsThermal, needs_rtk: uc.needsRtk,
+    });
+  }
+
+  const departmentAnalyses = Object.entries(deptMap).map(([dept, ucs]) => ({
+    department: dept,
+    use_cases: ucs,
+    total_annual_hours: ucs.reduce((s: number, uc: any) => s + uc.annual_flight_hours, 0),
+  }));
+
+  const totalHours = departmentAnalyses.reduce((s, d) => s + d.total_annual_hours, 0);
+
+  // Build drone fleet from algorithmic recommendations
+  const droneFleet = algorithmicFleet.map((af: any) => ({
+    drone_id: af.drone_id || '',
+    drone_type: af.drone_type || 'multirotor',
+    recommended_model: af.drone || af.model || 'Ukjent',
+    quantity: 1,
+    shared_between: af.departments || [],
+    estimated_cost_nok: af.price_nok || 0,
+    key_features: [],
+    why_chosen: `Algoritmisk anbefalt basert på ${af.covers_n_use_cases || 0} bruksområder.`,
+    covers_use_cases: (af.covered || []).map((c: any) => c.use_case_id || c.use_case),
+  }));
+
+  const totalCost = droneFleet.reduce((s: number, d: any) => s + (d.estimated_cost_nok || 0), 0);
+
+  return {
+    summary: `Algoritmisk droneanalyse for ${municipalityName}. ${relevantUCs.length} bruksområder identifisert på tvers av ${Object.keys(deptMap).length} avdelinger. AI-oppsummering er midlertidig utilgjengelig.`,
+    department_analyses: departmentAnalyses,
+    drone_fleet: droneFleet,
+    certification_plan: {
+      pilot_groups: [{
+        group_name: "Dronepilotgruppe",
+        certification_path: "A2 + STS-01",
+        covers_use_cases: relevantUCs.map((uc: any) => uc.name),
+        training_description: "Grunnleggende opplæring for kommunal dronedrift",
+        estimated_training_days: 5,
+      }],
+    },
+    iks_recommendation: {
+      can_share: (iksPartners || []).length > 0,
+      shared_resources: (iksPartners || []).length > 0 ? ["Dronestasjon", "Opplæring"] : [],
+      recommendation: (iksPartners || []).length > 0
+        ? `${fireDeptName || 'IKS-et'} kan dele droneressurser med partnerkommuner.`
+        : `${municipalityName} bør vurdere eget droneprogram.`,
+      partner_municipalities: iksPartners || [],
+    },
+    total_drones_needed: droneFleet.length,
+    total_annual_cost_nok: totalCost,
+    total_annual_flight_hours: totalHours,
+    implementation_priority: [
+      { phase: 1, title: "Oppstart", departments: deptNames.slice(0, 2), description: "Start med kjernebruksområder" },
+      { phase: 2, title: "Utvidelse", departments: deptNames.slice(2), description: "Utvid til flere avdelinger" },
+    ],
+  };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -546,9 +634,18 @@ ${bris_mission_data ? `11. BRIS-ANALYSE: Basert på oppdragsdataen, lag en detal
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      // 402 = credits depleted → build fallback analysis from algorithmic data
       if (response?.status === 402) {
-        return new Response(JSON.stringify({ success: false, error: "Kreditt oppbrukt" }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        console.warn(`[${municipality_name}] AI credits depleted — returning algorithmic fallback`);
+        const fallbackAnalysis = buildFallbackAnalysis(
+          municipality_name, relevantUCs, algorithmicFleet, deptNames,
+          area_km2, road_km, va_km, buildings, population,
+          iks_partners, fire_dept_name, fire_dept_type
+        );
+        fallbackAnalysis._algorithmic_fleet = algorithmicFleet;
+        fallbackAnalysis._ai_fallback = true;
+        return new Response(JSON.stringify({ success: true, analysis: fallbackAnalysis }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       const text = response ? await response.text() : "no response";
