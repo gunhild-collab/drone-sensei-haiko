@@ -17,7 +17,7 @@ import { useMunicipalityProfile } from "@/hooks/useMunicipalityProfile";
 import { evaluationApi, KostraData } from "@/lib/evaluationApi";
 import { getSuggestedDepartments } from "@/data/departmentTemplates";
 import { findFireDepartment, findAlarmSentral, getPartnerMunicipalities, get110RegionMunicipalities, findIKSPartners, getIKSPartnerMunicipalities } from "@/data/iksData";
-import { calculateIksRange } from "@/data/municipalityCoordinates";
+import { calculateIksRange, MUNICIPALITY_GEO } from "@/data/municipalityCoordinates";
 import DepartmentEditor, { type ActiveDepartment } from "@/components/dmv/DepartmentEditor";
 import DroneAnalysis from "@/components/dmv/DroneAnalysis";
 import UseCaseSelector from "@/components/dmv/UseCaseSelector";
