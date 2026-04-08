@@ -10,27 +10,22 @@ import { KommuneCombobox } from "@/components/KommuneCombobox";
 import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { dimensions } from "@/data/dmvData";
 import { useAssessment } from "@/hooks/useAssessment";
 import { useMunicipalityProfile } from "@/hooks/useMunicipalityProfile";
 import { evaluationApi, KostraData } from "@/lib/evaluationApi";
 import { getSuggestedDepartments } from "@/data/departmentTemplates";
 import { findFireDepartment, findAlarmSentral, getPartnerMunicipalities, get110RegionMunicipalities, findIKSPartners, getIKSPartnerMunicipalities } from "@/data/iksData";
-import { calculateIksRange } from "@/data/municipalityCoordinates";
+import { calculateIksRange, MUNICIPALITY_GEO } from "@/data/municipalityCoordinates";
 import DepartmentEditor, { type ActiveDepartment } from "@/components/dmv/DepartmentEditor";
 import DroneAnalysis from "@/components/dmv/DroneAnalysis";
 import UseCaseSelector from "@/components/dmv/UseCaseSelector";
 import ExistingDronesSection from "@/components/dmv/ExistingDronesSection";
-import RiskProfileTab from "@/components/dmv/RiskProfileTab";
-import OperationsEconomyTab from "@/components/dmv/OperationsEconomyTab";
 import {
   ChevronLeft, ChevronRight, CheckCircle2, Target, Shield, Cpu,
   Building2, Network, MapPin, Users, Route, Droplets, Plane,
-  TreePine, AlertTriangle, Flame, Loader2, Save, Mountain, Info
+  TreePine, AlertTriangle, Flame, Loader2, Mountain, Info
 } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -74,9 +69,8 @@ export default function Assessment() {
   });
   const [selectedUseCases, setSelectedUseCases] = useState<string[]>([]);
   const [existingDrones, setExistingDrones] = useState<{ id: string; model: string; department: string; useCase: string }[]>([]);
-  const [budgetTier, setBudgetTier] = useState<string>("");
   const topRef = useRef<HTMLDivElement>(null);
-  const { profile, loading: profileLoading, saving, updateRisk, updateOperations, populateFromKostra, save: saveProfile } = useMunicipalityProfile(municipalityName);
+  const { profile, loading: profileLoading, populateFromKostra, save: saveProfile } = useMunicipalityProfile(municipalityName);
 
   const dim = dimensions[currentDimension];
   const Icon = dimensionIcons[currentDimension];
@@ -93,6 +87,27 @@ export default function Assessment() {
   const regionMunicipalities = get110RegionMunicipalities(municipalityName);
 
   // Fetch KOSTRA and initialize departments when moving to data step
+  // Auto-classify terrain and settlement from geodata
+  const classifyTerrain = (areaKm2: number | null, pop: number | null, lat: number | null): { terrain: string; settlement: string } => {
+    const area = areaKm2 || 500;
+    const population = pop || 5000;
+    const density = population / area;
+    const latitude = lat || 60;
+
+    let terrain = "blandet";
+    if (area > 1500 && latitude > 64) terrain = "fjell";
+    else if (area > 1000 || latitude > 66) terrain = "fjell";
+    else if (area > 400 && density < 30) terrain = "kupert";
+    else if (density > 200) terrain = "flatland";
+    else if (area < 200 && density > 50) terrain = "flatland";
+
+    let settlement = "blandet";
+    if (density > 150) settlement = "tett";
+    else if (density < 15) settlement = "spredt";
+
+    return { terrain, settlement };
+  };
+
   const handleStartData = async () => {
     setStep("data");
     setKostraLoading(true);
@@ -107,26 +122,21 @@ export default function Assessment() {
           buildings: data.drone_relevance?.estimated_buildings ?? null,
           vaKm: data.drone_relevance?.estimated_va_km ?? null,
         });
-        // Auto-populate geography
-        setGeoData(prev => ({
-          ...prev,
+        const geoLookup = MUNICIPALITY_GEO[municipalityName];
+        const { terrain, settlement } = classifyTerrain(data.area_km2, pop, geoLookup?.lat ?? null);
+        setGeoData({
           areaKm2: data.area_km2 ?? null,
-        }));
-        // Initialize departments based on population
+          coastlineKm: null,
+          terrainType: terrain,
+          settlementPattern: settlement,
+        });
         const suggested = getSuggestedDepartments(pop || 8000);
         setDepartments(suggested.map((d, i) => ({
-          id: d.id,
-          name: d.name,
-          icon: d.icon,
-          description: d.description,
-          enabled: true,
-          order: i,
+          id: d.id, name: d.name, icon: d.icon, description: d.description, enabled: true, order: i,
         })));
-        // Auto-populate municipality profile from KOSTRA data
         populateFromKostra(data);
       }
     } catch {
-      // fallback
       const suggested = getSuggestedDepartments(8000);
       setDepartments(suggested.map((d, i) => ({
         id: d.id, name: d.name, icon: d.icon, description: d.description, enabled: true, order: i,
@@ -344,92 +354,33 @@ export default function Assessment() {
                 population={overrides.population || 8000}
               />
 
-              {/* Geography section */}
+              {/* Geography — auto-classified, display-only */}
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg font-display">Geografi</CardTitle>
-                  <CardDescription>Påvirker rekkevidde og plattformkrav — hentes automatisk der mulig</CardDescription>
+                  <CardDescription>Automatisk klassifisert basert på areal, befolkningstetthet og breddegrad</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* Kommuneareal */}
-                    <div className="flex items-center gap-3">
-                      <MapPin className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                      <Label className="w-28 text-sm">Kommuneareal</Label>
-                      <Input
-                        type="number"
-                        value={geoData.areaKm2 ?? ""}
-                        onChange={e => setGeoData(prev => ({ ...prev, areaKm2: e.target.value === "" ? null : parseFloat(e.target.value) }))}
-                        className="max-w-[140px]"
-                      />
-                      <span className="text-xs text-muted-foreground">km²</span>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Areal</p>
+                      <p className="text-sm font-semibold">{geoData.areaKm2?.toLocaleString("nb-NO") ?? "–"} km²</p>
                     </div>
-
-                    {/* Kystlinje */}
-                    <div className="flex items-center gap-3">
-                      <Route className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                      <Label className="w-28 text-sm">Kystlinje</Label>
-                      <Input
-                        type="number"
-                        value={geoData.coastlineKm ?? ""}
-                        onChange={e => setGeoData(prev => ({ ...prev, coastlineKm: e.target.value === "" ? null : parseFloat(e.target.value) }))}
-                        className="max-w-[140px]"
-                        placeholder="0 = ingen"
-                      />
-                      <span className="text-xs text-muted-foreground">km</span>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Terrengtype</p>
+                      <Badge variant="outline" className="capitalize">{geoData.terrainType || "–"}</Badge>
                     </div>
-
-                    {/* Terrengtype */}
-                    <div className="flex items-center gap-3">
-                      <Mountain className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                      <Label className="w-28 text-sm">Terrengtype</Label>
-                      <Select value={geoData.terrainType} onValueChange={v => setGeoData(prev => ({ ...prev, terrainType: v }))}>
-                        <SelectTrigger className="max-w-[140px]">
-                          <SelectValue placeholder="Velg..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="flatland">Flatland</SelectItem>
-                          <SelectItem value="kupert">Kupert</SelectItem>
-                          <SelectItem value="fjell">Fjell</SelectItem>
-                          <SelectItem value="blandet">Blandet</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Info className="w-4 h-4 text-muted-foreground cursor-help flex-shrink-0" />
-                          </TooltipTrigger>
-                          <TooltipContent className="max-w-[220px]">
-                            <p className="text-xs">Kupert og fjellterreng krever lengre rekkevidde og BVLOS-kapasitet</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Bebyggelse</p>
+                      <Badge variant="outline" className="capitalize">{geoData.settlementPattern || "–"}</Badge>
                     </div>
-
-                    {/* Bebyggelsesmønster */}
-                    <div className="flex items-center gap-3">
-                      <Building2 className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                      <Label className="w-28 text-sm">Bebyggelse</Label>
-                      <Select value={geoData.settlementPattern} onValueChange={v => setGeoData(prev => ({ ...prev, settlementPattern: v }))}>
-                        <SelectTrigger className="max-w-[140px]">
-                          <SelectValue placeholder="Velg..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="tett">Tett</SelectItem>
-                          <SelectItem value="spredt">Spredt</SelectItem>
-                          <SelectItem value="blandet">Blandet</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Info className="w-4 h-4 text-muted-foreground cursor-help flex-shrink-0" />
-                          </TooltipTrigger>
-                          <TooltipContent className="max-w-[220px]">
-                            <p className="text-xs">Spredt bebyggelse øker verdien av lang rekkevidde og autonom drift</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Tetthet</p>
+                      <p className="text-sm font-semibold">
+                        {geoData.areaKm2 && overrides.population
+                          ? `${Math.round(overrides.population / geoData.areaKm2)} innb/km²`
+                          : "–"}
+                      </p>
                     </div>
                   </div>
                 </CardContent>
@@ -442,79 +393,12 @@ export default function Assessment() {
                 onChange={setExistingDrones}
               />
 
-              {/* Budget tier */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg font-display">Budsjett</CardTitle>
-                  <CardDescription>Omtrentlig ramme for droneinvestering. Påvirker hvilke plattformer som anbefales.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {[
-                      { id: "under50k", label: "Under 50 000 kr", sub: "Enkel plattform" },
-                      { id: "50k-150k", label: "50 000 – 150 000 kr", sub: "Standard flåte" },
-                      { id: "150k-500k", label: "150 000 – 500 000 kr", sub: "Avansert flåte" },
-                      { id: "over500k", label: "Over 500 000 kr", sub: "Autonomt program" },
-                    ].map(tier => (
-                      <button
-                        key={tier.id}
-                        type="button"
-                        onClick={() => setBudgetTier(tier.id)}
-                        className={cn(
-                          "rounded-lg border p-3 text-left transition-all",
-                          budgetTier === tier.id
-                            ? "border-primary bg-primary/5 ring-2 ring-primary/20"
-                            : "border-border hover:border-primary/40"
-                        )}
-                      >
-                        <p className="text-sm font-semibold leading-tight">{tier.label}</p>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">{tier.sub}</p>
-                      </button>
-                    ))}
-                  </div>
-                  {budgetTier && (
-                    <p className="text-xs text-muted-foreground">
-                      {budgetTier === "under50k" && "Dekker 1 multirotor for visuell inspeksjon og kartlegging"}
-                      {budgetTier === "50k-150k" && "Dekker 1–2 plattformer med termisk og RTK-kapasitet"}
-                      {budgetTier === "150k-500k" && "Dekker flåte med fixed-wing, dock eller spesialsensorer"}
-                      {budgetTier === "over500k" && "Dekker autonomt drone-in-a-box program med BVLOS"}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-
               {/* Use cases */}
               <UseCaseSelector
                 departments={departments}
                 selectedUseCases={selectedUseCases}
                 onSelectionChange={setSelectedUseCases}
               />
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg font-display">Utvidet kommuneprofil</CardTitle>
-                  <CardDescription>Risikobilde og driftsdata — data hentes automatisk fra SSB/KOSTRA der mulig.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Tabs defaultValue="risk" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="risk" className="text-xs sm:text-sm">Risikobilde</TabsTrigger>
-                      <TabsTrigger value="operations" className="text-xs sm:text-sm">Drift & økonomi</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="risk" className="mt-4">
-                      <RiskProfileTab data={profile.risk_profile} onChange={updateRisk} />
-                    </TabsContent>
-                    <TabsContent value="operations" className="mt-4">
-                      <OperationsEconomyTab data={profile.operations_economy} onChange={updateOperations} />
-                    </TabsContent>
-                  </Tabs>
-                  <div className="flex justify-end mt-4">
-                    <Button variant="outline" size="sm" onClick={saveProfile} disabled={saving} className="gap-2">
-                      <Save className="w-4 h-4" /> {saving ? "Lagrer..." : "Lagre profil"}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
 
               {/* Actions */}
               <div className="flex justify-between pt-2">
