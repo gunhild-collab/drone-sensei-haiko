@@ -144,8 +144,23 @@ export default function UptimeCalculator({ municipalityName }: Props) {
 
   if (!result) return null;
 
+  const POLAR_CIRCLE_LAT = 66.5;
+  const isPolarNight = geo && geo.lat > POLAR_CIRCLE_LAT;
+
   return (
     <div className="space-y-6">
+      {/* Polar night banner */}
+      {isPolarNight && (
+        <div className="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4">
+          <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-amber-800">Kommunen ligger nord for polarsirkelen</p>
+            <p className="text-xs text-amber-700 mt-1">
+              Oppetid i november–januar forutsetter dagslysoperasjoner. Med nattflyvningsgodkjenning kan operasjoner utføres også i mørketiden — aktiver bryteren under for å se effekten.
+            </p>
+          </div>
+        </div>
+      )}
       {/* Annual summary */}
       <Card className="p-8 bg-gradient-to-br from-[#1C0059] to-[#685BF8] text-white">
         <div className="text-center">

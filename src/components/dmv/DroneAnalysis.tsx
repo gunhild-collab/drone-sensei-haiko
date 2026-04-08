@@ -371,7 +371,7 @@ function FleetSection({ fleetResult, softwareData, analysis }: {
                       <h3 className="text-lg font-display font-bold" style={{ color: '#1C0059' }}>
                         {p.product_name}
                       </h3>
-                      <p className="text-sm" style={{ color: '#999' }}>
+                      <p className="text-sm line-clamp-1" style={{ color: '#999' }}>
                         {p.aircraft_type || p.category} · {country}
                       </p>
                     </div>
@@ -383,7 +383,7 @@ function FleetSection({ fleetResult, softwareData, analysis }: {
                   </div>
 
                   {/* Role */}
-                  <div className="text-sm font-semibold uppercase tracking-wider" style={{ color: '#685BF8' }}>
+                  <div className="text-sm font-semibold uppercase tracking-wider line-clamp-1" style={{ color: '#685BF8' }}>
                     Rolle: {drone.roleLabel}
                   </div>
 
@@ -522,45 +522,63 @@ function FleetSection({ fleetResult, softwareData, analysis }: {
         <div className="space-y-1">
           {/* Hardware */}
           <p className="text-xs font-semibold uppercase tracking-wider pt-2" style={{ color: '#999' }}>Hardware</p>
-          {fleet.map((d, i) => (
-            <div key={i} className="flex items-center justify-between py-1.5 border-b border-border/30">
-              <span className="text-sm" style={{ color: "#555" }}>{d.product.product_name}</span>
-              <span className="text-sm font-medium" style={{ color: "#1C0059" }}>
-                {formatNOK(d.product.price_eur, !!d.product.quote_required)}
-              </span>
+          {fleet.map((d, i) => {
+            const priceStr = formatNOK(d.product.price_eur, !!d.product.quote_required);
+            if (!d.product.price_eur && !d.product.quote_required) return null;
+            return (
+              <div key={i} className="flex items-center justify-between py-1.5 border-b border-border/30">
+                <span className="text-sm" style={{ color: "#555" }}>{d.product.product_name}</span>
+                <span className="text-sm font-medium" style={{ color: "#1C0059" }}>{priceStr}</span>
+              </div>
+            );
+          })}
+          {accessoriesNok > 0 && (
+            <div className="flex items-center justify-between py-1.5 border-b border-border/30">
+              <span className="text-sm" style={{ color: "#555" }}>Tilbehør/batterier est.</span>
+              <span className="text-sm font-medium" style={{ color: "#1C0059" }}>{formatNOKRaw(accessoriesNok)}</span>
             </div>
-          ))}
-          <div className="flex items-center justify-between py-1.5 border-b border-border/30">
-            <span className="text-sm" style={{ color: "#555" }}>Tilbehør/batterier est.</span>
-            <span className="text-sm font-medium" style={{ color: "#1C0059" }}>{formatNOKRaw(accessoriesNok)}</span>
-          </div>
+          )}
 
           {/* Software */}
-          <p className="text-xs font-semibold uppercase tracking-wider pt-3" style={{ color: '#999' }}>Software (årlig)</p>
-          {allSwItems.map((item, i) => (
-            <div key={i} className="flex items-center justify-between py-1.5 border-b border-border/30">
-              <span className="text-sm" style={{ color: "#555" }}>{item.sw.name}</span>
-              <span className="text-sm font-medium" style={{ color: "#1C0059" }}>{formatSoftwarePriceNOK(item.sw)}</span>
-            </div>
-          ))}
+          {allSwItems.length > 0 && (
+            <>
+              <p className="text-xs font-semibold uppercase tracking-wider pt-3" style={{ color: '#999' }}>Software (årlig)</p>
+              {allSwItems.map((item, i) => (
+                <div key={i} className="flex items-center justify-between py-1.5 border-b border-border/30">
+                  <span className="text-sm" style={{ color: "#555" }}>{item.sw.name}</span>
+                  <span className="text-sm font-medium" style={{ color: "#1C0059" }}>{formatSoftwarePriceNOK(item.sw)}</span>
+                </div>
+              ))}
+            </>
+          )}
 
           {/* Regulatory */}
-          <p className="text-xs font-semibold uppercase tracking-wider pt-3" style={{ color: '#999' }}>Regulatorisk</p>
-          <div className="flex items-center justify-between py-1.5 border-b border-border/30">
-            <span className="text-sm" style={{ color: "#555" }}>{Math.ceil(fleet.length)} SORA-søknader est.</span>
-            <span className="text-sm font-medium" style={{ color: "#1C0059" }}>{formatNOKRaw(regulatoryNok)}</span>
-          </div>
-          <div className="flex items-center justify-between py-1.5 border-b border-border/30">
-            <span className="text-sm" style={{ color: "#555" }}>A2-sertifisering</span>
-            <span className="text-sm font-medium" style={{ color: "#1C0059" }}>{formatNOKRaw(certNok)}</span>
-          </div>
+          {regulatoryNok > 0 && (
+            <>
+              <p className="text-xs font-semibold uppercase tracking-wider pt-3" style={{ color: '#999' }}>Regulatorisk</p>
+              <div className="flex items-center justify-between py-1.5 border-b border-border/30">
+                <span className="text-sm" style={{ color: "#555" }}>{Math.ceil(fleet.length)} SORA-søknader est.</span>
+                <span className="text-sm font-medium" style={{ color: "#1C0059" }}>{formatNOKRaw(regulatoryNok)}</span>
+              </div>
+              {certNok > 0 && (
+                <div className="flex items-center justify-between py-1.5 border-b border-border/30">
+                  <span className="text-sm" style={{ color: "#555" }}>A2-sertifisering</span>
+                  <span className="text-sm font-medium" style={{ color: "#1C0059" }}>{formatNOKRaw(certNok)}</span>
+                </div>
+              )}
+            </>
+          )}
 
           {/* Training */}
-          <p className="text-xs font-semibold uppercase tracking-wider pt-3" style={{ color: '#999' }}>Opplæring</p>
-          <div className="flex items-center justify-between py-1.5 border-b border-border/30">
-            <span className="text-sm" style={{ color: "#555" }}>Pilotopplæring (2 pers)</span>
-            <span className="text-sm font-medium" style={{ color: "#1C0059" }}>{formatNOKRaw(trainingNok)}</span>
-          </div>
+          {trainingNok > 0 && (
+            <>
+              <p className="text-xs font-semibold uppercase tracking-wider pt-3" style={{ color: '#999' }}>Opplæring</p>
+              <div className="flex items-center justify-between py-1.5 border-b border-border/30">
+                <span className="text-sm" style={{ color: "#555" }}>Pilotopplæring (2 pers)</span>
+                <span className="text-sm font-medium" style={{ color: "#1C0059" }}>{formatNOKRaw(trainingNok)}</span>
+              </div>
+            </>
+          )}
 
           {/* Totals */}
           <div className="flex items-center justify-between py-3 mt-2 border-t-2" style={{ borderColor: "#685BF8" }}>
@@ -1145,13 +1163,13 @@ export default function DroneAnalysis({
         <SambrukSection analysis={analysis} fleetResult={fleetResult} />
 
         {/* 6b. Co-use IKS */}
-        {iksPartners.length > 0 && (
+        {iksPartners.length > 0 && fleetResult && (
           <CoUseSection
             municipalityName={municipalityName}
             iksPartners={iksPartners}
             fireDeptName={fireDeptName}
             population={population}
-            totalFleetCostNOK={0}
+            totalFleetCostNOK={Math.round(fleetResult.fleet.reduce((s, d) => s + ((d.product.price_eur || 0) * EUR_TO_NOK), 0) + 60000)}
             totalSoftwareCostNOK={totalSoftwareCostNOK}
           />
         )}

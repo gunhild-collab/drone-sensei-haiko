@@ -1,4 +1,5 @@
 import React from "react";
+import { formatNOKRaw } from "@/lib/droneFleetEngine";
 
 interface Props {
   municipalityName: string;
@@ -22,10 +23,16 @@ export default function CoUseSection({
   const totalMunicipalities = iksPartners.length + 1;
   const totalCost = totalFleetCostNOK + totalSoftwareCostNOK;
   const costPerMunicipality = Math.round(totalCost / totalMunicipalities);
-  const savingsPct = Math.round(((totalCost - costPerMunicipality) / totalCost) * 100);
+  const aloneCostKnok = Math.round(totalCost / 1000);
+  const sharedCostKnok = Math.round(costPerMunicipality / 1000);
+  const savingsPct = totalCost > 0 ? Math.round(((totalCost - costPerMunicipality) / totalCost) * 100) : 0;
 
-  // Simple distribution by equal share (could be improved with pop-based)
   const allMunicipalities = [municipalityName, ...iksPartners];
+
+  // Bar chart dimensions
+  const barMaxWidth = 100; // percentage
+  const aloneWidth = barMaxWidth;
+  const sharedWidth = totalCost > 0 ? Math.round((costPerMunicipality / totalCost) * barMaxWidth) : 0;
 
   return (
     <section id="sambruk-iks" className="scroll-mt-16 space-y-6">
@@ -55,12 +62,58 @@ export default function CoUseSection({
           </div>
           <div>
             <p className="text-3xl font-display font-bold" style={{ color: "#FF66C4" }}>
-              {(costPerMunicipality / 1000).toFixed(0)}k
+              {costPerMunicipality > 0 ? `${(costPerMunicipality / 1000).toFixed(0)}k` : '—'}
             </p>
             <p className="text-xs text-white/60">kr per kommune</p>
           </div>
         </div>
       </div>
+
+      {/* ═══ COST COMPARISON BAR CHART ═══ */}
+      {totalCost > 0 && (
+        <div className="bg-card rounded-2xl border border-border p-6" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+          <p className="text-sm font-display font-semibold mb-4" style={{ color: "#1C0059" }}>
+            Kostnad per kommune: alene vs. sambruk
+          </p>
+          <div className="space-y-4">
+            {/* Alene bar */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm font-medium" style={{ color: "#555" }}>Alene</span>
+                <span className="text-sm font-bold" style={{ color: "#EF4444" }}>{formatNOKRaw(totalCost)}</span>
+              </div>
+              <div className="w-full bg-muted/30 rounded-full h-8 overflow-hidden">
+                <div
+                  className="h-full rounded-full flex items-center justify-end pr-3"
+                  style={{ width: `${aloneWidth}%`, backgroundColor: "#EF4444" }}
+                >
+                  <span className="text-xs font-semibold text-white">{aloneCostKnok} KNOK</span>
+                </div>
+              </div>
+            </div>
+            {/* Sambruk bar */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm font-medium" style={{ color: "#555" }}>
+                  Sambruk ({totalMunicipalities} kommuner)
+                </span>
+                <span className="text-sm font-bold" style={{ color: "#10B981" }}>{formatNOKRaw(costPerMunicipality)}</span>
+              </div>
+              <div className="w-full bg-muted/30 rounded-full h-8 overflow-hidden">
+                <div
+                  className="h-full rounded-full flex items-center justify-end pr-3"
+                  style={{ width: `${Math.max(sharedWidth, 15)}%`, backgroundColor: "#10B981" }}
+                >
+                  <span className="text-xs font-semibold text-white">{sharedCostKnok} KNOK</span>
+                </div>
+              </div>
+            </div>
+            <p className="text-xs text-center" style={{ color: "#999" }}>
+              Besparelse per kommune: <strong style={{ color: "#10B981" }}>{savingsPct}%</strong> ved sambruk i {fireDeptName || "IKS-et"}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* How it works */}
       <div className="bg-card rounded-2xl border border-border p-6 space-y-4" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
@@ -71,13 +124,13 @@ export default function CoUseSection({
             "Én operatør styrer dronen remote og dekker alle eierkommuner",
             "Dronen reposisjoneres mellom kommuner etter behov og oppdragsplan",
             "Rammeavtale-modell gir forutsigbar månedskostnad for hver kommune",
-            "Software-lisenser deles — én Pix4D-konto dekker hele IKS-et",
+            "Software-lisenser deles — én konto dekker hele IKS-et",
           ].map((item, i) => (
             <div key={i} className="flex items-start gap-3">
               <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0" style={{ backgroundColor: "#685BF8" }}>
                 {i + 1}
               </div>
-              <p className="text-sm" style={{ color: "#555" }}>{item}</p>
+              <p className="text-sm line-clamp-2" style={{ color: "#555" }}>{item}</p>
             </div>
           ))}
         </div>
@@ -99,14 +152,14 @@ export default function CoUseSection({
           <tbody>
             {allMunicipalities.map((m, i) => (
               <tr key={i} className="border-b border-border/50 last:border-0">
-                <td className="py-2.5 px-4 font-medium" style={{ color: i === 0 ? "#1C0059" : "#555" }}>
+                <td className="py-2.5 px-4 font-medium line-clamp-1" style={{ color: i === 0 ? "#1C0059" : "#555" }}>
                   {m} {i === 0 && <span className="text-xs" style={{ color: "#685BF8" }}>(vertskap)</span>}
                 </td>
                 <td className="py-2.5 px-4 text-center" style={{ color: "#999" }}>
                   {(100 / totalMunicipalities).toFixed(0)}%
                 </td>
                 <td className="py-2.5 px-4 text-right font-medium" style={{ color: "#1C0059" }}>
-                  {costPerMunicipality.toLocaleString("nb-NO")} kr
+                  {costPerMunicipality > 0 ? costPerMunicipality.toLocaleString("nb-NO") + ' kr' : '—'}
                 </td>
               </tr>
             ))}
@@ -116,7 +169,7 @@ export default function CoUseSection({
               <td className="py-2.5 px-4 font-semibold" style={{ color: "#1C0059" }}>Totalt</td>
               <td className="py-2.5 px-4 text-center" style={{ color: "#999" }}>100%</td>
               <td className="py-2.5 px-4 text-right font-bold" style={{ color: "#1C0059" }}>
-                {totalCost.toLocaleString("nb-NO")} kr
+                {totalCost > 0 ? totalCost.toLocaleString("nb-NO") + ' kr' : '—'}
               </td>
             </tr>
           </tfoot>
