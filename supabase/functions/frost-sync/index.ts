@@ -43,36 +43,36 @@ async function findNearestStation(lat: number, lon: number) {
  * Splits into yearly chunks to stay under 100k row limit.
  */
 async function fetchFrostData(stationId: string, startYear: number, endYear: number) {
-  const elements = "wind_speed,wind_speed_of_gust(P1H),air_temperature,sum(precipitation_amount P1H),relative_humidity,visibility";
+  // Frost API element IDs
+  const elements = "wind_speed,wind_speed_of_gust,air_temperature,sum(precipitation_amount PT1H),relative_humidity,best_estimate_visibility";
   const allRows: Array<{ observed_at: string; wind_speed: number | null; wind_speed_of_gust: number | null; air_temperature: number | null; precipitation_amount: number | null; relative_humidity: number | null; visibility: number | null }> = [];
 
+  // Fetch per-year, no offset (Frost doesn't support it), use smaller time ranges if needed
   for (let year = startYear; year <= endYear; year++) {
-    const from = `${year}-01-01`;
-    const to = `${year}-12-31`;
-    console.log(`Fetching ${stationId} for ${year}...`);
+    // Split each year into quarters to stay under row limits
+    const quarters = [
+      [`${year}-01-01`, `${year}-03-31`],
+      [`${year}-04-01`, `${year}-06-30`],
+      [`${year}-07-01`, `${year}-09-30`],
+      [`${year}-10-01`, `${year}-12-31`],
+    ];
 
-    let offset = 0;
-    const limit = 50000;
-    let hasMore = true;
+    for (const [from, to] of quarters) {
+      const url = `${FROST_BASE}/observations/v0.jsonld?sources=${stationId}&referencetime=${from}/${to}&elements=${elements}&timeresolutions=PT1H&limit=100000`;
+      console.log(`Fetching ${stationId} ${from} to ${to}...`);
 
-    while (hasMore) {
-      const url = `${FROST_BASE}/observations/v0.jsonld?sources=${stationId}&referencetime=${from}/${to}&elements=${elements}&timeresolutions=PT1H&limit=${limit}&offset=${offset}`;
       const resp = await fetch(url, {
         headers: { Authorization: `Basic ${btoa(FROST_CLIENT_ID + ":")}` },
       });
 
-      if (resp.status === 404) {
-        console.log(`No data for ${stationId} in ${year}`);
-        break;
-      }
-      if (resp.status === 412) {
-        console.log(`No matching data for ${stationId} in ${year} (412)`);
-        break;
+      if (resp.status === 404 || resp.status === 412) {
+        console.log(`No data for ${stationId} ${from}-${to} (${resp.status})`);
+        continue;
       }
       if (!resp.ok) {
         const text = await resp.text();
-        console.error(`Frost API error: ${resp.status} ${text}`);
-        break;
+        console.error(`Frost API error ${resp.status}: ${text.slice(0, 300)}`);
+        continue;
       }
 
       const json = await resp.json();
@@ -81,21 +81,20 @@ async function fetchFrostData(stationId: string, startYear: number, endYear: num
       for (const item of items) {
         const row: any = { observed_at: item.referenceTime };
         for (const obs of item.observations) {
-          const key = obs.elementId
-            .replace("wind_speed_of_gust(PT1H)", "wind_speed_of_gust")
-            .replace("sum(precipitation_amount PT1H)", "precipitation_amount");
-          if (["wind_speed", "wind_speed_of_gust", "air_temperature", "precipitation_amount", "relative_humidity", "visibility"].includes(key)) {
-            row[key] = obs.value;
-          }
+          // Normalize element IDs to our column names
+          const eid = obs.elementId;
+          if (eid === "wind_speed") row.wind_speed = obs.value;
+          else if (eid === "wind_speed_of_gust") row.wind_speed_of_gust = obs.value;
+          else if (eid === "air_temperature") row.air_temperature = obs.value;
+          else if (eid.includes("precipitation_amount")) row.precipitation_amount = obs.value;
+          else if (eid === "relative_humidity") row.relative_humidity = obs.value;
+          else if (eid.includes("visibility")) row.visibility = obs.value;
         }
         allRows.push(row);
       }
 
-      hasMore = items.length === limit;
-      offset += limit;
-
-      // Throttle: ~200ms between calls
-      await new Promise(r => setTimeout(r, 200));
+      // Throttle between calls
+      await new Promise(r => setTimeout(r, 300));
     }
   }
 
