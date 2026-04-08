@@ -127,6 +127,13 @@ interface Props {
     source?: string;
   } | null;
   brisMissionData: BrisMissionData | null;
+  /** New nested fields from kostra-data edge function */
+  vaNetwork?: { water_pipe_km: number | null; sewage_pipe_km: number | null; year?: string; source?: string } | null;
+  buildingsData?: { total: number | null; residential: number | null; holiday_homes: number | null; commercial: number | null; year?: string; source?: string } | null;
+  infrastructure?: { bridges: number | null; tunnels: number | null; source?: string } | null;
+  landUse?: { agricultural_km2: number | null; forest_km2: number | null; year?: string; source?: string } | null;
+  droneRelevance?: { population_density: number | null; controlled_airspace: any | null; protected_areas: string[]; urban_rural: string | null; centrality_index: number | null } | null;
+  propertyData?: any | null;
   onContinue: () => void;
   onBack: () => void;
 }
@@ -923,7 +930,9 @@ export default function DroneAnalysis({
   municipalityName, population, areaKm2, roadKm, vaKm, buildings,
   terrainType, densityPerKm2, departments, iksPartners,
   fireDeptName, fireDeptType, alarmSentralName, regionMunicipalities,
-  sectorData, fireStats, brisMissionData, onContinue, onBack
+  sectorData, fireStats, brisMissionData,
+  vaNetwork, buildingsData, infrastructure, landUse, droneRelevance, propertyData,
+  onContinue, onBack
 }: Props) {
   const [analysis, setAnalysis] = useState<DroneAnalysisResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -975,8 +984,15 @@ export default function DroneAnalysis({
         const { data, error: fnError } = await supabase.functions.invoke("dmv-analyze", {
           body: {
             municipality_name: municipalityName, population, area_km2: areaKm2,
-            road_km: roadKm, va_km: vaKm, buildings, terrain_type: terrainType,
-            density_per_km2: densityPerKm2, departments: activeDepts, iks_partners: iksPartners,
+            road_km: roadKm,
+            va_network: vaNetwork || { water_pipe_km: null, sewage_pipe_km: null },
+            buildings: buildingsData || { total: buildings, residential: null, holiday_homes: null, commercial: null },
+            infrastructure: infrastructure || null,
+            land_use: landUse || null,
+            density_per_km2: densityPerKm2,
+            drone_relevance: droneRelevance || null,
+            property_data: propertyData || null,
+            departments: activeDepts, iks_partners: iksPartners,
             fire_dept_name: fireDeptName, fire_dept_type: fireDeptType,
             alarm_sentral_name: alarmSentralName, region_municipalities: regionMunicipalities,
             sector_data: sectorData, fire_stats: fireStats, bris_mission_data: brisMissionData,
@@ -993,7 +1009,7 @@ export default function DroneAnalysis({
       }
     };
     run();
-  }, [municipalityName, population, areaKm2, roadKm, vaKm, buildings, terrainType, densityPerKm2, departments, iksPartners, fireDeptName, fireDeptType, alarmSentralName, regionMunicipalities, sectorData, fireStats, brisMissionData]);
+  }, [municipalityName, population, areaKm2, roadKm, vaKm, buildings, terrainType, densityPerKm2, departments, iksPartners, fireDeptName, fireDeptType, alarmSentralName, regionMunicipalities, sectorData, fireStats, brisMissionData, vaNetwork, buildingsData, infrastructure, landUse, droneRelevance, propertyData]);
 
   const activeDeptNames = departments.filter(d => d.enabled).map(d => d.name);
 
