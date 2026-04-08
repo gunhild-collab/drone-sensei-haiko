@@ -546,9 +546,18 @@ ${bris_mission_data ? `11. BRIS-ANALYSE: Basert på oppdragsdataen, lag en detal
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      // 402 = credits depleted → build fallback analysis from algorithmic data
       if (response?.status === 402) {
-        return new Response(JSON.stringify({ success: false, error: "Kreditt oppbrukt" }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        console.warn(`[${municipality_name}] AI credits depleted — returning algorithmic fallback`);
+        const fallbackAnalysis = buildFallbackAnalysis(
+          municipality_name, relevantUCs, algorithmicFleet, deptNames,
+          area_km2, road_km, va_km, buildings, population,
+          iks_partners, fire_dept_name, fire_dept_type
+        );
+        fallbackAnalysis._algorithmic_fleet = algorithmicFleet;
+        fallbackAnalysis._ai_fallback = true;
+        return new Response(JSON.stringify({ success: true, analysis: fallbackAnalysis }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       const text = response ? await response.text() : "no response";
