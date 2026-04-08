@@ -540,13 +540,17 @@ function FleetSection({ fleetResult, softwareData, analysis }: {
           )}
 
           {/* Software */}
-          <p className="text-xs font-semibold uppercase tracking-wider pt-3" style={{ color: '#999' }}>Software (årlig)</p>
-          {allSwItems.map((item, i) => (
-            <div key={i} className="flex items-center justify-between py-1.5 border-b border-border/30">
-              <span className="text-sm" style={{ color: "#555" }}>{item.sw.name}</span>
-              <span className="text-sm font-medium" style={{ color: "#1C0059" }}>{formatSoftwarePriceNOK(item.sw)}</span>
-            </div>
-          ))}
+          {allSwItems.length > 0 && (
+            <>
+              <p className="text-xs font-semibold uppercase tracking-wider pt-3" style={{ color: '#999' }}>Software (årlig)</p>
+              {allSwItems.map((item, i) => (
+                <div key={i} className="flex items-center justify-between py-1.5 border-b border-border/30">
+                  <span className="text-sm" style={{ color: "#555" }}>{item.sw.name}</span>
+                  <span className="text-sm font-medium" style={{ color: "#1C0059" }}>{formatSoftwarePriceNOK(item.sw)}</span>
+                </div>
+              ))}
+            </>
+          )}
 
           {/* Regulatory */}
           <p className="text-xs font-semibold uppercase tracking-wider pt-3" style={{ color: '#999' }}>Regulatorisk</p>
