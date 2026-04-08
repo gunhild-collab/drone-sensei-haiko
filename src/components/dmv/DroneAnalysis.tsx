@@ -982,8 +982,15 @@ export default function DroneAnalysis({
         const { data, error: fnError } = await supabase.functions.invoke("dmv-analyze", {
           body: {
             municipality_name: municipalityName, population, area_km2: areaKm2,
-            road_km: roadKm, va_km: vaKm, buildings, terrain_type: terrainType,
-            density_per_km2: densityPerKm2, departments: activeDepts, iks_partners: iksPartners,
+            road_km: roadKm,
+            va_network: vaNetwork || { water_pipe_km: null, sewage_pipe_km: null },
+            buildings: buildingsData || { total: buildings, residential: null, holiday_homes: null, commercial: null },
+            infrastructure: infrastructure || null,
+            land_use: landUse || null,
+            density_per_km2: densityPerKm2,
+            drone_relevance: droneRelevance || null,
+            property_data: propertyData || null,
+            departments: activeDepts, iks_partners: iksPartners,
             fire_dept_name: fireDeptName, fire_dept_type: fireDeptType,
             alarm_sentral_name: alarmSentralName, region_municipalities: regionMunicipalities,
             sector_data: sectorData, fire_stats: fireStats, bris_mission_data: brisMissionData,
