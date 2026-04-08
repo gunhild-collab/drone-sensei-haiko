@@ -375,6 +375,42 @@ export type Database = {
         }
         Relationships: []
       }
+      municipality_weather_stations: {
+        Row: {
+          created_at: string
+          frost_station_id: string | null
+          frost_station_name: string | null
+          id: string
+          latitude: number
+          longitude: number
+          municipality_code: string
+          municipality_name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          frost_station_id?: string | null
+          frost_station_name?: string | null
+          id?: string
+          latitude: number
+          longitude: number
+          municipality_code: string
+          municipality_name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          frost_station_id?: string | null
+          frost_station_name?: string | null
+          id?: string
+          latitude?: number
+          longitude?: number
+          municipality_code?: string
+          municipality_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       org_documents: {
         Row: {
           created_at: string
@@ -669,6 +705,48 @@ export type Database = {
           use_case_id?: string
           use_case_name?: string
           use_case_name_en?: string | null
+        }
+        Relationships: []
+      }
+      weather_observations: {
+        Row: {
+          air_temperature: number | null
+          created_at: string
+          id: string
+          observed_at: string
+          precipitation_amount: number | null
+          relative_humidity: number | null
+          source: string
+          station_id: string
+          visibility: number | null
+          wind_speed: number | null
+          wind_speed_of_gust: number | null
+        }
+        Insert: {
+          air_temperature?: number | null
+          created_at?: string
+          id?: string
+          observed_at: string
+          precipitation_amount?: number | null
+          relative_humidity?: number | null
+          source?: string
+          station_id: string
+          visibility?: number | null
+          wind_speed?: number | null
+          wind_speed_of_gust?: number | null
+        }
+        Update: {
+          air_temperature?: number | null
+          created_at?: string
+          id?: string
+          observed_at?: string
+          precipitation_amount?: number | null
+          relative_humidity?: number | null
+          source?: string
+          station_id?: string
+          visibility?: number | null
+          wind_speed?: number | null
+          wind_speed_of_gust?: number | null
         }
         Relationships: []
       }
