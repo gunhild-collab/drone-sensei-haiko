@@ -522,18 +522,22 @@ function FleetSection({ fleetResult, softwareData, analysis }: {
         <div className="space-y-1">
           {/* Hardware */}
           <p className="text-xs font-semibold uppercase tracking-wider pt-2" style={{ color: '#999' }}>Hardware</p>
-          {fleet.map((d, i) => (
-            <div key={i} className="flex items-center justify-between py-1.5 border-b border-border/30">
-              <span className="text-sm" style={{ color: "#555" }}>{d.product.product_name}</span>
-              <span className="text-sm font-medium" style={{ color: "#1C0059" }}>
-                {formatNOK(d.product.price_eur, !!d.product.quote_required)}
-              </span>
+          {fleet.map((d, i) => {
+            const priceStr = formatNOK(d.product.price_eur, !!d.product.quote_required);
+            if (!d.product.price_eur && !d.product.quote_required) return null;
+            return (
+              <div key={i} className="flex items-center justify-between py-1.5 border-b border-border/30">
+                <span className="text-sm" style={{ color: "#555" }}>{d.product.product_name}</span>
+                <span className="text-sm font-medium" style={{ color: "#1C0059" }}>{priceStr}</span>
+              </div>
+            );
+          })}
+          {accessoriesNok > 0 && (
+            <div className="flex items-center justify-between py-1.5 border-b border-border/30">
+              <span className="text-sm" style={{ color: "#555" }}>Tilbehør/batterier est.</span>
+              <span className="text-sm font-medium" style={{ color: "#1C0059" }}>{formatNOKRaw(accessoriesNok)}</span>
             </div>
-          ))}
-          <div className="flex items-center justify-between py-1.5 border-b border-border/30">
-            <span className="text-sm" style={{ color: "#555" }}>Tilbehør/batterier est.</span>
-            <span className="text-sm font-medium" style={{ color: "#1C0059" }}>{formatNOKRaw(accessoriesNok)}</span>
-          </div>
+          )}
 
           {/* Software */}
           <p className="text-xs font-semibold uppercase tracking-wider pt-3" style={{ color: '#999' }}>Software (årlig)</p>
