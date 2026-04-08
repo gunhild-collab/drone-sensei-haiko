@@ -383,7 +383,7 @@ function FleetSection({ fleetResult, softwareData, analysis }: {
                   </div>
 
                   {/* Role */}
-                  <div className="text-sm font-semibold uppercase tracking-wider" style={{ color: '#685BF8' }}>
+                  <div className="text-sm font-semibold uppercase tracking-wider line-clamp-1" style={{ color: '#685BF8' }}>
                     Rolle: {drone.roleLabel}
                   </div>
 
