@@ -154,10 +154,10 @@ Deno.serve(async (req) => {
       .eq("station_id", stationId);
 
     const currentYear = new Date().getFullYear();
-    const startYear = currentYear - 10;
+    const startYear = currentYear - 3; // 3 years for quick sync, enough for statistical analysis
 
-    // If we have >50k rows, assume data is already synced
-    if ((count || 0) > 50000) {
+    // If we have >5k rows, assume data is already synced
+    if ((count || 0) > 5000) {
       return new Response(JSON.stringify({
         success: true,
         station_id: stationId,
