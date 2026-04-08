@@ -92,6 +92,27 @@ export default function Assessment() {
   const regionMunicipalities = get110RegionMunicipalities(municipalityName);
 
   // Fetch KOSTRA and initialize departments when moving to data step
+  // Auto-classify terrain and settlement from geodata
+  const classifyTerrain = (areaKm2: number | null, pop: number | null, lat: number | null): { terrain: string; settlement: string } => {
+    const area = areaKm2 || 500;
+    const population = pop || 5000;
+    const density = population / area;
+    const latitude = lat || 60;
+
+    let terrain = "blandet";
+    if (area > 1500 && latitude > 64) terrain = "fjell";
+    else if (area > 1000 || latitude > 66) terrain = "fjell";
+    else if (area > 400 && density < 30) terrain = "kupert";
+    else if (density > 200) terrain = "flatland";
+    else if (area < 200 && density > 50) terrain = "flatland";
+
+    let settlement = "blandet";
+    if (density > 150) settlement = "tett";
+    else if (density < 15) settlement = "spredt";
+
+    return { terrain, settlement };
+  };
+
   const handleStartData = async () => {
     setStep("data");
     setKostraLoading(true);
@@ -106,26 +127,21 @@ export default function Assessment() {
           buildings: data.drone_relevance?.estimated_buildings ?? null,
           vaKm: data.drone_relevance?.estimated_va_km ?? null,
         });
-        // Auto-populate geography
-        setGeoData(prev => ({
-          ...prev,
+        const geoLookup = MUNICIPALITY_GEO[municipalityName];
+        const { terrain, settlement } = classifyTerrain(data.area_km2, pop, geoLookup?.lat ?? null);
+        setGeoData({
           areaKm2: data.area_km2 ?? null,
-        }));
-        // Initialize departments based on population
+          coastlineKm: null,
+          terrainType: terrain,
+          settlementPattern: settlement,
+        });
         const suggested = getSuggestedDepartments(pop || 8000);
         setDepartments(suggested.map((d, i) => ({
-          id: d.id,
-          name: d.name,
-          icon: d.icon,
-          description: d.description,
-          enabled: true,
-          order: i,
+          id: d.id, name: d.name, icon: d.icon, description: d.description, enabled: true, order: i,
         })));
-        // Auto-populate municipality profile from KOSTRA data
         populateFromKostra(data);
       }
     } catch {
-      // fallback
       const suggested = getSuggestedDepartments(8000);
       setDepartments(suggested.map((d, i) => ({
         id: d.id, name: d.name, icon: d.icon, description: d.description, enabled: true, order: i,
