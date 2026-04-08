@@ -8,20 +8,49 @@ export interface KostraSectorData {
   source: string;
 }
 
+export interface KostraBuildings {
+  total: number | null;
+  residential: number | null;
+  holiday_homes: number | null;
+  commercial: number | null;
+  year?: string;
+  source?: string;
+}
+
+export interface KostraVANetwork {
+  water_pipe_km: number | null;
+  sewage_pipe_km: number | null;
+  year?: string;
+  source?: string;
+}
+
+export interface KostraLandUse {
+  agricultural_km2: number | null;
+  forest_km2: number | null;
+  year?: string;
+  source?: string;
+}
+
+export interface KostraInfrastructure {
+  bridges: number | null;
+  tunnels: number | null;
+  source?: string;
+}
+
 export interface KostraData {
   success: boolean;
   source?: string;
   municipality?: string;
   municipality_code?: string;
   area_km2?: number;
-  indicators?: Array<{ id: string; name: string; value: number; unit: string; year?: string }>;
+  indicators?: Array<{ id: string; name: string; value: number; unit: string; year?: string; source?: string }>;
+  buildings?: KostraBuildings;
+  va_network?: KostraVANetwork;
+  land_use?: KostraLandUse;
+  infrastructure?: KostraInfrastructure;
   drone_relevance?: {
     population_density: number | null;
     population_bracket: string;
-    estimated_road_km: number | null;
-    estimated_buildings: number | null;
-    estimated_va_km: number | null;
-    estimated_agri_km2: number | null;
     infrastructure_complexity: string;
     centrality_index: number | null;
     urban_rural: string | null;
@@ -35,6 +64,7 @@ export interface KostraData {
   fire_stats?: any;
   sector_data?: KostraSectorData[];
   sector_data_source?: 'ssb' | 'estimated';
+  property_data?: any;
   error?: string;
 }
 
