@@ -116,11 +116,13 @@ export default function Assessment() {
       setKostra(data);
       if (data.success) {
         const pop = data.indicators?.find(i => i.id === "population")?.value ?? null;
+        const roadInd = data.indicators?.find(i => i.id === "road_km");
+        const vaTotal = (data.va_network?.water_pipe_km ?? 0) + (data.va_network?.sewage_pipe_km ?? 0);
         setOverrides({
           population: pop,
-          roadKm: data.drone_relevance?.estimated_road_km ?? null,
-          buildings: data.drone_relevance?.estimated_buildings ?? null,
-          vaKm: data.drone_relevance?.estimated_va_km ?? null,
+          roadKm: roadInd?.value ?? null,
+          buildings: data.buildings?.total ?? null,
+          vaKm: vaTotal || null,
         });
         const geoLookup = MUNICIPALITY_GEO[municipalityName];
         const { terrain, settlement } = classifyTerrain(data.area_km2, pop, geoLookup?.lat ?? null);

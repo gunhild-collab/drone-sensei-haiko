@@ -42,10 +42,12 @@ export default function Results() {
       setLoading(prev => ({ ...prev, kostra: false }));
 
       // Once we have kostra data, fetch platforms with municipal data
+      const roadInd = d.indicators?.find(i => i.id === "road_km");
+      const vaTotal = (d.va_network?.water_pipe_km ?? 0) + (d.va_network?.sewage_pipe_km ?? 0);
       const municipalData = {
-        road_km: kostraOverrides?.roadKm ?? d.drone_relevance?.estimated_road_km,
-        buildings: kostraOverrides?.buildings ?? d.drone_relevance?.estimated_buildings,
-        va_km: kostraOverrides?.vaKm ?? d.drone_relevance?.estimated_va_km,
+        road_km: kostraOverrides?.roadKm ?? roadInd?.value ?? null,
+        buildings: kostraOverrides?.buildings ?? d.buildings?.total ?? null,
+        va_km: kostraOverrides?.vaKm ?? (vaTotal || null),
         area_km2: d.area_km2 || null,
       };
 
