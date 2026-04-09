@@ -108,6 +108,13 @@ function estimateFlightHours(formula: string, infra: InfraData): { hours: number
     const h = Math.round((ha * 0.05) / 200);
     return { hours: h, basis: `${infra.forest_km2} km² skog × 5% ÷ 200 ha/t = ${h} timer` };
   }
+  // Agricultural area: NDVI/tilskuddskontroll, ~40 ha/h multirotor, 5-10% stikkprøve
+  if (formula.includes("jordbruk") && infra.agricultural_km2) {
+    const ha = infra.agricultural_km2 * 100;
+    const sampleRate = 0.07; // 7% average of 5-10%
+    const h = Math.round((ha * sampleRate) / 40);
+    return { hours: h, basis: `${infra.agricultural_km2} km² jordbruk × 7% ÷ 40 ha/t = ${h} timer` };
+  }
   // Flat rate from formula text
   const flatMatch = formula.match(/(\d+)\s*timer/);
   if (flatMatch) {
