@@ -3,7 +3,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const CATEGORY_IDS = ["brann", "teknisk_vei", "va", "byggesak", "naturforvaltning", "kultur"] as const;
+const CATEGORY_IDS = ["brann", "teknisk_vei", "va", "byggesak", "naturforvaltning", "landbruk", "kultur"] as const;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
