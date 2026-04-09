@@ -3,7 +3,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const CATEGORY_IDS = ["brann", "teknisk_vei", "va", "byggesak", "naturforvaltning", "kultur"] as const;
+const CATEGORY_IDS = ["brann", "teknisk_vei", "va", "byggesak", "naturforvaltning", "landbruk", "kultur"] as const;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -96,7 +96,8 @@ Map avdelinger til disse kategori-IDer:
 - teknisk_vei: teknisk, drift, vei, infrastruktur, kommunalteknikk
 - va: vann, avløp, VA, ledningsnett
 - byggesak: plan, bygg, byggesak, eiendom, arealplan, kart, oppmåling, geodata
-- naturforvaltning: miljø, klima, landbruk, skog, natur, friluft
+- naturforvaltning: miljø, klima, natur, friluft, vassdrag
+- landbruk: landbruk, jordbruk, skogbruk, landbrukskontor, jordlov, konsesjonslov, tilskudd, NIBIO
 - kultur: kultur, idrett, fritid, turisme
 
 REGLER:

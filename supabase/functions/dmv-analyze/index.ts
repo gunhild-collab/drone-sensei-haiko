@@ -32,8 +32,9 @@ const DEPT_MATCH_MAP: Record<string, string[]> = {
   "Tekniske tjenester - Vei": ["Teknisk drift", "Vei", "Tekniske tjenester"],
   "Vann og avløp": ["Vann og avløp", "VA"],
   "Byggesak / Eiendom": ["Plan og bygg", "Byggesak", "Eiendom"],
-  Naturforvaltning: ["Miljø og klima", "Naturforvaltning"],
+  Naturforvaltning: ["Miljø og klima", "Naturforvaltning", "Miljø"],
   "Naturforvaltning / Landbruk": ["Landbruk", "Miljø og klima", "Naturforvaltning"],
+  Landbruk: ["Landbruk", "Jordbruk", "Landbrukskontor", "Skogbruk"],
   Beredskap: ["Brann og redning", "Beredskap"],
   Geodata: ["Geodata", "Plan og bygg"],
   "Teknisk drift": ["Teknisk drift", "Tekniske tjenester"],
@@ -106,6 +107,13 @@ function estimateFlightHours(formula: string, infra: InfraData): { hours: number
     const ha = infra.forest_km2 * 100;
     const h = Math.round((ha * 0.05) / 200);
     return { hours: h, basis: `${infra.forest_km2} km² skog × 5% ÷ 200 ha/t = ${h} timer` };
+  }
+  // Agricultural area: NDVI/tilskuddskontroll, ~40 ha/h multirotor, 5-10% stikkprøve
+  if (formula.includes("jordbruk") && infra.agricultural_km2) {
+    const ha = infra.agricultural_km2 * 100;
+    const sampleRate = 0.07; // 7% average of 5-10%
+    const h = Math.round((ha * sampleRate) / 40);
+    return { hours: h, basis: `${infra.agricultural_km2} km² jordbruk × 7% ÷ 40 ha/t = ${h} timer` };
   }
   // Flat rate from formula text
   const flatMatch = formula.match(/(\d+)\s*timer/);
@@ -403,7 +411,10 @@ Deno.serve(async (req) => {
       `  - Næringsbygg: ${buildings?.commercial ?? "ukjent"}`,
       `- Jordbruksareal: ${land_use?.agricultural_km2 ?? "ukjent"} km² (SSB 09594)`,
       `- Skogareal: ${land_use?.forest_km2 ?? "ukjent"} km² (SSB 09594)`,
-    ].join("\n");
+      land_use?.agricultural_km2 && land_use.agricultural_km2 > 10
+        ? `- LANDBRUKSNØKKELTALL: ${land_use.agricultural_km2} km² jordbruksareal. Relevant for tilskuddskontroll, SMIL/RMP, driveplikt, nydyrking, skogbruk.`
+        : null,
+    ].filter(Boolean).join("\n");
 
     const sectorLines =
       Array.isArray(sector_data) && sector_data.length > 0
