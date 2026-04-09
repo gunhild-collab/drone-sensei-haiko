@@ -96,7 +96,8 @@ Map avdelinger til disse kategori-IDer:
 - teknisk_vei: teknisk, drift, vei, infrastruktur, kommunalteknikk
 - va: vann, avløp, VA, ledningsnett
 - byggesak: plan, bygg, byggesak, eiendom, arealplan, kart, oppmåling, geodata
-- naturforvaltning: miljø, klima, landbruk, skog, natur, friluft
+- naturforvaltning: miljø, klima, natur, friluft, vassdrag
+- landbruk: landbruk, jordbruk, skogbruk, landbrukskontor, jordlov, konsesjonslov, tilskudd, NIBIO
 - kultur: kultur, idrett, fritid, turisme
 
 REGLER:

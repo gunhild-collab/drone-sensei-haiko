@@ -411,7 +411,10 @@ Deno.serve(async (req) => {
       `  - Næringsbygg: ${buildings?.commercial ?? "ukjent"}`,
       `- Jordbruksareal: ${land_use?.agricultural_km2 ?? "ukjent"} km² (SSB 09594)`,
       `- Skogareal: ${land_use?.forest_km2 ?? "ukjent"} km² (SSB 09594)`,
-    ].join("\n");
+      land_use?.agricultural_km2 && land_use.agricultural_km2 > 10
+        ? `- LANDBRUKSNØKKELTALL: ${land_use.agricultural_km2} km² jordbruksareal. Relevant for tilskuddskontroll, SMIL/RMP, driveplikt, nydyrking, skogbruk.`
+        : null,
+    ].filter(Boolean).join("\n");
 
     const sectorLines =
       Array.isArray(sector_data) && sector_data.length > 0

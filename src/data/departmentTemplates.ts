@@ -75,6 +75,14 @@ export const DEPARTMENT_TEMPLATES: DepartmentTemplate[] = [
     relevantUseCaseIds: ["UC-019", "UC-020", "UC-022", "UC-030"],
     description: "Miljøovervåkning, forurensning, klimatilpasning",
   },
+  {
+    id: "dept-landbruk",
+    name: "Landbruk",
+    icon: "Wheat",
+    minPopulation: 0,
+    relevantUseCaseIds: ["UC-024"],
+    description: "Tilskuddskontroll, SMIL/RMP, driveplikt, nydyrking, skogbruk, NDVI",
+  },
 ];
 
 /**
