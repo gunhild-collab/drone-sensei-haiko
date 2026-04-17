@@ -813,6 +813,7 @@ ${fire_dept_type === "IKS" ? `IKS-VURDERING: ${fire_dept_name} dekker ${(iks_par
           ],
           tools: [toolSchema],
           tool_choice: { type: "function", function: { name: "drone_analysis" } },
+          max_tokens: 16000,
         }),
       });
 
@@ -861,12 +862,29 @@ ${fire_dept_type === "IKS" ? `IKS-VURDERING: ${fire_dept_name} dekker ${(iks_par
     // ── Parse response ─────────────────────────────────────────────────
 
     const result = await response.json();
-    const toolCall = result.choices?.[0]?.message?.tool_calls?.[0];
+    const choice = result.choices?.[0];
+    const toolCall = choice?.message?.tool_calls?.[0];
     if (!toolCall) {
-      return new Response(JSON.stringify({ success: false, error: "Ingen analyse returnert" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      console.error(
+        `[${municipality_name}] No tool_call returned. finish_reason=${choice?.finish_reason}, ` +
+          `content_preview=${JSON.stringify(choice?.message?.content)?.slice(0, 300)}, ` +
+          `usage=${JSON.stringify(result.usage)}`,
+      );
+      console.warn(`[${municipality_name}] Falling back to algorithmic analysis`);
+      const fallback = buildFallbackAnalysis(
+        municipality_name,
+        relevantUCs,
+        algorithmicFleet,
+        deptNames,
+        infra,
+        iks_partners,
+        fire_dept_name,
+        fire_dept_type,
+      );
+      return new Response(
+        JSON.stringify({ success: true, analysis: { ...fallback, _algorithmic_fleet: algorithmicFleet } }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     let analysis: any;
